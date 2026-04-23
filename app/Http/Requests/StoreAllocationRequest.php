@@ -10,6 +10,27 @@ use Illuminate\Validation\Rules\Enum;
 
 final class StoreAllocationRequest extends FormRequest
 {
+    public function prepareForValidation(): void
+    {
+        if ($this->input('due_date') === '') {
+            $this->merge(['due_date' => null]);
+        }
+        if ($this->input('goal_amount') === '' || $this->input('goal_amount') === null) {
+            $this->merge(['goal_amount' => null]);
+        }
+
+        $type = AllocationType::tryFrom(
+            (string) $this->input('type', AllocationType::Normal->value)
+        ) ?? AllocationType::Normal;
+
+        if ($type !== AllocationType::Bill) {
+            $this->merge(['due_date' => null]);
+        }
+        if ($type !== AllocationType::Savings) {
+            $this->merge(['goal_amount' => null]);
+        }
+    }
+
     /**
      * @return array<string, array<mixed>|string>
      */

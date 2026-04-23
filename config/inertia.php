@@ -6,6 +6,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Initial page payload
+    |--------------------------------------------------------------------------
+    |
+    | Inertia v3+ reads the first visit from a <script data-page> JSON tag.
+    | If this is false, Laravel embeds the page on <div data-page> instead and
+    | the client will not find it (getInitialPageFromDOM returns null).
+    |
+    */
+    'use_script_element_for_initial_page' => (bool) env(
+        'INERTIA_USE_SCRIPT_ELEMENT_FOR_INITIAL_PAGE',
+        true,
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Server Side Rendering
     |--------------------------------------------------------------------------
     |

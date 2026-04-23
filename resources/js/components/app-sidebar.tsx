@@ -10,10 +10,12 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import AccountController from '@/actions/App/Http/Controllers/AccountController';
+import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Target, Wallet } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -21,6 +23,16 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Accounts',
+        href: AccountController.index(),
+        icon: Wallet,
+    },
+    {
+        title: 'Allocations',
+        href: AllocationController.index(),
+        icon: Target,
     },
 ];
 

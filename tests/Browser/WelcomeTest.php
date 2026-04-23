@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-it('has welcome page', function (): void {
+it('renders the public landing page', function (): void {
     $page = visit('/');
 
-    $page->assertSee('Laravel');
+    $page->assertSee('Penny');
 });
