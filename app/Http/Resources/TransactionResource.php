@@ -24,8 +24,16 @@ final class TransactionResource extends JsonResource
             'note' => $this->note,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'accounts' => TransactionAccountResource::collection($this->whenLoaded('transactionAccounts')),
-            'allocations' => TransactionAllocationResource::collection($this->whenLoaded('transactionAllocations')),
+            'accounts' => TransactionAccountResource::collection(
+                $this->relationLoaded('transactionAccounts')
+                    ? $this->transactionAccounts
+                    : collect()
+            ),
+            'allocations' => TransactionAllocationResource::collection(
+                $this->relationLoaded('transactionAllocations')
+                    ? $this->transactionAllocations
+                    : collect()
+            ),
         ];
     }
 }

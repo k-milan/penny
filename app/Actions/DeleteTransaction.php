@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions;
 
 use App\Models\Transaction;
+use App\Support\TransactionLineAmounts;
 use Illuminate\Support\Facades\DB;
 
 final readonly class DeleteTransaction
@@ -12,6 +13,7 @@ final readonly class DeleteTransaction
     public function __construct(
         private AddToAccountBalance $addToAccountBalance,
         private AddToAllocationBalance $addToAllocationBalance,
+        private ApplyImplicitUnallocatedFromTransactionNets $applyImplicitUnallocated,
     ) {
         //
     }
@@ -38,6 +40,23 @@ final readonly class DeleteTransaction
                 $neg = bcsub('0.00', $lineAmount, 2);
                 $this->addToAllocationBalance->handle($line->allocation_id, $neg);
             }
+
+            $oldAccountLines = [];
+            foreach ($transaction->transactionAccounts as $line) {
+                $oldAccountLines[] = ['amount' => (string) $line->amount];
+            }
+            $oldAllocationLines = [];
+            foreach ($transaction->transactionAllocations as $line) {
+                $oldAllocationLines[] = ['amount' => (string) $line->amount];
+            }
+            $net = TransactionLineAmounts::implicitUnallocatedNet(
+                $oldAccountLines,
+                $oldAllocationLines
+            );
+            $this->applyImplicitUnallocated->applySignedNetForUser(
+                (int) $transaction->user_id,
+                bcsub('0.00', $net, 2)
+            );
 
             $transaction->delete();
         });

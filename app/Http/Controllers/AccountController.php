@@ -48,9 +48,14 @@ final readonly class AccountController
         $user = $request->user();
         assert($user instanceof User);
 
-        /** @var array{name: string, type: AccountType} $data */
+        /** @var array{name: string, type: AccountType, initial_balance?: float|int|string|null} $data */
         $data = $request->validated();
-        $action->handle($user, $data);
+        $initial = $data['initial_balance'] ?? null;
+        $action->handle($user, [
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'initial_balance' => is_numeric($initial) ? (string) $initial : null,
+        ]);
 
         return redirect()->route('accounts.index')
             ->with('success', 'Account created.');

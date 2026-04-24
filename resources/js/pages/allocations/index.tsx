@@ -9,8 +9,19 @@ import {
 } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { Head, Link, router } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
+
+type DefaultUnallocated = {
+    id: number;
+    name: string;
+    type: string;
+    due_date: string | null;
+    goal_amount: string | null;
+    balance: string;
+    is_unallocated: boolean;
+};
 
 type AllocationRow = {
     id: number;
@@ -34,14 +45,17 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Allocations', href: AllocationController.index().url },
 ];
 
-function formatType(t: string): string {
-    return t.replaceAll('_', ' ');
+function showUnallocatedRow(balance: string): boolean {
+    const n = Number.parseFloat(balance);
+    return Number.isFinite(n) && n !== 0;
 }
 
 export default function AllocationsIndex({
     allocations,
+    defaultUnallocated,
 }: {
     allocations: AllocationPaginator;
+    defaultUnallocated: DefaultUnallocated | null;
 }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -61,6 +75,26 @@ export default function AllocationsIndex({
                         </Link>
                     </Button>
                 </div>
+
+                {defaultUnallocated &&
+                    showUnallocatedRow(defaultUnallocated.balance) && (
+                        <div className="text-muted-foreground flex w-full items-baseline justify-between gap-2 border-b border-dashed border-border pb-2.5 text-sm">
+                            <span className="min-w-0">
+                                {defaultUnallocated.name}{' '}
+                                <Link
+                                    className="text-primary text-xs font-normal underline"
+                                    href={AllocationController.edit({
+                                        allocation: defaultUnallocated.id,
+                                    })}
+                                >
+                                    (default)
+                                </Link>
+                            </span>
+                            <span className="text-foreground font-medium tabular-nums">
+                                {formatPhpMoney(defaultUnallocated.balance)}
+                            </span>
+                        </div>
+                    )}
 
                 <Card>
                     <CardHeader>
@@ -86,15 +120,14 @@ export default function AllocationsIndex({
                                     <div>
                                         <p className="font-medium">{row.name}</p>
                                         <p className="text-muted-foreground text-sm">
-                                            {formatType(row.type)}
+                                            {formatTypeLabel(row.type)}
                                             {row.due_date
                                                 ? ` · due ${row.due_date}`
                                                 : ''}
                                             {row.goal_amount
-                                                ? ` · goal ${row.goal_amount}`
+                                                ? ` · goal ${formatPhpMoney(row.goal_amount)}`
                                                 : ''}
-                                            {' · balance '}
-                                            {row.balance}
+                                            {` · ${formatPhpMoney(row.balance)}`}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1">

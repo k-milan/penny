@@ -8,10 +8,12 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { MoneyInput } from '@/components/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { formatPhpMoney } from '@/lib/format';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 /** Matches `App\Enums\AllocationType` string values. */
@@ -25,14 +27,20 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function AllocationsCreate({
     types,
+    unallocated,
 }: {
     types: { value: string; label: string }[];
+    unallocated: string;
 }) {
+    const u = Number.parseFloat(unallocated);
+    const unallocatedIsNonZero = Number.isFinite(u) && u !== 0;
+
     const form = useForm({
         name: '',
         type: types[0]?.value ?? 'normal',
         due_date: '',
         goal_amount: '',
+        initial_balance: '',
     });
 
     return (
@@ -44,6 +52,16 @@ export default function AllocationsCreate({
                     <p className="text-muted-foreground text-sm">
                         A bucket for bills, savings, or day-to-day spending.
                     </p>
+                    {unallocatedIsNonZero && (
+                        <p className="text-muted-foreground text-sm">
+                            Current default (Unallocated) balance:{' '}
+                            <span className="text-foreground font-medium tabular-nums">
+                                {formatPhpMoney(unallocated)}
+                            </span>
+                            . A starting balance cannot be greater than this
+                            (other than zero).
+                        </p>
+                    )}
                 </div>
 
                 <Card>
@@ -51,7 +69,8 @@ export default function AllocationsCreate({
                         <CardTitle>Details</CardTitle>
                         <CardDescription>
                             You can change these later. Due date is for bills;
-                            goal is for savings.
+                            goal is for savings. An optional starting balance is
+                            funded from your Unallocated (default) balance.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -127,18 +146,13 @@ export default function AllocationsCreate({
                                     <Label htmlFor="goal_amount">
                                         Goal amount
                                     </Label>
-                                    <Input
+                                    <MoneyInput
                                         id="goal_amount"
                                         name="goal_amount"
-                                        type="text"
-                                        inputMode="decimal"
                                         placeholder="Optional"
                                         value={form.data.goal_amount}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                'goal_amount',
-                                                e.target.value,
-                                            )
+                                        onChange={(v) =>
+                                            form.setData('goal_amount', v)
                                         }
                                     />
                                     <InputError
@@ -146,6 +160,22 @@ export default function AllocationsCreate({
                                     />
                                 </div>
                             )}
+                            <div className="grid gap-2">
+                                <Label htmlFor="initial_balance">
+                                    Starting balance (optional)
+                                </Label>
+                                <MoneyInput
+                                    id="initial_balance"
+                                    name="initial_balance"
+                                    value={form.data.initial_balance}
+                                    onChange={(v) =>
+                                        form.setData('initial_balance', v)
+                                    }
+                                />
+                                <InputError
+                                    message={form.errors.initial_balance}
+                                />
+                            </div>
                             <div className="flex gap-2">
                                 <Button type="submit" disabled={form.processing}>
                                     Create allocation

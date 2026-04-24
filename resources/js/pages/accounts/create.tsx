@@ -8,6 +8,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { MoneyInput } from '@/components/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
@@ -27,6 +28,7 @@ export default function AccountsCreate({
     const form = useForm({
         name: '',
         type: types[0]?.value ?? 'cash',
+        initial_balance: '',
     });
 
     return (
@@ -45,8 +47,8 @@ export default function AccountsCreate({
                     <CardHeader>
                         <CardTitle>Details</CardTitle>
                         <CardDescription>
-                            You can record transactions against this account
-                            later.
+                            Optional starting balance (create only; editing an
+                            account does not change balance here).
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -89,6 +91,22 @@ export default function AccountsCreate({
                                     ))}
                                 </select>
                                 <InputError message={form.errors.type} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="initial_balance">
+                                    Starting balance (optional)
+                                </Label>
+                                <MoneyInput
+                                    id="initial_balance"
+                                    name="initial_balance"
+                                    value={form.data.initial_balance}
+                                    onChange={(v) =>
+                                        form.setData('initial_balance', v)
+                                    }
+                                />
+                                <InputError
+                                    message={form.errors.initial_balance}
+                                />
                             </div>
                             <div className="flex gap-2">
                                 <Button type="submit" disabled={form.processing}>

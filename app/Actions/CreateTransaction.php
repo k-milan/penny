@@ -13,6 +13,7 @@ final readonly class CreateTransaction
     public function __construct(
         private AddToAccountBalance $addToAccountBalance,
         private AddToAllocationBalance $addToAllocationBalance,
+        private ApplyImplicitUnallocatedFromTransactionNets $applyImplicitUnallocated,
     ) {
         //
     }
@@ -53,6 +54,12 @@ final readonly class CreateTransaction
                 ]);
                 $this->addToAllocationBalance->handle($row['allocation_id'], $amount);
             }
+
+            $this->applyImplicitUnallocated->applyForUser(
+                (int) $user->id,
+                $data['accounts'],
+                $data['allocations'],
+            );
 
             return $transaction->load(['transactionAccounts.account', 'transactionAllocations.allocation']);
         });

@@ -10,6 +10,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
+import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 
 type AccountRow = {
@@ -33,8 +34,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function AccountsIndex({ accounts }: { accounts: AccountPaginator }) {
-    const formatType = (t: string) => t.replaceAll('_', ' ');
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Accounts" />
@@ -77,8 +76,8 @@ export default function AccountsIndex({ accounts }: { accounts: AccountPaginator
                                     <div>
                                         <p className="font-medium">{row.name}</p>
                                         <p className="text-muted-foreground text-sm">
-                                            {formatType(row.type)} · balance{' '}
-                                            {row.balance}
+                                            {formatTypeLabel(row.type)} ·{' '}
+                                            {formatPhpMoney(row.balance)}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1">

@@ -28,6 +28,7 @@ final readonly class AllocationController
         /** @var LengthAwarePaginator<int, Allocation> $allocations */
         $allocations = Allocation::query()
             ->where('user_id', $user->id)
+            ->where('is_unallocated', false)
             ->orderBy('name')
             ->paginate($request->integer('per_page', 15));
 
@@ -39,14 +40,16 @@ final readonly class AllocationController
         $user = $request->user();
         assert($user instanceof User);
 
-        /** @var array{name: string, type?: \App\Enums\AllocationType|null, due_date?: \Carbon\CarbonInterface|null, goal_amount?: float|int} $data */
+        /** @var array{name: string, type?: \App\Enums\AllocationType|null, due_date?: \Carbon\CarbonInterface|null, goal_amount?: float|int, initial_balance?: float|int|string|null} $data */
         $data = $request->validated();
         $goal = $data['goal_amount'] ?? null;
+        $initial = $data['initial_balance'] ?? null;
         $allocation = $action->handle($user, [
             'name' => $data['name'],
             'type' => $data['type'] ?? null,
             'due_date' => $data['due_date'] ?? null,
             'goal_amount' => is_numeric($goal) ? (string) $goal : null,
+            'initial_balance' => is_numeric($initial) ? (string) $initial : null,
         ]);
 
         return (new AllocationResource($allocation))

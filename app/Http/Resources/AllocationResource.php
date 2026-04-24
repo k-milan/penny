@@ -24,6 +24,7 @@ final class AllocationResource extends JsonResource
             'due_date' => $this->due_date?->format('Y-m-d'),
             'goal_amount' => $this->goal_amount === null ? null : (string) $this->goal_amount,
             'balance' => (string) $this->balance,
+            'is_unallocated' => $this->is_unallocated,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

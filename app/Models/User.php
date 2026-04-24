@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Actions\EnsureUnallocatedAllocationForUser;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -88,5 +89,12 @@ final class User extends Authenticatable implements MustVerifyEmail
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    protected static function booted(): void
+    {
+        self::created(function (User $user): void {
+            app(EnsureUnallocatedAllocationForUser::class)->handle($user);
+        });
     }
 }

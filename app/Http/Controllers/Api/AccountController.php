@@ -39,9 +39,14 @@ final readonly class AccountController
         $user = $request->user();
         assert($user instanceof User);
 
-        /** @var array{name: string, type: \App\Enums\AccountType} $data */
+        /** @var array{name: string, type: \App\Enums\AccountType, initial_balance?: float|int|string|null} $data */
         $data = $request->validated();
-        $account = $action->handle($user, $data);
+        $initial = $data['initial_balance'] ?? null;
+        $account = $action->handle($user, [
+            'name' => $data['name'],
+            'type' => $data['type'],
+            'initial_balance' => is_numeric($initial) ? (string) $initial : null,
+        ]);
 
         return (new AccountResource($account))
             ->response()

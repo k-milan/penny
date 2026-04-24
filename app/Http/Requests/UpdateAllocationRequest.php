@@ -31,6 +31,13 @@ final class UpdateAllocationRequest extends FormRequest
         if ($type !== AllocationType::Savings) {
             $this->merge(['goal_amount' => null]);
         }
+
+        if ($this->getAllocation()->is_unallocated) {
+            $this->merge([
+                'name' => 'Unallocated',
+                'type' => AllocationType::Unallocated->value,
+            ]);
+        }
     }
 
     /**

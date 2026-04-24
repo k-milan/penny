@@ -10,8 +10,10 @@ use App\Actions\UpdateAllocation;
 use App\Enums\AllocationType;
 use App\Http\Requests\StoreAllocationRequest;
 use App\Http\Requests\UpdateAllocationRequest;
+use App\Http\Resources\AllocationResource;
 use App\Models\Allocation;
 use App\Models\User;
+use App\Support\UnallocatedAmount;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,21 +27,34 @@ final readonly class AllocationController
         $user = $request->user();
         assert($user instanceof User);
 
+        $defaultUnallocated = Allocation::query()
+            ->where('user_id', $user->id)
+            ->where('is_unallocated', true)
+            ->first();
+
         $allocations = Allocation::query()
             ->where('user_id', $user->id)
+            ->where('is_unallocated', false)
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('allocations/index', [
             'allocations' => $allocations,
+            'defaultUnallocated' => $defaultUnallocated
+                ? (new AllocationResource($defaultUnallocated))->resolve()
+                : null,
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        $user = $request->user();
+        assert($user instanceof User);
+
         return Inertia::render('allocations/create', [
             'types' => self::allocationTypeOptions(),
+            'unallocated' => UnallocatedAmount::forUserId($user->id),
         ]);
     }
 
@@ -48,14 +63,16 @@ final readonly class AllocationController
         $user = $request->user();
         assert($user instanceof User);
 
-        /** @var array{name: string, type?: AllocationType|null, due_date?: \Carbon\CarbonInterface|string|null, goal_amount?: float|int|string|null} $data */
+        /** @var array{name: string, type?: AllocationType|null, due_date?: \Carbon\CarbonInterface|string|null, goal_amount?: float|int|string|null, initial_balance?: float|int|string|null} $data */
         $data = $request->validated();
         $goal = $data['goal_amount'] ?? null;
+        $initial = $data['initial_balance'] ?? null;
         $action->handle($user, [
             'name' => $data['name'],
             'type' => $data['type'] ?? null,
             'due_date' => $data['due_date'] ?? null,
             'goal_amount' => is_numeric($goal) ? (string) $goal : null,
+            'initial_balance' => is_numeric($initial) ? (string) $initial : null,
         ]);
 
         return redirect()->route('allocations.index')
@@ -72,8 +89,9 @@ final readonly class AllocationController
                 'due_date' => $allocation->due_date?->format('Y-m-d') ?? '',
                 'goal_amount' => $allocation->goal_amount === null ? '' : (string) $allocation->goal_amount,
                 'balance' => (string) $allocation->balance,
+                'is_unallocated' => $allocation->is_unallocated,
             ],
-            'types' => self::allocationTypeOptions(),
+            'types' => $allocation->is_unallocated ? [] : self::allocationTypeOptions(),
         ]);
     }
 
@@ -111,6 +129,11 @@ final readonly class AllocationController
      */
     private static function allocationTypeOptions(): array
     {
+        $types = array_values(array_filter(
+            AllocationType::cases(),
+            static fn (AllocationType $t): bool => $t !== AllocationType::Unallocated
+        ));
+
         return array_map(
             static fn (AllocationType $t): array => [
                 'value' => $t->value,
@@ -120,7 +143,7 @@ final readonly class AllocationController
                     AllocationType::Savings => 'Savings',
                 },
             ],
-            AllocationType::cases(),
+            $types
         );
     }
 }

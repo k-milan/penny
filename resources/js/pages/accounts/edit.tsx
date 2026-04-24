@@ -1,5 +1,6 @@
 import AccountController from '@/actions/App/Http/Controllers/AccountController';
 import InputError from '@/components/input-error';
+import { formatPhpMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -47,7 +48,7 @@ export default function AccountsEdit({
             <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4">
                 <div>
                     <p className="text-muted-foreground text-sm">
-                        Balance: {account.balance}
+                        Balance: {formatPhpMoney(account.balance)}
                     </p>
                     <h1 className="text-2xl font-semibold">Edit account</h1>
                 </div>

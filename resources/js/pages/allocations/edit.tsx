@@ -8,10 +8,12 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { MoneyInput } from '@/components/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { formatPhpMoney } from '@/lib/format';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 /** Matches `App\Enums\AllocationType` string values. */
@@ -25,6 +27,7 @@ type AllocationProps = {
     due_date: string;
     goal_amount: string;
     balance: string;
+    is_unallocated?: boolean;
 };
 
 export default function AllocationsEdit({
@@ -53,13 +56,40 @@ export default function AllocationsEdit({
         },
     ];
 
+    if (allocation.is_unallocated) {
+        return (
+            <AppLayout breadcrumbs={breadcrumbs}>
+                <Head title={allocation.name} />
+                <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4">
+                    <div>
+                        <p className="text-muted-foreground text-sm">
+                            Balance: {formatPhpMoney(allocation.balance)}
+                        </p>
+                        <h1 className="text-2xl font-semibold">
+                            {allocation.name}
+                        </h1>
+                        <p className="text-muted-foreground mt-2 text-sm">
+                            This is your default allocation. It holds money that
+                            is not assigned to other allocations, and it
+                            updates when you add transactions. Name and type
+                            cannot be changed, and it cannot be deleted.
+                        </p>
+                    </div>
+                    <Button variant="secondary" asChild>
+                        <Link href={AllocationController.index()}>Back</Link>
+                    </Button>
+                </div>
+            </AppLayout>
+        );
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit ${allocation.name}`} />
             <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4">
                 <div>
                     <p className="text-muted-foreground text-sm">
-                        Balance: {allocation.balance}
+                        Balance: {formatPhpMoney(allocation.balance)}
                     </p>
                     <h1 className="text-2xl font-semibold">Edit allocation</h1>
                 </div>
@@ -148,18 +178,13 @@ export default function AllocationsEdit({
                                     <Label htmlFor="goal_amount">
                                         Goal amount
                                     </Label>
-                                    <Input
+                                    <MoneyInput
                                         id="goal_amount"
                                         name="goal_amount"
-                                        type="text"
-                                        inputMode="decimal"
                                         placeholder="Optional"
                                         value={form.data.goal_amount}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                'goal_amount',
-                                                e.target.value,
-                                            )
+                                        onChange={(v) =>
+                                            form.setData('goal_amount', v)
                                         }
                                     />
                                     <InputError
