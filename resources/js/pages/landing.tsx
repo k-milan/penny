@@ -8,7 +8,7 @@ export default function Landing() {
     return (
         <>
             <FlashToasts />
-            <Head title="Penny" />
+            <Head title="Home" />
             <div className="bg-background text-foreground flex min-h-screen flex-col">
                 <header className="border-b">
                     <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-4">

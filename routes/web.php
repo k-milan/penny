@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AllocationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IncomeFromTemplateController;
+use App\Http\Controllers\IncomeTemplateController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -14,11 +16,12 @@ use App\Http\Controllers\UserEmailVerificationNotificationController;
 use App\Http\Controllers\UserPasswordController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\UserTwoFactorAuthenticationController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    if (auth()->check()) {
+    if (Auth::check()) {
         return redirect()->route('dashboard');
     }
 
@@ -27,6 +30,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('transactions/income', [IncomeFromTemplateController::class, 'create'])->name('transactions.income');
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
@@ -34,6 +38,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         'index', 'create', 'store', 'edit', 'update', 'destroy',
     ]);
     Route::resource('allocations', AllocationController::class)->only([
+        'index', 'create', 'store', 'edit', 'update', 'destroy',
+    ]);
+    Route::resource('income-templates', IncomeTemplateController::class)->only([
         'index', 'create', 'store', 'edit', 'update', 'destroy',
     ]);
 });

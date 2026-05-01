@@ -29,6 +29,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Account> $accounts
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Allocation> $allocations
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Transaction> $transactions
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, IncomeTemplate> $incomeTemplates
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, IncomeTemplateSeries> $incomeTemplateSeries
  */
 final class User extends Authenticatable implements MustVerifyEmail
 {
@@ -89,6 +91,22 @@ final class User extends Authenticatable implements MustVerifyEmail
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * @return HasMany<IncomeTemplate, $this>
+     */
+    public function incomeTemplates(): HasMany
+    {
+        return $this->hasMany(IncomeTemplate::class);
+    }
+
+    /**
+     * @return HasMany<IncomeTemplateSeries, $this>
+     */
+    public function incomeTemplateSeries(): HasMany
+    {
+        return $this->hasMany(IncomeTemplateSeries::class);
     }
 
     protected static function booted(): void

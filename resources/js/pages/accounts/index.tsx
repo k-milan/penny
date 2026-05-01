@@ -1,6 +1,12 @@
 import AccountController from '@/actions/App/Http/Controllers/AccountController';
 import { Button } from '@/components/ui/button';
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
     Card,
     CardContent,
     CardDescription,
@@ -11,7 +17,8 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useMemo } from 'react';
 
 type AccountRow = {
     id: number;
@@ -33,7 +40,46 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Accounts', href: AccountController.index().url },
 ];
 
+const ACCOUNT_TYPE_ORDER = ['bank', 'cash', 'credit_card', 'person'] as const;
+
+function groupAccountsByType(rows: AccountRow[]): {
+    type: string;
+    items: AccountRow[];
+}[] {
+    const byType = new Map<string, AccountRow[]>();
+    for (const row of rows) {
+        const list = byType.get(row.type) ?? [];
+        list.push(row);
+        byType.set(row.type, list);
+    }
+    const out: { type: string; items: AccountRow[] }[] = [];
+    for (const t of ACCOUNT_TYPE_ORDER) {
+        const items = byType.get(t);
+        if (items?.length) {
+            out.push({ type: t, items });
+        }
+    }
+    const rest = [...byType.keys()]
+        .filter((k) => !(ACCOUNT_TYPE_ORDER as readonly string[]).includes(k))
+        .sort();
+    for (const t of rest) {
+        const items = byType.get(t);
+        if (items?.length) {
+            out.push({ type: t, items });
+        }
+    }
+    return out.map((g) => ({
+        ...g,
+        items: [...g.items].sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+}
+
 export default function AccountsIndex({ accounts }: { accounts: AccountPaginator }) {
+    const grouped = useMemo(
+        () => groupAccountsByType(accounts.data),
+        [accounts.data],
+    );
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Accounts" />
@@ -62,60 +108,113 @@ export default function AccountsIndex({ accounts }: { accounts: AccountPaginator
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <ul className="divide-y">
-                            {accounts.data.length === 0 && (
-                                <li className="text-muted-foreground px-6 py-8 text-center text-sm">
-                                    No accounts yet. Create one to get started.
-                                </li>
-                            )}
-                            {accounts.data.map((row) => (
-                                <li
-                                    key={row.id}
-                                    className="hover:bg-muted/50 flex flex-wrap items-center justify-between gap-3 px-6 py-4"
-                                >
-                                    <div>
-                                        <p className="font-medium">{row.name}</p>
-                                        <p className="text-muted-foreground text-sm">
-                                            {formatTypeLabel(row.type)} ·{' '}
-                                            {formatPhpMoney(row.balance)}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <Button variant="ghost" size="icon" asChild>
-                                            <Link
-                                                href={AccountController.edit({
-                                                    account: row.id,
-                                                })}
-                                            >
-                                                <Pencil className="size-4" />
-                                            </Link>
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-destructive hover:text-destructive"
-                                            onClick={() => {
-                                                if (
-                                                    !confirm(
-                                                        'Delete this account? This is only allowed when it has no transaction lines.',
-                                                    )
-                                                ) {
-                                                    return;
-                                                }
-                                                router.delete(
-                                                    AccountController.destroy.url(
-                                                        { account: row.id },
-                                                    ),
-                                                );
-                                            }}
-                                        >
-                                            <Trash2 className="size-4" />
-                                        </Button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+                        {accounts.data.length === 0 ? (
+                            <p className="text-muted-foreground px-6 py-8 text-center text-sm">
+                                No accounts yet. Create one to get started.
+                            </p>
+                        ) : (
+                            <div className="divide-y divide-border">
+                                {grouped.map((group) => (
+                                    <section
+                                        key={group.type}
+                                        aria-label={formatTypeLabel(group.type)}
+                                    >
+                                        <div className="bg-muted/50 px-6 py-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
+                                            {formatTypeLabel(group.type)}
+                                        </div>
+                                        <ul className="divide-y divide-border">
+                                            {group.items.map((row) => (
+                                                <li key={row.id}>
+                                                    <div className="hover:bg-muted/50 flex items-start gap-1 px-6 py-4 transition-colors">
+                                                        <Link
+                                                            href={AccountController.edit(
+                                                                {
+                                                                    account: row.id,
+                                                                },
+                                                            )}
+                                                            className="focus-visible:ring-ring min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:outline-none"
+                                                        >
+                                                            <p className="font-medium">
+                                                                {row.name}
+                                                            </p>
+                                                            <p className="text-muted-foreground text-sm">
+                                                                {formatPhpMoney(
+                                                                    row.balance,
+                                                                )}
+                                                            </p>
+                                                        </Link>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger
+                                                                asChild
+                                                            >
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-muted-foreground shrink-0"
+                                                                    aria-label={`Actions for ${row.name}`}
+                                                                    onClick={(
+                                                                        e,
+                                                                    ) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                    }}
+                                                                    onPointerDown={(
+                                                                        e,
+                                                                    ) => {
+                                                                        e.stopPropagation();
+                                                                    }}
+                                                                >
+                                                                    <MoreVertical className="size-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem
+                                                                    asChild
+                                                                >
+                                                                    <Link
+                                                                        href={AccountController.edit(
+                                                                            {
+                                                                                account: row.id,
+                                                                            },
+                                                                        )}
+                                                                    >
+                                                                        <Pencil className="size-4" />
+                                                                        Edit
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    variant="destructive"
+                                                                    onClick={() => {
+                                                                        if (
+                                                                            !confirm(
+                                                                                'Delete this account? This is only allowed when it has no transaction lines.',
+                                                                            )
+                                                                        ) {
+                                                                            return;
+                                                                        }
+                                                                        router.delete(
+                                                                            AccountController.destroy.url(
+                                                                                {
+                                                                                    account: row.id,
+                                                                                },
+                                                                            ),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="size-4" />
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </section>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
