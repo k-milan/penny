@@ -1,12 +1,23 @@
+import AccountController from '@/actions/App/Http/Controllers/AccountController';
+import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
 import IncomeFromTemplateController from '@/actions/App/Http/Controllers/IncomeFromTemplateController';
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
+import { RadialBubbleMenu } from '@/components/radial-bubble-menu';
 import {
+    TransactionFormDialog,
     type AccountOption,
     type AllocationOption,
     type CreateDialogPreset,
-    TransactionFormDialog,
 } from '@/components/transaction-form-dialog';
+import {
+    formatTransactionGroupDate,
+    formatTransactionTime,
+    TransactionBreakdown,
+} from '@/components/transaction-display';
+import { TransactionScrollList } from '@/components/transaction-scroll-list';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
     Card,
     CardContent,
@@ -15,12 +26,13 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { RadialBubbleMenu } from '@/components/radial-bubble-menu';
+    ChartContainer,
+    ChartLegend,
+    ChartLegendContent,
+    ChartTooltip,
+    ChartTooltipContent,
+    type ChartConfig,
+} from '@/components/ui/chart';
 import {
     Dialog,
     DialogContent,
@@ -29,13 +41,21 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
-import AccountController from '@/actions/App/Http/Controllers/AccountController';
-import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
-import { type BreadcrumbItem } from '@/types';
-import { InfiniteScroll, Head, Link, router, usePage } from '@inertiajs/react';
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import AppLayout from '@/layouts/app-layout';
+import { formatPhpMoney } from '@/lib/format';
+import { type DashboardTransactionRow } from '@/lib/transaction-row';
+import { cn } from '@/lib/utils';
+import { dashboard } from '@/routes';
+import { type BreadcrumbItem } from '@/types';
+import { Deferred, Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    Activity,
     ArrowLeftRight,
     Building2,
     CreditCard,
@@ -45,15 +65,18 @@ import {
     PiggyBank,
     Receipt,
     Trash2,
+    TrendingDown,
+    TrendingUp,
     Wallet,
 } from 'lucide-react';
-import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
-import { cn } from '@/lib/utils';
-import {
-    ensureTransactionRow,
-    type DashboardTransactionRow,
-} from '@/lib/transaction-row';
+import type { ComponentType } from 'react';
 import { useMemo, useState } from 'react';
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    XAxis,
+} from 'recharts';
 
 type TransactionRow = DashboardTransactionRow;
 
@@ -67,12 +90,32 @@ type PaginatedTransactions = {
     prev_page_url: string | null;
 };
 
+type CashFlowPeriodKey = 'today' | 'last_7_days' | 'last_30_days';
+
+type CashFlowSlice = {
+    income: string;
+    expense: string;
+};
+
+type DashboardStats = {
+    account_balance_total: string;
+    allocation_balance_total: string;
+    transaction_count: number;
+    cash_flow: Record<CashFlowPeriodKey, CashFlowSlice>;
+    activity_last_7_days: {
+        date: string;
+        income: string;
+        expense: string;
+    }[];
+};
+
 type DashboardProps = {
     accounts: AccountOption[];
     allocations: AllocationOption[];
     unallocated: string;
     unallocated_allocation_id: number | null;
-    recentTransactions: PaginatedTransactions;
+    recentTransactions?: PaginatedTransactions;
+    stats?: DashboardStats;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -82,7 +125,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function formatTransactionGroupDate(dateYmd: string): string {
+function parseLocalYmd(dateYmd: string): Date | null {
     const parts = dateYmd.split('-').map((p) => Number.parseInt(p, 10));
     const y = parts[0];
     const m = parts[1];
@@ -94,280 +137,458 @@ function formatTransactionGroupDate(dateYmd: string): string {
         m === undefined ||
         d === undefined
     ) {
+        return null;
+    }
+    return new Date(y, m - 1, d);
+}
+
+function shortWeekdayLabel(dateYmd: string): string {
+    const dt = parseLocalYmd(dateYmd);
+    if (!dt) {
         return dateYmd;
     }
-    const dt = new Date(y, m - 1, d);
-    const month = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
-        dt,
-    );
-    const weekday = new Intl.DateTimeFormat('en-US', {
-        weekday: 'long',
+    return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(dt);
+}
+
+/** e.g. "May 5" */
+function shortCalendarLabel(dateYmd: string): string {
+    const dt = parseLocalYmd(dateYmd);
+    if (!dt) {
+        return dateYmd;
+    }
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
     }).format(dt);
-    return `${month} ${d}, ${y} (${weekday})`;
 }
 
-function formatTransactionTime(iso: string | undefined): string | null {
-    if (iso == null || iso === '') {
-        return null;
-    }
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) {
-        return null;
-    }
-    return new Intl.DateTimeFormat('en-PH', {
-        timeStyle: 'short',
-    }).format(d);
+function chartMoneyAmount(amountStr: string): number {
+    const n = Number.parseFloat(amountStr);
+    return Number.isFinite(n) ? n : 0;
 }
 
-function lineAmountDisplay(amountStr: string | undefined): string {
-    if (amountStr == null || String(amountStr).trim() === '') {
-        return '—';
-    }
-    const n = Number.parseFloat(String(amountStr));
-    return Number.isFinite(n) ? formatPhpMoney(n) : '—';
-}
+const incomeExpenseChartConfig = {
+    income: {
+        label: 'Income',
+        color: 'var(--chart-1)',
+    },
+    expense: {
+        label: 'Expense',
+        color: 'var(--chart-2)',
+    },
+} satisfies ChartConfig;
 
-/** List preview: first account and first allocation (if any), one line; … if more lines exist. */
-function TransactionListInlineSummary({
-    t,
-    accountOptions,
-    allocationOptions,
+function DashboardActivityChart({
+    days,
 }: {
-    t: TransactionRow;
-    accountOptions: { id: number; name: string }[];
-    allocationOptions: { id: number; name: string }[];
+    days: { date: string; income: string; expense: string }[];
 }) {
-    const accountNameById = new Map(
-        accountOptions.map((a) => [a.id, a.name] as const),
+    const chartData = useMemo(
+        () =>
+            days.map((d) => ({
+                date: d.date,
+                income: chartMoneyAmount(d.income),
+                expense: chartMoneyAmount(d.expense),
+            })),
+        [days],
     );
-    const allocationNameById = new Map(
-        allocationOptions.map((a) => [a.id, a.name] as const),
+
+    const periodIncome = days.reduce(
+        (acc, d) => acc + chartMoneyAmount(d.income),
+        0,
     );
-    const accountLines = Array.isArray(t.accounts) ? t.accounts : [];
-    const allocationLines = Array.isArray(t.allocations) ? t.allocations : [];
-
-    if (accountLines.length === 0 && allocationLines.length === 0) {
-        return <p className="text-muted-foreground text-sm">—</p>;
-    }
-
-    const accountBits: { name: string; amt: string }[] = [];
-    for (const a of accountLines) {
-        const acc = a.account;
-        const nestedName =
-            acc &&
-            typeof acc === 'object' &&
-            acc !== null &&
-            'name' in acc
-                ? String((acc as { name: string }).name)
-                : null;
-        const id = Number((a as { account_id?: unknown }).account_id);
-        const name =
-            nestedName ||
-            (Number.isFinite(id) ? accountNameById.get(id) : undefined) ||
-            (Number.isFinite(id) ? `Account #${id}` : 'Account');
-        accountBits.push({
-            name,
-            amt: lineAmountDisplay(
-                a.amount != null ? String(a.amount) : undefined,
-            ),
-        });
-    }
-
-    const allocBits: { name: string; amt: string }[] = [];
-    for (const al of allocationLines) {
-        const all = al.allocation;
-        const nestedName =
-            all &&
-            typeof all === 'object' &&
-            all !== null &&
-            'name' in all
-                ? String((all as { name: string }).name)
-                : null;
-        const id = Number((al as { allocation_id?: unknown }).allocation_id);
-        const name =
-            nestedName ||
-            (Number.isFinite(id) ? allocationNameById.get(id) : undefined) ||
-            (Number.isFinite(id) ? `Allocation #${id}` : 'Allocation');
-        allocBits.push({
-            name,
-            amt: lineAmountDisplay(
-                al.amount != null ? String(al.amount) : undefined,
-            ),
-        });
-    }
-
-    const showEllipsis =
-        accountBits.length > 1 || allocBits.length > 1;
-    const firstAcct = accountBits[0];
-    const firstAlloc = allocBits[0];
+    const periodExpense = days.reduce(
+        (acc, d) => acc + chartMoneyAmount(d.expense),
+        0,
+    );
 
     return (
-        <p className="text-muted-foreground leading-relaxed text-sm wrap-break-word">
-            {firstAcct != null ? (
-                <>
-                    <span className="font-medium text-foreground">
-                        {firstAcct.name}
-                    </span>{' '}
-                    <span className="tabular-nums">{firstAcct.amt}</span>
-                </>
-            ) : null}
-            {firstAcct != null && firstAlloc != null ? (
-                <span className="text-muted-foreground"> · </span>
-            ) : null}
-            {firstAlloc != null ? (
-                <>
-                    <span className="font-medium text-foreground">
-                        {firstAlloc.name}
-                    </span>{' '}
-                    <span className="tabular-nums">{firstAlloc.amt}</span>
-                </>
-            ) : null}
-            {showEllipsis ? (
-                <span className="text-muted-foreground"> …</span>
-            ) : null}
-        </p>
-    );
-}
-
-function TransactionBreakdown({
-    t,
-    accountOptions,
-    allocationOptions,
-    variant = 'inline',
-}: {
-    t: TransactionRow;
-    accountOptions: { id: number; name: string }[];
-    allocationOptions: { id: number; name: string }[];
-    variant?: 'inline' | 'detail';
-}) {
-    const accountNameById = new Map(
-        accountOptions.map((a) => [a.id, a.name] as const),
-    );
-    const allocationNameById = new Map(
-        allocationOptions.map((a) => [a.id, a.name] as const),
-    );
-    const accountLines = Array.isArray(t.accounts) ? t.accounts : [];
-    const allocationLines = Array.isArray(t.allocations) ? t.allocations : [];
-    if (accountLines.length === 0 && allocationLines.length === 0) {
-        return <p className="text-muted-foreground text-sm">—</p>;
-    }
-    const isDetail = variant === 'detail';
-    const outerClass = isDetail ? 'space-y-4' : 'space-y-2 text-sm';
-    const rowClass = isDetail
-        ? 'flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-border border-b py-2.5 last:border-0'
-        : 'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5';
-    const nameClass = isDetail
-        ? 'min-w-0 font-medium break-words text-base'
-        : 'min-w-0 font-medium break-words';
-    const amountClass = isDetail
-        ? 'shrink-0 tabular-nums text-base text-foreground'
-        : 'shrink-0 tabular-nums text-muted-foreground';
-
-    return (
-        <div className={outerClass}>
-            {accountLines.length > 0 ? (
-                <div className={isDetail ? 'rounded-lg border bg-muted/20 p-3' : ''}>
-                    {isDetail ? (
-                        <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
-                            Accounts
-                        </p>
-                    ) : null}
-                    <ul className={cn(isDetail ? 'space-y-0' : 'space-y-1.5')}>
-                        {accountLines.map((a, i) => {
-                            const acc = a.account;
-                            const nestedName =
-                                acc &&
-                                typeof acc === 'object' &&
-                                acc !== null &&
-                                'name' in acc
-                                    ? String((acc as { name: string }).name)
-                                    : null;
-                            const id = Number(
-                                (a as { account_id?: unknown }).account_id,
-                            );
-                            const name =
-                                nestedName ||
-                                (Number.isFinite(id)
-                                    ? accountNameById.get(id)
-                                    : undefined) ||
-                                (Number.isFinite(id)
-                                    ? `Account #${id}`
-                                    : 'Account');
-                            return (
-                                <li
-                                    key={`acct-${t.id}-${id}-${i}`}
-                                    className={rowClass}
-                                >
-                                    <span className={nameClass}>{name}</span>
-                                    <span className={amountClass}>
-                                        {lineAmountDisplay(
-                                            a.amount != null
-                                                ? String(a.amount)
-                                                : undefined,
-                                        )}
-                                    </span>
-                                </li>
-                            );
-                        })}
-                    </ul>
+        <div className="space-y-3">
+            <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-medium">Income & expense</p>
+                    <p className="text-xs leading-snug text-muted-foreground">
+                        Positive amounts into accounts (income) vs money out
+                        (expense), per day ·{' '}
+                        <span className="tabular-nums">
+                            {formatPhpMoney(periodIncome)} in /{' '}
+                            {formatPhpMoney(periodExpense)} out
+                        </span>
+                    </p>
                 </div>
-            ) : null}
-            {allocationLines.length > 0 ? (
-                <div
-                    className={cn(
-                        isDetail
-                            ? 'rounded-lg border bg-muted/20 p-3'
-                            : '',
-                        !isDetail &&
-                            accountLines.length > 0 &&
-                            'mt-2 border-border border-t pt-2',
-                    )}
+                <Activity
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden
+                />
+            </div>
+            <ChartContainer
+                config={incomeExpenseChartConfig}
+                className="aspect-auto h-[220px] w-full"
+            >
+                <AreaChart
+                    accessibilityLayer
+                    data={chartData}
+                    margin={{ left: 12, right: 12, top: 8, bottom: 44 }}
                 >
-                    {isDetail ? (
-                        <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
-                            Allocations
-                        </p>
-                    ) : null}
-                    <ul className={cn(isDetail ? 'space-y-0' : 'space-y-1.5')}>
-                        {allocationLines.map((al, i) => {
-                            const all = al.allocation;
-                            const nestedName =
-                                all &&
-                                typeof all === 'object' &&
-                                all !== null &&
-                                'name' in all
-                                    ? String((all as { name: string }).name)
-                                    : null;
-                            const id = Number(
-                                (al as { allocation_id?: unknown })
-                                    .allocation_id,
-                            );
-                            const name =
-                                nestedName ||
-                                (Number.isFinite(id)
-                                    ? allocationNameById.get(id)
-                                    : undefined) ||
-                                (Number.isFinite(id)
-                                    ? `Allocation #${id}`
-                                    : 'Allocation');
+                    <defs>
+                        <linearGradient
+                            id="activityIncomeFill"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                        >
+                            <stop
+                                offset="0%"
+                                stopColor="var(--color-income)"
+                                stopOpacity={0.35}
+                            />
+                            <stop
+                                offset="100%"
+                                stopColor="var(--color-income)"
+                                stopOpacity={0}
+                            />
+                        </linearGradient>
+                        <linearGradient
+                            id="activityExpenseFill"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                        >
+                            <stop
+                                offset="0%"
+                                stopColor="var(--color-expense)"
+                                stopOpacity={0.35}
+                            />
+                            <stop
+                                offset="100%"
+                                stopColor="var(--color-expense)"
+                                stopOpacity={0}
+                            />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        interval={0}
+                        minTickGap={0}
+                        tickMargin={6}
+                        padding={{ left: 12, right: 12 }}
+                        tick={(props) => {
+                            const { x = 0, y = 0, payload } = props;
+                            const dateYmd =
+                                typeof payload?.value === 'string'
+                                    ? payload.value
+                                    : '';
                             return (
-                                <li
-                                    key={`alloc-${t.id}-${id}-${i}`}
-                                    className={rowClass}
-                                >
-                                    <span className={nameClass}>{name}</span>
-                                    <span className={amountClass}>
-                                        {lineAmountDisplay(
-                                            al.amount != null
-                                                ? String(al.amount)
-                                                : undefined,
-                                        )}
-                                    </span>
-                                </li>
+                                <g transform={`translate(${x},${y})`}>
+                                    <text
+                                        textAnchor="middle"
+                                        className="fill-muted-foreground"
+                                        fontSize={10}
+                                    >
+                                        <tspan x={0} dy={12}>
+                                            {shortWeekdayLabel(dateYmd)}
+                                        </tspan>
+                                        <tspan
+                                            x={0}
+                                            dy={12}
+                                            className="fill-muted-foreground/90"
+                                        >
+                                            {shortCalendarLabel(dateYmd)}
+                                        </tspan>
+                                    </text>
+                                </g>
                             );
-                        })}
-                    </ul>
+                        }}
+                    />
+                    <ChartTooltip
+                        cursor={false}
+                        content={
+                            <ChartTooltipContent
+                                hideIndicator
+                                labelFormatter={(_, payload) => {
+                                    const row = payload?.[0]?.payload as
+                                        | { date?: string }
+                                        | undefined;
+                                    const d = row?.date;
+                                    if (d == null || d === '') {
+                                        return '';
+                                    }
+                                    return `${shortWeekdayLabel(d)}, ${shortCalendarLabel(d)}`;
+                                }}
+                                formatter={(value, _name, item) => {
+                                    const key = String(
+                                        item?.dataKey ?? '',
+                                    );
+                                    const isIncome = key === 'income';
+                                    const Icon = isIncome
+                                        ? TrendingUp
+                                        : TrendingDown;
+                                    return (
+                                        <div className="flex w-full min-w-44 items-center justify-between gap-3">
+                                            <span className="flex items-center gap-1.5 text-muted-foreground">
+                                                <Icon
+                                                    className="size-3.5 shrink-0"
+                                                    style={{
+                                                        color: isIncome
+                                                            ? 'var(--color-income)'
+                                                            : 'var(--color-expense)',
+                                                    }}
+                                                    aria-hidden
+                                                />
+                                                <span>
+                                                    {isIncome
+                                                        ? 'Income'
+                                                        : 'Expense'}
+                                                </span>
+                                            </span>
+                                            <span className="font-mono font-medium text-foreground tabular-nums">
+                                                {formatPhpMoney(
+                                                    Number(value),
+                                                )}
+                                            </span>
+                                        </div>
+                                    );
+                                }}
+                            />
+                        }
+                    />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Area
+                        name="Income"
+                        dataKey="income"
+                        type="natural"
+                        stroke="var(--color-income)"
+                        strokeWidth={2}
+                        fill="url(#activityIncomeFill)"
+                    />
+                    <Area
+                        name="Expense"
+                        dataKey="expense"
+                        type="natural"
+                        stroke="var(--color-expense)"
+                        strokeWidth={2}
+                        fill="url(#activityExpenseFill)"
+                    />
+                </AreaChart>
+            </ChartContainer>
+        </div>
+    );
+}
+
+function DashboardDeferredSkeleton() {
+    return (
+        <div
+            className="space-y-6"
+            aria-busy="true"
+            aria-label="Loading dashboard statistics and activity"
+        >
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                        key={i}
+                        className="space-y-2 rounded-lg border bg-card px-4 py-3 shadow-sm"
+                    >
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-7 w-32" />
+                        <Skeleton className="h-3 max-w-48" />
+                    </div>
+                ))}
+            </div>
+            <div className="w-full min-w-0 lg:w-1/2">
+                <Card className="gap-0 py-4 shadow-sm">
+                    <CardContent className="space-y-3 px-4 pb-4 pt-0">
+                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-[220px] w-full" />
+                    </CardContent>
+                </Card>
+            </div>
+            <Card className="gap-4 py-5 shadow-sm">
+                <CardHeader className="pb-2">
+                    <Skeleton className="h-6 w-48" />
+                </CardHeader>
+                <CardContent className="space-y-3 pb-6">
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+type DashboardDeferredPanelsProps = {
+    accounts: AccountOption[];
+    allocations: AllocationOption[];
+    emptyMessage: string;
+    setDetailTransaction: (t: TransactionRow | null) => void;
+    setEditing: (t: TransactionRow | null) => void;
+    setEditOpen: (open: boolean) => void;
+    setDeleting: (t: TransactionRow | null) => void;
+    setDeleteOpen: (open: boolean) => void;
+};
+
+const cashFlowPeriodHint: Record<CashFlowPeriodKey, string> = {
+    today: 'Today · credits vs debits on accounts',
+    last_7_days: 'Rolling 7 days · credits vs debits on accounts',
+    last_30_days: 'Rolling 30 days · credits vs debits on accounts',
+};
+
+function DashboardDeferredPanels({
+    accounts,
+    allocations,
+    emptyMessage,
+    setDetailTransaction,
+    setEditing,
+    setEditOpen,
+    setDeleting,
+    setDeleteOpen,
+}: DashboardDeferredPanelsProps) {
+    const { stats: statsProp, recentTransactions } =
+        usePage<DashboardProps>().props;
+
+    const [cashFlowPeriod, setCashFlowPeriod] =
+        useState<CashFlowPeriodKey>('today');
+
+    const stats = statsProp;
+
+    if (stats == null || recentTransactions == null) {
+        return null;
+    }
+
+    const cashSlice = stats.cash_flow[cashFlowPeriod];
+
+    return (
+        <div className="space-y-6">
+            <div className="space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-muted-foreground">
+                        Income & expense on accounts
+                    </p>
+                    <ToggleGroup
+                        type="single"
+                        value={cashFlowPeriod}
+                        onValueChange={(v) => {
+                            if (v === 'today' || v === 'last_7_days' || v === 'last_30_days') {
+                                setCashFlowPeriod(v);
+                            }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="justify-start sm:justify-end"
+                    >
+                        <ToggleGroupItem value="today" aria-label="Today">
+                            Today
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="last_7_days" aria-label="Last 7 days">
+                            7 days
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="last_30_days" aria-label="Last 30 days">
+                            30 days
+                        </ToggleGroupItem>
+                    </ToggleGroup>
                 </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    <StatTile
+                        label="Total in accounts"
+                        value={formatPhpMoney(stats.account_balance_total)}
+                        hint="Sum of all account balances"
+                        icon={Building2}
+                    />
+                    <StatTile
+                        label="In envelopes"
+                        value={formatPhpMoney(stats.allocation_balance_total)}
+                        hint="Named allocations (excl. unallocated)"
+                        icon={PiggyBank}
+                    />
+                    <StatTile
+                        label="Income"
+                        value={formatPhpMoney(cashSlice.income)}
+                        hint={cashFlowPeriodHint[cashFlowPeriod]}
+                        icon={TrendingUp}
+                    />
+                    <StatTile
+                        label="Expense"
+                        value={formatPhpMoney(cashSlice.expense)}
+                        hint={cashFlowPeriodHint[cashFlowPeriod]}
+                        icon={TrendingDown}
+                    />
+                </div>
+            </div>
+
+            <div className="w-full min-w-0 lg:w-1/2">
+                <Card className="gap-0 py-4 shadow-sm">
+                    <CardContent className="px-4 pb-1 pt-0">
+                        <DashboardActivityChart
+                            days={stats.activity_last_7_days}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="min-h-0 flex-1 gap-4 py-5 shadow-sm">
+                <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
+                    <CardTitle className="text-lg">Recent transactions</CardTitle>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0 text-xs"
+                        asChild
+                    >
+                        <Link href={TransactionController.index()} prefetch>
+                            View all
+                        </Link>
+                    </Button>
+                </CardHeader>
+                <CardContent className="pb-6">
+                    <TransactionScrollList
+                        dataKey="recentTransactions"
+                        accounts={accounts}
+                        allocations={allocations}
+                        emptyMessage={emptyMessage}
+                        onSelectDetail={setDetailTransaction}
+                        onEdit={setEditing}
+                        setEditOpen={setEditOpen}
+                        onDelete={setDeleting}
+                        setDeleteOpen={setDeleteOpen}
+                    />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+function StatTile({
+    label,
+    value,
+    hint,
+    icon: Icon,
+}: {
+    label: string;
+    value: string;
+    hint?: string;
+    icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+}) {
+    return (
+        <div className="rounded-lg border bg-card px-4 py-3 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                    {label}
+                </p>
+                <Icon
+                    className="size-3.5 shrink-0 text-muted-foreground opacity-80"
+                    aria-hidden
+                />
+            </div>
+            <p className="mt-1 font-semibold tabular-nums">{value}</p>
+            {hint != null && hint !== '' ? (
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                    {hint}
+                </p>
             ) : null}
         </div>
     );
@@ -379,8 +600,8 @@ export default function Dashboard() {
         allocations: allocationsProp,
         unallocated,
         unallocated_allocation_id: unallocatedAllocationIdProp,
-        recentTransactions,
     } = usePage<DashboardProps>().props;
+
     const accounts = useMemo(
         () => (Array.isArray(accountsProp) ? accountsProp : []),
         [accountsProp],
@@ -389,42 +610,6 @@ export default function Dashboard() {
         () => (Array.isArray(allocationsProp) ? allocationsProp : []),
         [allocationsProp],
     );
-    const transactionRows: TransactionRow[] = useMemo(
-        () =>
-            Array.isArray(recentTransactions?.data)
-                ? recentTransactions.data.map((raw) => ensureTransactionRow(raw))
-                : [],
-        [recentTransactions?.data],
-    );
-
-    const sortedTransactionRows = useMemo(() => {
-        return [...transactionRows].sort((a, b) => {
-            const byDate = b.date.localeCompare(a.date);
-            if (byDate !== 0) {
-                return byDate;
-            }
-            const ta = a.created_at ?? '';
-            const tb = b.created_at ?? '';
-            const byCreated = tb.localeCompare(ta);
-            if (byCreated !== 0) {
-                return byCreated;
-            }
-            return b.id - a.id;
-        });
-    }, [transactionRows]);
-
-    const transactionGroups = useMemo(() => {
-        const groups: { date: string; items: TransactionRow[] }[] = [];
-        for (const t of sortedTransactionRows) {
-            const prev = groups[groups.length - 1];
-            if (prev?.date === t.date) {
-                prev.items.push(t);
-            } else {
-                groups.push({ date: t.date, items: [t] });
-            }
-        }
-        return groups;
-    }, [sortedTransactionRows]);
 
     const [createOpen, setCreateOpen] = useState(false);
     const [createPreset, setCreatePreset] =
@@ -444,9 +629,7 @@ export default function Dashboard() {
     const canCreateTransfer =
         accounts.length >= 2 || nonUnallocatedAllocs.length >= 2;
     const hasCreditCard = accounts.some((a) => a.type === 'credit_card');
-    const hasCardPaymentSource = accounts.some(
-        (a) => a.type !== 'credit_card',
-    );
+    const hasCardPaymentSource = accounts.some((a) => a.type !== 'credit_card');
     const canCreateCreditCardTx = hasCreditCard && hasCardPaymentSource;
     const hasPersonAccount = accounts.some((a) => a.type === 'person');
     const hasLoanFundingOrAlloc =
@@ -472,7 +655,7 @@ export default function Dashboard() {
                 <div className="flex flex-row items-start justify-between gap-4">
                     <div className="min-w-0">
                         <h1 className="text-2xl font-semibold">Dashboard</h1>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Accounts, allocations, and latest activity.
                         </p>
                     </div>
@@ -558,21 +741,30 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                    <Card>
-                        <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-                            <div>
-                                <CardTitle>Accounts</CardTitle>
-                                <CardDescription>Balances in Penny</CardDescription>
+                    <Card className="gap-3 py-4 shadow-sm">
+                        <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 px-4 pt-0 pb-2">
+                            <div className="min-w-0">
+                                <CardTitle className="text-sm leading-snug">
+                                    Accounts
+                                </CardTitle>
+                                <CardDescription className="text-[11px] leading-snug">
+                                    Balances in Penny
+                                </CardDescription>
                             </div>
-                            <Button variant="outline" size="sm" asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 shrink-0 text-xs"
+                                asChild
+                            >
                                 <Link href={AccountController.index()}>
                                     Manage
                                 </Link>
                             </Button>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-4 pt-0 pb-3">
                             {accounts.length === 0 ? (
-                                <p className="text-muted-foreground text-sm">
+                                <p className="text-xs text-muted-foreground">
                                     No accounts yet.{' '}
                                     <Link
                                         className="text-primary underline"
@@ -583,30 +775,26 @@ export default function Dashboard() {
                                     .
                                 </p>
                             ) : (
-                                <ul className="divide-y divide-border">
+                                <ul className="max-h-44 divide-y divide-border overflow-y-auto">
                                     {accounts.map((a) => (
                                         <li key={a.id}>
-                                            <div className="hover:bg-muted/50 flex items-start gap-1 px-1 py-2 transition-colors first:pt-0">
+                                            <div className="flex items-center gap-1 px-1 py-1.5 transition-colors first:pt-0 hover:bg-muted/50">
                                                 <Link
                                                     href={AccountController.edit(
                                                         {
                                                             account: a.id,
                                                         },
                                                     )}
-                                                    className="focus-visible:ring-ring min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:outline-none"
+                                                    className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                                                 >
-                                                    <p className="font-medium">
+                                                    <span className="truncate text-sm font-medium">
                                                         {a.name}
-                                                    </p>
-                                                    <p className="text-muted-foreground text-xs">
-                                                        {formatTypeLabel(
-                                                            String(a.type),
-                                                        )}{' '}
-                                                        ·{' '}
+                                                    </span>
+                                                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                                                         {formatPhpMoney(
                                                             a.balance,
                                                         )}
-                                                    </p>
+                                                    </span>
                                                 </Link>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger
@@ -616,17 +804,19 @@ export default function Dashboard() {
                                                             type="button"
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="text-muted-foreground size-8 shrink-0"
+                                                            className="size-7 shrink-0 text-muted-foreground"
                                                             aria-label={`Actions for ${a.name}`}
                                                             onClick={(e) => {
                                                                 e.preventDefault();
                                                                 e.stopPropagation();
                                                             }}
-                                                            onPointerDown={(e) => {
+                                                            onPointerDown={(
+                                                                e,
+                                                            ) => {
                                                                 e.stopPropagation();
                                                             }}
                                                         >
-                                                            <MoreVertical className="size-4" />
+                                                            <MoreVertical className="size-3.5" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
@@ -636,11 +826,12 @@ export default function Dashboard() {
                                                             <Link
                                                                 href={AccountController.edit(
                                                                     {
-                                                                        account: a.id,
+                                                                        account:
+                                                                            a.id,
                                                                     },
                                                                 )}
                                                             >
-                                                                <Pencil className="size-4" />
+                                                                <Pencil className="size-3.5" />
                                                                 Edit
                                                             </Link>
                                                         </DropdownMenuItem>
@@ -657,13 +848,14 @@ export default function Dashboard() {
                                                                 router.delete(
                                                                     AccountController.destroy.url(
                                                                         {
-                                                                            account: a.id,
+                                                                            account:
+                                                                                a.id,
                                                                         },
                                                                     ),
                                                                 );
                                                             }}
                                                         >
-                                                            <Trash2 className="size-4" />
+                                                            <Trash2 className="size-3.5" />
                                                             Delete
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -676,31 +868,38 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-                            <div>
-                                <CardTitle>Allocations</CardTitle>
-                                <CardDescription>
+                    <Card className="gap-3 py-4 shadow-sm">
+                        <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 px-4 pt-0 pb-2">
+                            <div className="min-w-0">
+                                <CardTitle className="text-sm leading-snug">
+                                    Allocations
+                                </CardTitle>
+                                <CardDescription className="text-[11px] leading-snug">
                                     Envelopes and savings
                                 </CardDescription>
                             </div>
-                            <Button variant="outline" size="sm" asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 shrink-0 text-xs"
+                                asChild
+                            >
                                 <Link href={AllocationController.index()}>
                                     Manage
                                 </Link>
                             </Button>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-4 pt-0 pb-3">
                             {showUnallocated && (
-                                <div className="text-muted-foreground mb-3 flex items-baseline justify-between gap-2 border-b border-dashed border-border pb-2.5 text-sm">
+                                <div className="mb-2 flex items-baseline justify-between gap-2 border-b border-dashed border-border pb-2 text-[11px] text-muted-foreground">
                                     <span>Unallocated</span>
-                                    <span className="text-foreground font-medium tabular-nums">
+                                    <span className="font-medium text-foreground tabular-nums">
                                         {formatPhpMoney(unallocated)}
                                     </span>
                                 </div>
                             )}
                             {allocations.length === 0 ? (
-                                <p className="text-muted-foreground text-sm">
+                                <p className="text-xs text-muted-foreground">
                                     No allocations yet.{' '}
                                     <Link
                                         className="text-primary underline"
@@ -711,30 +910,26 @@ export default function Dashboard() {
                                     .
                                 </p>
                             ) : (
-                                <ul className="divide-y divide-border">
+                                <ul className="max-h-44 divide-y divide-border overflow-y-auto">
                                     {allocations.map((a) => (
                                         <li key={a.id}>
-                                            <div className="hover:bg-muted/50 flex items-start gap-1 px-1 py-2 transition-colors first:pt-0">
+                                            <div className="flex items-center gap-1 px-1 py-1.5 transition-colors first:pt-0 hover:bg-muted/50">
                                                 <Link
                                                     href={AllocationController.edit(
                                                         {
                                                             allocation: a.id,
                                                         },
                                                     )}
-                                                    className="focus-visible:ring-ring min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:outline-none"
+                                                    className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                                                 >
-                                                    <p className="font-medium">
+                                                    <span className="truncate text-sm font-medium">
                                                         {a.name}
-                                                    </p>
-                                                    <p className="text-muted-foreground mt-0.5 text-xs">
-                                                        {formatTypeLabel(
-                                                            String(a.type),
-                                                        )}{' '}
-                                                        ·{' '}
+                                                    </span>
+                                                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                                                         {formatPhpMoney(
                                                             a.balance,
                                                         )}
-                                                    </p>
+                                                    </span>
                                                 </Link>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger
@@ -744,17 +939,19 @@ export default function Dashboard() {
                                                             type="button"
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="text-muted-foreground size-8 shrink-0"
+                                                            className="size-7 shrink-0 text-muted-foreground"
                                                             aria-label={`Actions for ${a.name}`}
                                                             onClick={(e) => {
                                                                 e.preventDefault();
                                                                 e.stopPropagation();
                                                             }}
-                                                            onPointerDown={(e) => {
+                                                            onPointerDown={(
+                                                                e,
+                                                            ) => {
                                                                 e.stopPropagation();
                                                             }}
                                                         >
-                                                            <MoreVertical className="size-4" />
+                                                            <MoreVertical className="size-3.5" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
@@ -769,7 +966,7 @@ export default function Dashboard() {
                                                                     },
                                                                 )}
                                                             >
-                                                                <Pencil className="size-4" />
+                                                                <Pencil className="size-3.5" />
                                                                 Edit
                                                             </Link>
                                                         </DropdownMenuItem>
@@ -793,7 +990,7 @@ export default function Dashboard() {
                                                                 );
                                                             }}
                                                         >
-                                                            <Trash2 className="size-4" />
+                                                            <Trash2 className="size-3.5" />
                                                             Delete
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -807,161 +1004,30 @@ export default function Dashboard() {
                     </Card>
                 </div>
 
-                <Card className="min-h-0 flex-1">
-                    <CardHeader>
-                        <CardTitle>Recent transactions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {sortedTransactionRows.length === 0 ? (
-                            <p className="text-muted-foreground text-sm">
-                                {emptyMessage}
-                            </p>
-                        ) : (
-                            <div className="max-h-[min(50vh,28rem)] overflow-y-auto rounded-md border">
-                                <InfiniteScroll
-                                    as="div"
-                                    className="divide-y divide-border"
-                                    data="recentTransactions"
-                                    onlyNext
-                                >
-                                    {({ loadingNext }) => (
-                                        <>
-                                            {transactionGroups.map((group) => (
-                                                <div key={group.date}>
-                                                    <div className="bg-muted/50 px-3 py-2">
-                                                        <p className="text-muted-foreground text-xs font-semibold">
-                                                            {formatTransactionGroupDate(
-                                                                group.date,
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                    <ul className="divide-y divide-border">
-                                                        {group.items.map((t) => {
-                                                            const timeLabel =
-                                                                formatTransactionTime(
-                                                                    t.created_at,
-                                                                );
-                                                            return (
-                                                                <li key={t.id}>
-                                                                    <div className="hover:bg-muted/50 flex items-start gap-1 px-3 py-3 transition-colors">
-                                                                        <button
-                                                                            type="button"
-                                                                            className="focus-visible:ring-ring min-w-0 flex-1 cursor-pointer text-left focus-visible:ring-2 focus-visible:outline-none"
-                                                                            aria-label={`View details: ${t.description}${timeLabel ? `, ${timeLabel}` : ''}`}
-                                                                            onClick={() =>
-                                                                                setDetailTransaction(
-                                                                                    t,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            <div className="space-y-2">
-                                                                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                                                                                    <span className="font-medium">
-                                                                                        {
-                                                                                            t.description
-                                                                                        }
-                                                                                    </span>
-                                                                                    {timeLabel ? (
-                                                                                        <span className="text-muted-foreground text-xs tabular-nums">
-                                                                                            {
-                                                                                                timeLabel
-                                                                                            }
-                                                                                        </span>
-                                                                                    ) : null}
-                                                                                </div>
-                                                                                <TransactionListInlineSummary
-                                                                                    t={
-                                                                                        t
-                                                                                    }
-                                                                                    accountOptions={
-                                                                                        accounts
-                                                                                    }
-                                                                                    allocationOptions={
-                                                                                        allocations
-                                                                                    }
-                                                                                />
-                                                                            </div>
-                                                                        </button>
-                                                                        <DropdownMenu>
-                                                                            <DropdownMenuTrigger
-                                                                                asChild
-                                                                            >
-                                                                                <Button
-                                                                                    type="button"
-                                                                                    variant="ghost"
-                                                                                    size="icon"
-                                                                                    className="text-muted-foreground shrink-0"
-                                                                                    aria-label="Transaction actions"
-                                                                                    onClick={(
-                                                                                        e,
-                                                                                    ) => {
-                                                                                        e.preventDefault();
-                                                                                        e.stopPropagation();
-                                                                                    }}
-                                                                                    onPointerDown={(
-                                                                                        e,
-                                                                                    ) => {
-                                                                                        e.stopPropagation();
-                                                                                    }}
-                                                                                >
-                                                                                    <MoreVertical className="size-4" />
-                                                                                </Button>
-                                                                            </DropdownMenuTrigger>
-                                                                            <DropdownMenuContent align="end">
-                                                                                <DropdownMenuItem
-                                                                                    onClick={() => {
-                                                                                        setDetailTransaction(
-                                                                                            null,
-                                                                                        );
-                                                                                        setEditing(
-                                                                                            t,
-                                                                                        );
-                                                                                        setEditOpen(
-                                                                                            true,
-                                                                                        );
-                                                                                    }}
-                                                                                >
-                                                                                    <Pencil className="size-4" />
-                                                                                    Edit
-                                                                                </DropdownMenuItem>
-                                                                                <DropdownMenuItem
-                                                                                    variant="destructive"
-                                                                                    onClick={() => {
-                                                                                        setDetailTransaction(
-                                                                                            null,
-                                                                                        );
-                                                                                        setDeleting(
-                                                                                            t,
-                                                                                        );
-                                                                                        setDeleteOpen(
-                                                                                            true,
-                                                                                        );
-                                                                                    }}
-                                                                                >
-                                                                                    <Trash2 className="size-4" />
-                                                                                    Delete
-                                                                                </DropdownMenuItem>
-                                                                            </DropdownMenuContent>
-                                                                        </DropdownMenu>
-                                                                    </div>
-                                                                </li>
-                                                            );
-                                                        })}
-                                                    </ul>
-                                                </div>
-                                            ))}
-                                            {loadingNext && (
-                                                <div className="text-muted-foreground px-3 py-4 text-center text-sm">
-                                                    Loading…
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </InfiniteScroll>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <Deferred
+                    data={['stats', 'recentTransactions']}
+                    fallback={<DashboardDeferredSkeleton />}
+                >
+                    {({ reloading }) => (
+                        <div
+                            className={cn(
+                                'transition-opacity',
+                                reloading ? 'opacity-70' : '',
+                            )}
+                        >
+                            <DashboardDeferredPanels
+                                accounts={accounts}
+                                allocations={allocations}
+                                emptyMessage={emptyMessage}
+                                setDetailTransaction={setDetailTransaction}
+                                setEditing={setEditing}
+                                setEditOpen={setEditOpen}
+                                setDeleting={setDeleting}
+                                setDeleteOpen={setDeleteOpen}
+                            />
+                        </div>
+                    )}
+                </Deferred>
             </div>
 
             <Dialog
@@ -997,7 +1063,7 @@ export default function Dashboard() {
                                 </DialogDescription>
                             </DialogHeader>
                             {detailTransaction.note ? (
-                                <p className="text-muted-foreground border-primary/30 border-l-2 py-1 pl-3 text-sm">
+                                <p className="border-l-2 border-primary/30 py-1 pl-3 text-sm text-muted-foreground">
                                     {detailTransaction.note}
                                 </p>
                             ) : null}

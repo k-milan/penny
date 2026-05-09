@@ -421,3 +421,47 @@ it('includes unallocated on the dashboard', function (): void {
                 ->has('unallocated_allocation_id'),
         );
 });
+
+it('includes dashboard stats with a seven-day activity series', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    app(CreateAccount::class)->handle($user, [
+        'name' => 'A',
+        'type' => AccountType::Bank,
+        'initial_balance' => '100.00',
+    ]);
+    app(CreateAllocation::class)->handle($user, [
+        'name' => 'B',
+        'type' => AllocationType::Normal,
+        'initial_balance' => '40.00',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard', absolute: false))
+        ->assertInertia(
+            fn ($page) => $page
+                ->component('dashboard')
+                ->missing('stats')
+                ->missing('recentTransactions')
+                ->loadDeferredProps(
+                    'dashboard',
+                    fn ($deferred) => $deferred
+                        ->has('stats')
+                        ->where('stats.account_balance_total', '100.00')
+                        ->where('stats.allocation_balance_total', '40.00')
+                        ->where('stats.transaction_count', 0)
+                        ->has('stats.cash_flow')
+                        ->where('stats.cash_flow.today.income', '0.00')
+                        ->where('stats.cash_flow.today.expense', '0.00')
+                        ->where('stats.cash_flow.last_7_days.income', '0.00')
+                        ->where('stats.cash_flow.last_7_days.expense', '0.00')
+                        ->where('stats.cash_flow.last_30_days.income', '0.00')
+                        ->where('stats.cash_flow.last_30_days.expense', '0.00')
+                        ->has('stats.activity_last_7_days', 7)
+                        ->where('stats.activity_last_7_days.0.income', '0.00')
+                        ->where(
+                            'stats.activity_last_7_days.0.expense',
+                            '0.00',
+                        ),
+                ),
+        );
+});

@@ -22,18 +22,18 @@
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {
-                background-color: oklch(0.985 0.008 82);
+                background-color: oklch(0.992 0.003 248);
             }
 
             html.dark {
-                background-color: oklch(0.18 0.035 58);
+                background-color: oklch(0.29 0.007 248);
             }
         </style>
 
         <title inertia>{{ config('app.name', 'Penny') }}</title>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        <link rel="icon" href="/dog-logo.svg" sizes="any">
+        <link rel="icon" href="/dog-logo.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
