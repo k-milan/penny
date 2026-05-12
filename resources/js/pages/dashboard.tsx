@@ -2,29 +2,21 @@ import AccountController from '@/actions/App/Http/Controllers/AccountController'
 import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
 import IncomeFromTemplateController from '@/actions/App/Http/Controllers/IncomeFromTemplateController';
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
-import { RadialBubbleMenu } from '@/components/radial-bubble-menu';
+import { CreateActionDialog } from '@/components/create-action-dialog';
+import {
+    formatTransactionGroupDate,
+    formatTransactionTime,
+    TransactionBreakdown,
+} from '@/components/transaction-display';
 import {
     TransactionFormDialog,
     type AccountOption,
     type AllocationOption,
     type CreateDialogPreset,
 } from '@/components/transaction-form-dialog';
-import {
-    formatTransactionGroupDate,
-    formatTransactionTime,
-    TransactionBreakdown,
-} from '@/components/transaction-display';
 import { TransactionScrollList } from '@/components/transaction-scroll-list';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     ChartContainer,
     ChartLegend,
@@ -47,6 +39,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import AppLayout from '@/layouts/app-layout';
 import { formatPhpMoney } from '@/lib/format';
 import { type DashboardTransactionRow } from '@/lib/transaction-row';
@@ -63,6 +57,7 @@ import {
     MoreVertical,
     Pencil,
     PiggyBank,
+    Plus,
     Receipt,
     Trash2,
     TrendingDown,
@@ -71,12 +66,7 @@ import {
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useMemo, useState } from 'react';
-import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    XAxis,
-} from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 
 type TransactionRow = DashboardTransactionRow;
 
@@ -193,28 +183,11 @@ function DashboardActivityChart({
         [days],
     );
 
-    const periodIncome = days.reduce(
-        (acc, d) => acc + chartMoneyAmount(d.income),
-        0,
-    );
-    const periodExpense = days.reduce(
-        (acc, d) => acc + chartMoneyAmount(d.expense),
-        0,
-    );
-
     return (
         <div className="space-y-3">
             <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0">
                     <p className="text-sm font-medium">Income & expense</p>
-                    <p className="text-xs leading-snug text-muted-foreground">
-                        Positive amounts into accounts (income) vs money out
-                        (expense), per day ·{' '}
-                        <span className="tabular-nums">
-                            {formatPhpMoney(periodIncome)} in /{' '}
-                            {formatPhpMoney(periodExpense)} out
-                        </span>
-                    </p>
                 </div>
                 <Activity
                     className="size-4 shrink-0 text-muted-foreground"
@@ -321,9 +294,7 @@ function DashboardActivityChart({
                                     return `${shortWeekdayLabel(d)}, ${shortCalendarLabel(d)}`;
                                 }}
                                 formatter={(value, _name, item) => {
-                                    const key = String(
-                                        item?.dataKey ?? '',
-                                    );
+                                    const key = String(item?.dataKey ?? '');
                                     const isIncome = key === 'income';
                                     const Icon = isIncome
                                         ? TrendingUp
@@ -347,9 +318,7 @@ function DashboardActivityChart({
                                                 </span>
                                             </span>
                                             <span className="font-mono font-medium text-foreground tabular-nums">
-                                                {formatPhpMoney(
-                                                    Number(value),
-                                                )}
+                                                {formatPhpMoney(Number(value))}
                                             </span>
                                         </div>
                                     );
@@ -401,7 +370,7 @@ function DashboardDeferredSkeleton() {
             </div>
             <div className="w-full min-w-0 lg:w-1/2">
                 <Card className="gap-0 py-4 shadow-sm">
-                    <CardContent className="space-y-3 px-4 pb-4 pt-0">
+                    <CardContent className="space-y-3 px-4 pt-0 pb-4">
                         <Skeleton className="h-4 w-40" />
                         <Skeleton className="h-[220px] w-full" />
                     </CardContent>
@@ -432,12 +401,6 @@ type DashboardDeferredPanelsProps = {
     setDeleteOpen: (open: boolean) => void;
 };
 
-const cashFlowPeriodHint: Record<CashFlowPeriodKey, string> = {
-    today: 'Today · credits vs debits on accounts',
-    last_7_days: 'Rolling 7 days · credits vs debits on accounts',
-    last_30_days: 'Rolling 30 days · credits vs debits on accounts',
-};
-
 function DashboardDeferredPanels({
     accounts,
     allocations,
@@ -464,65 +427,75 @@ function DashboardDeferredPanels({
 
     return (
         <div className="space-y-6">
-            <div className="space-y-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-muted-foreground">
-                        Income & expense on accounts
-                    </p>
-                    <ToggleGroup
-                        type="single"
-                        value={cashFlowPeriod}
-                        onValueChange={(v) => {
-                            if (v === 'today' || v === 'last_7_days' || v === 'last_30_days') {
-                                setCashFlowPeriod(v);
-                            }
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="justify-start sm:justify-end"
-                    >
-                        <ToggleGroupItem value="today" aria-label="Today">
-                            Today
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="last_7_days" aria-label="Last 7 days">
-                            7 days
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="last_30_days" aria-label="Last 30 days">
-                            30 days
-                        </ToggleGroupItem>
-                    </ToggleGroup>
+            <div className="grid gap-4 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)] xl:items-start">
+                <div className="space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between xl:flex-col xl:items-start">
+                        <p className="text-xs text-muted-foreground">
+                            Income & expense on accounts
+                        </p>
+                        <ToggleGroup
+                            type="single"
+                            value={cashFlowPeriod}
+                            onValueChange={(v) => {
+                                if (
+                                    v === 'today' ||
+                                    v === 'last_7_days' ||
+                                    v === 'last_30_days'
+                                ) {
+                                    setCashFlowPeriod(v);
+                                }
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="justify-start sm:justify-end xl:justify-start"
+                        >
+                            <ToggleGroupItem value="today" aria-label="Today">
+                                Today
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                                value="last_7_days"
+                                aria-label="Last 7 days"
+                            >
+                                7 days
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                                value="last_30_days"
+                                aria-label="Last 30 days"
+                            >
+                                30 days
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        <StatTile
+                            label="Total in accounts"
+                            value={formatPhpMoney(stats.account_balance_total)}
+                            icon={Building2}
+                        />
+                        <StatTile
+                            label="In envelopes"
+                            value={formatPhpMoney(
+                                stats.allocation_balance_total,
+                            )}
+                            icon={PiggyBank}
+                        />
+                        <StatTile
+                            label="Income"
+                            value={formatPhpMoney(cashSlice.income)}
+                            icon={TrendingUp}
+                            tone="income"
+                        />
+                        <StatTile
+                            label="Expense"
+                            value={formatPhpMoney(cashSlice.expense)}
+                            icon={TrendingDown}
+                            tone="expense"
+                        />
+                    </div>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    <StatTile
-                        label="Total in accounts"
-                        value={formatPhpMoney(stats.account_balance_total)}
-                        hint="Sum of all account balances"
-                        icon={Building2}
-                    />
-                    <StatTile
-                        label="In envelopes"
-                        value={formatPhpMoney(stats.allocation_balance_total)}
-                        hint="Named allocations (excl. unallocated)"
-                        icon={PiggyBank}
-                    />
-                    <StatTile
-                        label="Income"
-                        value={formatPhpMoney(cashSlice.income)}
-                        hint={cashFlowPeriodHint[cashFlowPeriod]}
-                        icon={TrendingUp}
-                    />
-                    <StatTile
-                        label="Expense"
-                        value={formatPhpMoney(cashSlice.expense)}
-                        hint={cashFlowPeriodHint[cashFlowPeriod]}
-                        icon={TrendingDown}
-                    />
-                </div>
-            </div>
 
-            <div className="w-full min-w-0 lg:w-1/2">
-                <Card className="gap-0 py-4 shadow-sm">
-                    <CardContent className="px-4 pb-1 pt-0">
+                <Card className="min-w-0 gap-0 border-primary/15 bg-primary/[0.025] py-4 shadow-sm dark:border-primary/20 dark:bg-primary/[0.07]">
+                    <CardContent className="px-4 pt-0 pb-1">
                         <DashboardActivityChart
                             days={stats.activity_last_7_days}
                         />
@@ -530,9 +503,11 @@ function DashboardDeferredPanels({
                 </Card>
             </div>
 
-            <Card className="min-h-0 flex-1 gap-4 py-5 shadow-sm">
+            <Card className="min-h-0 flex-1 gap-4 border-primary/10 bg-primary/[0.02] py-5 shadow-sm dark:border-primary/20 dark:bg-primary/[0.05]">
                 <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
-                    <CardTitle className="text-lg">Recent transactions</CardTitle>
+                    <CardTitle className="text-lg">
+                        Recent transactions
+                    </CardTitle>
                     <Button
                         variant="outline"
                         size="sm"
@@ -565,31 +540,54 @@ function DashboardDeferredPanels({
 function StatTile({
     label,
     value,
-    hint,
     icon: Icon,
+    tone = 'neutral',
 }: {
     label: string;
     value: string;
-    hint?: string;
     icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+    tone?: 'neutral' | 'income' | 'expense';
 }) {
+    const toneClass = {
+        neutral: {
+            tile: 'border-primary/15 bg-primary/[0.025] dark:border-primary/20 dark:bg-primary/[0.06]',
+            label: 'text-primary/80 dark:text-primary',
+            value: 'text-foreground',
+            icon: 'text-primary/70 dark:text-primary',
+        },
+        income: {
+            tile: 'border-emerald-500/25 bg-emerald-500/[0.06] dark:border-emerald-400/25 dark:bg-emerald-400/[0.08]',
+            label: 'text-emerald-700 dark:text-emerald-300',
+            value: 'text-emerald-800 dark:text-emerald-200',
+            icon: 'text-emerald-600 dark:text-emerald-300',
+        },
+        expense: {
+            tile: 'border-rose-500/25 bg-rose-500/[0.06] dark:border-rose-400/25 dark:bg-rose-400/[0.08]',
+            label: 'text-rose-700 dark:text-rose-300',
+            value: 'text-rose-800 dark:text-rose-200',
+            icon: 'text-rose-600 dark:text-rose-300',
+        },
+    }[tone];
+
     return (
-        <div className="rounded-lg border bg-card px-4 py-3 shadow-sm">
+        <div className={cn('rounded-lg px-4 py-3 shadow-sm', toneClass.tile)}>
             <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">
+                <p className={cn('text-xs font-medium', toneClass.label)}>
                     {label}
                 </p>
                 <Icon
-                    className="size-3.5 shrink-0 text-muted-foreground opacity-80"
+                    className={cn('size-3.5 shrink-0', toneClass.icon)}
                     aria-hidden
                 />
             </div>
-            <p className="mt-1 font-semibold tabular-nums">{value}</p>
-            {hint != null && hint !== '' ? (
-                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                    {hint}
-                </p>
-            ) : null}
+            <p
+                className={cn(
+                    'mt-1 font-semibold tabular-nums',
+                    toneClass.value,
+                )}
+            >
+                {value}
+            </p>
         </div>
     );
 }
@@ -614,7 +612,7 @@ export default function Dashboard() {
     const [createOpen, setCreateOpen] = useState(false);
     const [createPreset, setCreatePreset] =
         useState<CreateDialogPreset>('default');
-    const [radialOpen, setRadialOpen] = useState(false);
+    const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editing, setEditing] = useState<TransactionRow | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -648,6 +646,11 @@ export default function Dashboard() {
     const showUnallocated =
         Number.isFinite(unallocatedNum) && unallocatedNum !== 0;
 
+    const openCreatePreset = (preset: CreateDialogPreset) => {
+        setCreatePreset(preset);
+        setCreateOpen(true);
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -660,96 +663,25 @@ export default function Dashboard() {
                         </p>
                     </div>
                     <div className="shrink-0">
-                        <RadialBubbleMenu
-                            className="drop-shadow-sm"
-                            open={radialOpen}
-                            onOpenChange={setRadialOpen}
-                            placement="bottom-end"
-                            triggerLabel="Add"
-                            items={[
-                                {
-                                    id: 'transaction',
-                                    label: 'New transaction',
-                                    caption: 'Transaction',
-                                    icon: Receipt,
-                                    disabled:
-                                        accounts.length === 0 &&
-                                        allocations.length === 0,
-                                    onSelect: () => {
-                                        setCreatePreset('default');
-                                        setCreateOpen(true);
-                                    },
-                                },
-                                {
-                                    id: 'income',
-                                    label: 'Record income',
-                                    caption: 'Income',
-                                    icon: Wallet,
-                                    href: IncomeFromTemplateController.create()
-                                        .url,
-                                },
-                                {
-                                    id: 'transfer',
-                                    label: 'New transfer',
-                                    caption: 'Transfer',
-                                    icon: ArrowLeftRight,
-                                    disabled: !canCreateTransfer,
-                                    onSelect: () => {
-                                        setCreatePreset('transfer');
-                                        setCreateOpen(true);
-                                    },
-                                },
-                                {
-                                    id: 'credit_card',
-                                    label: 'Card',
-                                    caption: 'Payment',
-                                    icon: CreditCard,
-                                    disabled: !canCreateCreditCardTx,
-                                    onSelect: () => {
-                                        setCreatePreset('credit_card');
-                                        setCreateOpen(true);
-                                    },
-                                },
-                                {
-                                    id: 'loan',
-                                    label: 'Loan',
-                                    caption: 'Loan',
-                                    icon: Landmark,
-                                    disabled: !canCreateLoan,
-                                    onSelect: () => {
-                                        setCreatePreset('loan');
-                                        setCreateOpen(true);
-                                    },
-                                },
-                                {
-                                    id: 'account',
-                                    label: 'New account',
-                                    caption: 'Account',
-                                    icon: Building2,
-                                    href: AccountController.create().url,
-                                },
-                                {
-                                    id: 'allocation',
-                                    label: 'New allocation',
-                                    caption: 'Allocation',
-                                    icon: PiggyBank,
-                                    href: AllocationController.create().url,
-                                },
-                            ]}
-                        />
+                        <Button
+                            type="button"
+                            size="icon"
+                            className="size-11 rounded-full shadow-sm"
+                            onClick={() => setCreateChoiceOpen(true)}
+                            aria-label="Add"
+                        >
+                            <Plus className="size-5" aria-hidden />
+                        </Button>
                     </div>
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                    <Card className="gap-3 py-4 shadow-sm">
+                    <Card className="gap-3 border-primary/15 bg-primary/[0.025] py-4 shadow-sm dark:border-primary/20 dark:bg-primary/[0.06]">
                         <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 px-4 pt-0 pb-2">
                             <div className="min-w-0">
                                 <CardTitle className="text-sm leading-snug">
                                     Accounts
                                 </CardTitle>
-                                <CardDescription className="text-[11px] leading-snug">
-                                    Balances in Penny
-                                </CardDescription>
                             </div>
                             <Button
                                 variant="outline"
@@ -790,7 +722,7 @@ export default function Dashboard() {
                                                     <span className="truncate text-sm font-medium">
                                                         {a.name}
                                                     </span>
-                                                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                                                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                                                         {formatPhpMoney(
                                                             a.balance,
                                                         )}
@@ -868,15 +800,12 @@ export default function Dashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="gap-3 py-4 shadow-sm">
+                    <Card className="gap-3 border-primary/15 bg-primary/[0.025] py-4 shadow-sm dark:border-primary/20 dark:bg-primary/[0.06]">
                         <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 px-4 pt-0 pb-2">
                             <div className="min-w-0">
                                 <CardTitle className="text-sm leading-snug">
                                     Allocations
                                 </CardTitle>
-                                <CardDescription className="text-[11px] leading-snug">
-                                    Envelopes and savings
-                                </CardDescription>
                             </div>
                             <Button
                                 variant="outline"
@@ -925,7 +854,7 @@ export default function Dashboard() {
                                                     <span className="truncate text-sm font-medium">
                                                         {a.name}
                                                     </span>
-                                                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                                                    <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                                                         {formatPhpMoney(
                                                             a.balance,
                                                         )}
@@ -1030,6 +959,70 @@ export default function Dashboard() {
                 </Deferred>
             </div>
 
+            <CreateActionDialog
+                open={createChoiceOpen}
+                onOpenChange={setCreateChoiceOpen}
+                title="What do you want to create?"
+                description="Choose the workflow that matches what you want to add."
+                items={[
+                    {
+                        id: 'transaction',
+                        title: 'Transaction',
+                        description: 'A normal account/allocation entry.',
+                        icon: Receipt,
+                        disabled:
+                            accounts.length === 0 && allocations.length === 0,
+                        onSelect: () => openCreatePreset('default'),
+                    },
+                    {
+                        id: 'income',
+                        title: 'Income',
+                        description: 'Start from an income template.',
+                        icon: Wallet,
+                        href: IncomeFromTemplateController.create().url,
+                    },
+                    {
+                        id: 'transfer',
+                        title: 'Transfer',
+                        description:
+                            'Move money between accounts or envelopes.',
+                        icon: ArrowLeftRight,
+                        disabled: !canCreateTransfer,
+                        onSelect: () => openCreatePreset('transfer'),
+                    },
+                    {
+                        id: 'payment',
+                        title: 'Payment',
+                        description: 'Pay down a credit card.',
+                        icon: CreditCard,
+                        disabled: !canCreateCreditCardTx,
+                        onSelect: () => openCreatePreset('credit_card'),
+                    },
+                    {
+                        id: 'loan',
+                        title: 'Loan',
+                        description: 'Track money owed with a person.',
+                        icon: Landmark,
+                        disabled: !canCreateLoan,
+                        onSelect: () => openCreatePreset('loan'),
+                    },
+                    {
+                        id: 'account',
+                        title: 'Account',
+                        description: 'Add a wallet, bank, card, or person.',
+                        icon: Building2,
+                        href: AccountController.create().url,
+                    },
+                    {
+                        id: 'allocation',
+                        title: 'Allocation',
+                        description: 'Add an envelope, bill, or savings goal.',
+                        icon: PiggyBank,
+                        href: AllocationController.create().url,
+                    },
+                ]}
+            />
+
             <Dialog
                 open={detailTransaction !== null}
                 onOpenChange={(open) => {
@@ -1092,6 +1085,10 @@ export default function Dashboard() {
                 accounts={accounts}
                 allocations={allocations}
                 unallocatedAllocationId={unallocatedAllocationIdProp}
+                onBackToCreateChoice={() => {
+                    setCreateOpen(false);
+                    setCreateChoiceOpen(true);
+                }}
             />
 
             <TransactionFormDialog

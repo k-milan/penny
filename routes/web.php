@@ -7,6 +7,7 @@ use App\Http\Controllers\AllocationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomeFromTemplateController;
 use App\Http\Controllers\IncomeTemplateController;
+use App\Http\Controllers\PreviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -27,6 +28,8 @@ Route::get('/', function () {
 
     return Inertia::render('landing');
 })->name('home');
+
+Route::get('preview', PreviewController::class)->name('preview');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');

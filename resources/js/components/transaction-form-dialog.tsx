@@ -12,18 +12,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatPhpMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useForm } from '@inertiajs/react';
-import { Plus, Trash2 } from 'lucide-react';
-import {
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 export type AccountOption = {
     id: number;
@@ -78,9 +72,7 @@ function accountOptionsForRow(
             .filter((id): id is number => id != null && id > 0),
     );
     const current = rows[rowIndex]?.account_id;
-    return accountList.filter(
-        (a) => a.id === current || !otherIds.has(a.id),
-    );
+    return accountList.filter((a) => a.id === current || !otherIds.has(a.id));
 }
 
 function sumLineAmounts(lines: { amount: string }[]): number {
@@ -109,9 +101,7 @@ function allocationOptionsForRow(
             .filter((id): id is number => id != null && id > 0),
     );
     const current = rows[rowIndex]?.allocation_id;
-    return choices.filter(
-        (a) => a.id === current || !otherIds.has(a.id),
-    );
+    return choices.filter((a) => a.id === current || !otherIds.has(a.id));
 }
 
 export type CreateDialogPreset =
@@ -220,7 +210,9 @@ function normalizeForSubmit(data: {
 
 type TransferKind = 'account' | 'allocation';
 
-function formatSignedTransferAmounts(magnitude: string): { neg: string; pos: string } | null {
+function formatSignedTransferAmounts(
+    magnitude: string,
+): { neg: string; pos: string } | null {
     const raw = magnitude.trim();
     if (raw === '' || raw === '-') {
         return null;
@@ -255,7 +247,13 @@ function buildTransferForSubmit(
     transferFeeAmount: string,
     feeAllocationId: number,
     unallocatedAllocationId: number | null,
-): { date: string; description: string; note: string | null; accounts: LineAccount[]; allocations: LineAllocation[] } {
+): {
+    date: string;
+    description: string;
+    note: string | null;
+    accounts: LineAccount[];
+    allocations: LineAllocation[];
+} {
     const empty = {
         date: base.date,
         description: base.description,
@@ -332,9 +330,7 @@ function cardPaymentSourceOptionsForRow(
             .filter((id): id is number => id != null && id > 0),
     );
     const current = rows[rowIndex]?.accountId;
-    return sources.filter(
-        (a) => a.id === current || !otherIds.has(a.id),
-    );
+    return sources.filter((a) => a.id === current || !otherIds.has(a.id));
 }
 
 /** Card charge: card negative, person lines positive, allocation lines negative. UI uses positive magnitudes. */
@@ -528,7 +524,9 @@ function buildLoanForSubmit(
     fundingAccountRows: LineAccount[],
     allocationRows: LineAllocation[],
 ): { accounts: LineAccount[]; allocations: LineAllocation[] } | null {
-    if (loanPersonSignedFromState(personId, direction, personAmountStr) === null) {
+    if (
+        loanPersonSignedFromState(personId, direction, personAmountStr) === null
+    ) {
         return null;
     }
     const pMag = parsePositiveMagnitude(personAmountStr)!;
@@ -536,9 +534,7 @@ function buildLoanForSubmit(
         {
             account_id: personId,
             amount:
-                direction === 'they_owe'
-                    ? pMag.toFixed(2)
-                    : (-pMag).toFixed(2),
+                direction === 'they_owe' ? pMag.toFixed(2) : (-pMag).toFixed(2),
         },
     ];
     const funding: LineAccount[] = [];
@@ -617,6 +613,7 @@ export function TransactionFormDialog({
     allocations: allocationsProp,
     createPreset = 'default',
     unallocatedAllocationId: unallocatedAllocationIdProp = null,
+    onBackToCreateChoice,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -627,6 +624,7 @@ export function TransactionFormDialog({
     createPreset?: CreateDialogPreset;
     /** System “Unallocated” allocation id (for transfer fees when none chosen). */
     unallocatedAllocationId?: number | null;
+    onBackToCreateChoice?: () => void;
 }) {
     const accountList = useMemo(
         () => (Array.isArray(accountsProp) ? accountsProp : []),
@@ -659,9 +657,7 @@ export function TransactionFormDialog({
             return allocationLineOptions;
         }
         if (
-            allocationLineOptions.some(
-                (a) => a.id === unallocatedAllocationId,
-            )
+            allocationLineOptions.some((a) => a.id === unallocatedAllocationId)
         ) {
             return allocationLineOptions;
         }
@@ -680,8 +676,7 @@ export function TransactionFormDialog({
     const canShowTransferAllocTab = transferAllocChoices.length >= 2;
     const canDoTransfer = canShowAccountTab || canShowTransferAllocTab;
     const isCreateTransfer = mode === 'create' && createPreset === 'transfer';
-    const isCreateCredit =
-        mode === 'create' && createPreset === 'credit_card';
+    const isCreateCredit = mode === 'create' && createPreset === 'credit_card';
     const isCreateLoan = mode === 'create' && createPreset === 'loan';
 
     const creditCardAccounts = useMemo(
@@ -722,9 +717,7 @@ export function TransactionFormDialog({
     type CreditCardTab = 'payment' | 'purchase';
     const [creditCardTab, setCreditCardTab] =
         useState<CreditCardTab>('payment');
-    const [creditSplits, setCreditSplits] = useState<CardPaymentSplitRow[]>(
-        [],
-    );
+    const [creditSplits, setCreditSplits] = useState<CardPaymentSplitRow[]>([]);
     const [purchasePersonSplits, setPurchasePersonSplits] = useState<
         CardPaymentSplitRow[]
     >([]);
@@ -900,8 +893,12 @@ export function TransactionFormDialog({
     const transferFromId =
         transferKind === 'account' ? fromAccountId : fromAllocId;
     const transferToId = transferKind === 'account' ? toAccountId : toAllocId;
-    const transferFromToDistinct = transferFromId > 0 && transferToId > 0 && transferFromId !== transferToId;
-    const transferAmountValid = formatSignedTransferAmounts(transferAmount) !== null;
+    const transferFromToDistinct =
+        transferFromId > 0 &&
+        transferToId > 0 &&
+        transferFromId !== transferToId;
+    const transferAmountValid =
+        formatSignedTransferAmounts(transferAmount) !== null;
     const transferFeeParsed = useMemo(
         () => parseOptionalTransferFee(transferFeeAmount),
         [transferFeeAmount],
@@ -918,7 +915,9 @@ export function TransactionFormDialog({
     const canSubmitTransfer =
         isCreateTransfer &&
         canDoTransfer &&
-        (transferKind === 'account' ? canShowAccountTab : canShowTransferAllocTab) &&
+        (transferKind === 'account'
+            ? canShowAccountTab
+            : canShowTransferAllocTab) &&
         transferFromToDistinct &&
         transferAmountValid &&
         !transferFeeInputInvalid &&
@@ -957,7 +956,12 @@ export function TransactionFormDialog({
             : creditPurchaseBuild !== null);
 
     const loanPersonSignedTotal = useMemo(
-        () => loanPersonSignedFromState(loanPersonId, loanDirection, loanPersonAmount),
+        () =>
+            loanPersonSignedFromState(
+                loanPersonId,
+                loanDirection,
+                loanPersonAmount,
+            ),
         [loanPersonId, loanDirection, loanPersonAmount],
     );
     const loanFundingRunning = useMemo(
@@ -1114,7 +1118,9 @@ export function TransactionFormDialog({
         }
         if (transaction) {
             form.patch(
-                TransactionController.update.url({ transaction: transaction.id }),
+                TransactionController.update.url({
+                    transaction: transaction.id,
+                }),
                 {
                     preserveScroll: true,
                     preserveState: true,
@@ -1141,25 +1147,39 @@ export function TransactionFormDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex max-h-[calc(100vh-64px)] max-w-2xl flex-col gap-4 overflow-hidden p-6 sm:max-w-2xl">
+            <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-5xl flex-col gap-4 overflow-hidden p-4 sm:max-h-[calc(100vh-64px)] sm:p-6">
                 <div className="shrink-0">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {mode === 'create'
-                                ? (() => {
-                                      switch (createPreset) {
-                                          case 'transfer':
-                                              return 'New transfer';
-                                          case 'credit_card':
-                                              return 'New card transaction';
-                                          case 'loan':
-                                              return 'New loan';
-                                          default:
-                                              return 'New transaction';
-                                      }
-                                  })()
-                                : 'Edit transaction'}
-                        </DialogTitle>
+                    <DialogHeader className="text-left">
+                        <div className="flex items-start gap-2 pr-8">
+                            {mode === 'create' && onBackToCreateChoice ? (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="-ml-2 size-8 shrink-0"
+                                    onClick={onBackToCreateChoice}
+                                    aria-label="Back to transaction type"
+                                >
+                                    <ArrowLeft className="size-4" aria-hidden />
+                                </Button>
+                            ) : null}
+                            <DialogTitle className="min-w-0 pt-1">
+                                {mode === 'create'
+                                    ? (() => {
+                                          switch (createPreset) {
+                                              case 'transfer':
+                                                  return 'New transfer';
+                                              case 'credit_card':
+                                                  return 'New card transaction';
+                                              case 'loan':
+                                                  return 'New loan';
+                                              default:
+                                                  return 'New transaction';
+                                          }
+                                      })()
+                                    : 'Edit transaction'}
+                            </DialogTitle>
+                        </div>
                         <DialogDescription className="sr-only">
                             {isCreateTransfer
                                 ? 'Move money between two accounts or two allocations. For account transfers you can add a fee and choose which allocation it is taken from, or leave that blank to use Unallocated.'
@@ -1174,13 +1194,13 @@ export function TransactionFormDialog({
                     </DialogHeader>
 
                     {isCreateTransfer && !canDoTransfer && (
-                        <p className="text-destructive text-sm">
-                            Add at least two accounts or two allocations to record a
-                            transfer.
+                        <p className="text-sm text-destructive">
+                            Add at least two accounts or two allocations to
+                            record a transfer.
                         </p>
                     )}
                     {isCreateCredit && creditCardAccounts.length === 0 && (
-                        <p className="text-destructive text-sm">
+                        <p className="text-sm text-destructive">
                             Add a credit card account first to record this.
                         </p>
                     )}
@@ -1188,35 +1208,36 @@ export function TransactionFormDialog({
                         creditCardAccounts.length > 0 &&
                         cardPaymentSourceAccounts.length === 0 &&
                         creditCardTab === 'payment' && (
-                            <p className="text-destructive text-sm">
-                                Add at least one non–credit-card account (for example
-                                checking) to pay from.
+                            <p className="text-sm text-destructive">
+                                Add at least one non–credit-card account (for
+                                example checking) to pay from.
                             </p>
                         )}
                     {isCreateLoan && personAccounts.length === 0 && (
-                        <p className="text-destructive text-sm">
-                            Add at least one <strong>person</strong> account to track
-                            who owes whom.
+                        <p className="text-sm text-destructive">
+                            Add at least one <strong>person</strong> account to
+                            track who owes whom.
                         </p>
                     )}
                     {isCreateLoan &&
                         personAccounts.length > 0 &&
                         loanFundingAccounts.length === 0 &&
                         allocationLineOptions.length === 0 && (
-                            <p className="text-destructive text-sm">
-                                Add a non-person account or an allocation to balance
-                                this loan (e.g. cash you paid out or an envelope).
+                            <p className="text-sm text-destructive">
+                                Add a non-person account or an allocation to
+                                balance this loan (e.g. cash you paid out or an
+                                envelope).
                             </p>
                         )}
                     {!canSubmit &&
                         !isCreateTransfer &&
                         !isCreateCredit &&
                         !isCreateLoan && (
-                        <p className="text-destructive text-sm">
-                            Add at least one account or allocation in Penny before
-                            recording a transaction.
-                        </p>
-                    )}
+                            <p className="text-sm text-destructive">
+                                Add at least one account or allocation in Penny
+                                before recording a transaction.
+                            </p>
+                        )}
                 </div>
 
                 <form
@@ -1224,159 +1245,1202 @@ export function TransactionFormDialog({
                     onSubmit={submit}
                 >
                     <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                        <div className="grid gap-2">
-                            <Label htmlFor="tx-date">Date</Label>
-                            <Input
-                                id="tx-date"
-                                name="date"
-                                type="date"
-                                value={form.data.date}
-                                onChange={(e) =>
-                                    form.setData('date', e.target.value)
-                                }
-                                required
-                                aria-invalid={!!err('date')}
-                            />
-                            <InputError message={form.errors.date} />
-                        </div>
-                        <div className="grid gap-2 sm:col-span-2">
-                            <Label htmlFor="tx-desc">Description</Label>
-                            <Input
-                                id="tx-desc"
-                                name="description"
-                                value={form.data.description}
-                                onChange={(e) =>
-                                    form.setData('description', e.target.value)
-                                }
-                                required
-                                aria-invalid={!!err('description')}
-                            />
-                            <InputError message={form.errors.description} />
-                        </div>
-                        <div className="grid gap-2 sm:col-span-2">
-                            <Label htmlFor="tx-note">Note (optional)</Label>
-                            <textarea
-                                id="tx-note"
-                                name="note"
-                                rows={2}
-                                className={cn(
-                                    selectClass,
-                                    invalidClass,
-                                    'min-h-[4rem] py-2',
-                                )}
-                                value={form.data.note}
-                                onChange={(e) =>
-                                    form.setData('note', e.target.value)
-                                }
-                                aria-invalid={!!err('note')}
-                            />
-                            <InputError message={form.errors.note} />
-                        </div>
-                    </div>
-
-                    {isCreateCredit ? (
-                        <div className="space-y-4">
-                            {creditCardAccounts.length > 0 && (
-                                <div className="grid max-w-md gap-2">
-                                    <Label htmlFor="tx-credit-card">Credit card</Label>
-                                    <select
-                                        id="tx-credit-card"
-                                        className={cn(selectClass, invalidClass)}
-                                        value={creditCardId}
-                                        onChange={(e) =>
-                                            setCreditCardId(Number(e.target.value))
-                                        }
-                                    >
-                                        {creditCardAccounts.map((a) => (
-                                            <option key={a.id} value={a.id}>
-                                                {a.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                        <div className="grid gap-2 sm:grid-cols-2">
                             <div className="grid gap-2">
-                                <span className="text-sm font-medium">Type</span>
-                                <ToggleGroup
-                                    type="single"
-                                    value={creditCardTab}
-                                    onValueChange={(v) => {
-                                        if (v !== 'payment' && v !== 'purchase') {
-                                            return;
-                                        }
-                                        setCreditCardTab(v);
-                                    }}
-                                    variant="outline"
-                                    className="w-full max-w-md justify-stretch"
-                                >
-                                    <ToggleGroupItem
-                                        value="payment"
-                                        className="min-w-0 flex-1 px-2"
-                                    >
-                                        Payment
-                                    </ToggleGroupItem>
-                                    <ToggleGroupItem
-                                        value="purchase"
-                                        className="min-w-0 flex-1 px-2"
-                                    >
-                                        Purchase
-                                    </ToggleGroupItem>
-                                </ToggleGroup>
+                                <Label htmlFor="tx-date">Date</Label>
+                                <Input
+                                    id="tx-date"
+                                    name="date"
+                                    type="date"
+                                    value={form.data.date}
+                                    onChange={(e) =>
+                                        form.setData('date', e.target.value)
+                                    }
+                                    required
+                                    aria-invalid={!!err('date')}
+                                />
+                                <InputError message={form.errors.date} />
                             </div>
-                            {creditCardTab === 'payment' ? (
-                                <>
-                                    <p className="text-muted-foreground text-sm">
-                                        Pay down the card: the card line is recorded{' '}
-                                        <strong>positive</strong>; each funding account
-                                        is <strong>negative</strong> (bank, cash, or
-                                        person).
-                                    </p>
-                            <ul className="space-y-3">
-                                {creditSplits.map((row, rowIndex) => {
-                                    const sourceChoices =
-                                        cardPaymentSourceOptionsForRow(
-                                            cardPaymentSourceAccounts,
-                                            creditSplits,
-                                            rowIndex,
-                                        );
-                                    return (
-                                        <li
-                                            key={row.key}
-                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label htmlFor="tx-desc">Description</Label>
+                                <Input
+                                    id="tx-desc"
+                                    name="description"
+                                    value={form.data.description}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'description',
+                                            e.target.value,
+                                        )
+                                    }
+                                    required
+                                    aria-invalid={!!err('description')}
+                                />
+                                <InputError message={form.errors.description} />
+                            </div>
+                            <div className="grid gap-2 sm:col-span-2">
+                                <Label htmlFor="tx-note">Note (optional)</Label>
+                                <textarea
+                                    id="tx-note"
+                                    name="note"
+                                    rows={2}
+                                    className={cn(
+                                        selectClass,
+                                        invalidClass,
+                                        'min-h-[4rem] py-2',
+                                    )}
+                                    value={form.data.note}
+                                    onChange={(e) =>
+                                        form.setData('note', e.target.value)
+                                    }
+                                    aria-invalid={!!err('note')}
+                                />
+                                <InputError message={form.errors.note} />
+                            </div>
+                        </div>
+
+                        {isCreateCredit ? (
+                            <div className="space-y-4">
+                                {creditCardAccounts.length > 0 && (
+                                    <div className="grid max-w-md gap-2">
+                                        <Label htmlFor="tx-credit-card">
+                                            Credit card
+                                        </Label>
+                                        <select
+                                            id="tx-credit-card"
+                                            className={cn(
+                                                selectClass,
+                                                invalidClass,
+                                            )}
+                                            value={creditCardId}
+                                            onChange={(e) =>
+                                                setCreditCardId(
+                                                    Number(e.target.value),
+                                                )
+                                            }
                                         >
-                                            <div className="min-w-0 flex-1 space-y-1">
-                                                <Label
-                                                    className="text-xs"
-                                                    htmlFor={`cc-acct-${row.key}`}
-                                                >
-                                                    Paid from
+                                            {creditCardAccounts.map((a) => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                <div className="grid gap-2">
+                                    <span className="text-sm font-medium">
+                                        Type
+                                    </span>
+                                    <ToggleGroup
+                                        type="single"
+                                        value={creditCardTab}
+                                        onValueChange={(v) => {
+                                            if (
+                                                v !== 'payment' &&
+                                                v !== 'purchase'
+                                            ) {
+                                                return;
+                                            }
+                                            setCreditCardTab(v);
+                                        }}
+                                        variant="outline"
+                                        className="w-full max-w-md justify-stretch"
+                                    >
+                                        <ToggleGroupItem
+                                            value="payment"
+                                            className="min-w-0 flex-1 px-2"
+                                        >
+                                            Payment
+                                        </ToggleGroupItem>
+                                        <ToggleGroupItem
+                                            value="purchase"
+                                            className="min-w-0 flex-1 px-2"
+                                        >
+                                            Purchase
+                                        </ToggleGroupItem>
+                                    </ToggleGroup>
+                                </div>
+                                {creditCardTab === 'payment' ? (
+                                    <>
+                                        <p className="text-sm text-muted-foreground">
+                                            Pay down the card: the card line is
+                                            recorded <strong>positive</strong>;
+                                            each funding account is{' '}
+                                            <strong>negative</strong> (bank,
+                                            cash, or person).
+                                        </p>
+                                        <ul className="space-y-3">
+                                            {creditSplits.map(
+                                                (row, rowIndex) => {
+                                                    const sourceChoices =
+                                                        cardPaymentSourceOptionsForRow(
+                                                            cardPaymentSourceAccounts,
+                                                            creditSplits,
+                                                            rowIndex,
+                                                        );
+                                                    return (
+                                                        <li
+                                                            key={row.key}
+                                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                        >
+                                                            <div className="min-w-0 flex-1 space-y-1">
+                                                                <Label
+                                                                    className="text-xs"
+                                                                    htmlFor={`cc-acct-${row.key}`}
+                                                                >
+                                                                    Paid from
+                                                                </Label>
+                                                                <select
+                                                                    id={`cc-acct-${row.key}`}
+                                                                    className={cn(
+                                                                        selectClass,
+                                                                        invalidClass,
+                                                                    )}
+                                                                    value={
+                                                                        row.accountId
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) => {
+                                                                        const id =
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            );
+                                                                        setCreditSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.map(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key ===
+                                                                                        row.key
+                                                                                            ? {
+                                                                                                  ...s,
+                                                                                                  accountId:
+                                                                                                      id,
+                                                                                              }
+                                                                                            : s,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    {sourceChoices.map(
+                                                                        (a) => (
+                                                                            <option
+                                                                                key={
+                                                                                    a.id
+                                                                                }
+                                                                                value={
+                                                                                    a.id
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    a.name
+                                                                                }
+                                                                            </option>
+                                                                        ),
+                                                                    )}
+                                                                </select>
+                                                            </div>
+                                                            <div className="w-full max-w-sm min-w-[9rem] space-y-1 sm:max-w-[12rem]">
+                                                                <Label
+                                                                    className="text-xs"
+                                                                    htmlFor={`cc-amt-${row.key}`}
+                                                                >
+                                                                    Amount
+                                                                </Label>
+                                                                <MoneyInput
+                                                                    id={`cc-amt-${row.key}`}
+                                                                    value={
+                                                                        row.amount
+                                                                    }
+                                                                    onChange={(
+                                                                        v,
+                                                                    ) => {
+                                                                        setCreditSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.map(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key ===
+                                                                                        row.key
+                                                                                            ? {
+                                                                                                  ...s,
+                                                                                                  amount: v,
+                                                                                              }
+                                                                                            : s,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="self-end"
+                                                                onClick={() => {
+                                                                    setCreditSplits(
+                                                                        (
+                                                                            prev,
+                                                                        ) =>
+                                                                            prev.filter(
+                                                                                (
+                                                                                    s,
+                                                                                ) =>
+                                                                                    s.key !==
+                                                                                    row.key,
+                                                                            ),
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    creditSplits.length <=
+                                                                    1
+                                                                }
+                                                                aria-label="Remove split"
+                                                            >
+                                                                <Trash2 className="size-4" />
+                                                            </Button>
+                                                        </li>
+                                                    );
+                                                },
+                                            )}
+                                        </ul>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    const used = new Set(
+                                                        creditSplits.map(
+                                                            (s) => s.accountId,
+                                                        ),
+                                                    );
+                                                    const next =
+                                                        cardPaymentSourceAccounts.find(
+                                                            (a) =>
+                                                                !used.has(a.id),
+                                                        );
+                                                    if (next) {
+                                                        setCreditSplits(
+                                                            (prev) => [
+                                                                ...prev,
+                                                                {
+                                                                    key: newCreditSplitKey(),
+                                                                    accountId:
+                                                                        next.id,
+                                                                    amount: '',
+                                                                },
+                                                            ],
+                                                        );
+                                                    }
+                                                }}
+                                                disabled={
+                                                    cardPaymentSourceAccounts.filter(
+                                                        (a) =>
+                                                            !creditSplits.some(
+                                                                (s) =>
+                                                                    s.accountId ===
+                                                                    a.id,
+                                                            ),
+                                                    ).length === 0
+                                                }
+                                            >
+                                                <Plus className="size-4" />
+                                                Add account
+                                            </Button>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground">
+                                            Payment total:{' '}
+                                            <span className="font-medium text-foreground tabular-nums">
+                                                {formatPhpMoney(
+                                                    creditSplits.reduce(
+                                                        (acc, s) => {
+                                                            const t =
+                                                                s.amount.trim();
+                                                            if (
+                                                                t === '' ||
+                                                                t === '-'
+                                                            ) {
+                                                                return acc;
+                                                            }
+                                                            const n =
+                                                                Number.parseFloat(
+                                                                    t,
+                                                                );
+                                                            return (
+                                                                acc +
+                                                                (Number.isFinite(
+                                                                    n,
+                                                                ) && n > 0
+                                                                    ? n
+                                                                    : 0)
+                                                            );
+                                                        },
+                                                        0,
+                                                    ),
+                                                )}{' '}
+                                            </span>
+                                            (applied to the selected card)
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-sm text-muted-foreground">
+                                            Charge the card: card line{' '}
+                                            <strong>negative</strong>; people
+                                            who will reimburse you{' '}
+                                            <strong>positive</strong>;
+                                            allocations{' '}
+                                            <strong>negative</strong> ( amounts
+                                            you enter for envelopes are stored
+                                            as negatives).
+                                        </p>
+                                        <p className="text-sm font-medium">
+                                            People paying you back
+                                        </p>
+                                        <ul className="space-y-3">
+                                            {purchasePersonSplits.map(
+                                                (row, rowIndex) => {
+                                                    const sourceChoices =
+                                                        cardPaymentSourceOptionsForRow(
+                                                            personAccounts,
+                                                            purchasePersonSplits,
+                                                            rowIndex,
+                                                        );
+                                                    return (
+                                                        <li
+                                                            key={row.key}
+                                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                        >
+                                                            <div className="min-w-0 flex-1 space-y-1">
+                                                                <Label
+                                                                    className="text-xs"
+                                                                    htmlFor={`cpp-${row.key}`}
+                                                                >
+                                                                    Person
+                                                                </Label>
+                                                                <select
+                                                                    id={`cpp-${row.key}`}
+                                                                    className={cn(
+                                                                        selectClass,
+                                                                        invalidClass,
+                                                                    )}
+                                                                    value={
+                                                                        row.accountId
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) => {
+                                                                        const id =
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            );
+                                                                        setPurchasePersonSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.map(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key ===
+                                                                                        row.key
+                                                                                            ? {
+                                                                                                  ...s,
+                                                                                                  accountId:
+                                                                                                      id,
+                                                                                              }
+                                                                                            : s,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    {sourceChoices.map(
+                                                                        (a) => (
+                                                                            <option
+                                                                                key={
+                                                                                    a.id
+                                                                                }
+                                                                                value={
+                                                                                    a.id
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    a.name
+                                                                                }
+                                                                            </option>
+                                                                        ),
+                                                                    )}
+                                                                </select>
+                                                            </div>
+                                                            <div className="w-full max-w-sm min-w-[9rem] space-y-1 sm:max-w-[12rem]">
+                                                                <Label
+                                                                    className="text-xs"
+                                                                    htmlFor={`cpa-${row.key}`}
+                                                                >
+                                                                    Amount
+                                                                </Label>
+                                                                <MoneyInput
+                                                                    id={`cpa-${row.key}`}
+                                                                    value={
+                                                                        row.amount
+                                                                    }
+                                                                    onChange={(
+                                                                        v,
+                                                                    ) => {
+                                                                        setPurchasePersonSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.map(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key ===
+                                                                                        row.key
+                                                                                            ? {
+                                                                                                  ...s,
+                                                                                                  amount: v,
+                                                                                              }
+                                                                                            : s,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="self-end"
+                                                                onClick={() => {
+                                                                    setPurchasePersonSplits(
+                                                                        (
+                                                                            prev,
+                                                                        ) =>
+                                                                            prev.filter(
+                                                                                (
+                                                                                    s,
+                                                                                ) =>
+                                                                                    s.key !==
+                                                                                    row.key,
+                                                                            ),
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    purchasePersonSplits.length <=
+                                                                    1
+                                                                }
+                                                                aria-label="Remove person line"
+                                                            >
+                                                                <Trash2 className="size-4" />
+                                                            </Button>
+                                                        </li>
+                                                    );
+                                                },
+                                            )}
+                                        </ul>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    const used = new Set(
+                                                        purchasePersonSplits.map(
+                                                            (s) => s.accountId,
+                                                        ),
+                                                    );
+                                                    const next =
+                                                        personAccounts.find(
+                                                            (a) =>
+                                                                !used.has(a.id),
+                                                        );
+                                                    if (next) {
+                                                        setPurchasePersonSplits(
+                                                            (prev) => [
+                                                                ...prev,
+                                                                {
+                                                                    key: newCreditSplitKey(),
+                                                                    accountId:
+                                                                        next.id,
+                                                                    amount: '',
+                                                                },
+                                                            ],
+                                                        );
+                                                    }
+                                                }}
+                                                disabled={
+                                                    !personAccounts.some(
+                                                        (a) =>
+                                                            !purchasePersonSplits.some(
+                                                                (s) =>
+                                                                    s.accountId ===
+                                                                    a.id,
+                                                            ),
+                                                    )
+                                                }
+                                            >
+                                                <Plus className="size-4" />
+                                                Add person
+                                            </Button>
+                                        </div>
+                                        <p className="text-sm font-medium">
+                                            Allocations split
+                                        </p>
+                                        <ul className="space-y-3">
+                                            {purchaseAllocSplits.map(
+                                                (row, rowIndex) => {
+                                                    const allocRowsForPicker: LineAllocation[] =
+                                                        purchaseAllocSplits.map(
+                                                            (s) => ({
+                                                                allocation_id:
+                                                                    s.allocationId,
+                                                                amount: s.amount,
+                                                            }),
+                                                        );
+                                                    const allocChoices =
+                                                        allocationOptionsForRow(
+                                                            allocationLineOptions,
+                                                            allocRowsForPicker,
+                                                            rowIndex,
+                                                        );
+                                                    return (
+                                                        <li
+                                                            key={row.key}
+                                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                        >
+                                                            <div className="min-w-0 flex-1 space-y-1">
+                                                                <Label
+                                                                    className="text-xs"
+                                                                    htmlFor={`cpal-${row.key}`}
+                                                                >
+                                                                    Allocation
+                                                                </Label>
+                                                                <select
+                                                                    id={`cpal-${row.key}`}
+                                                                    className={cn(
+                                                                        selectClass,
+                                                                        invalidClass,
+                                                                    )}
+                                                                    value={
+                                                                        row.allocationId
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) => {
+                                                                        const id =
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            );
+                                                                        setPurchaseAllocSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.map(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key ===
+                                                                                        row.key
+                                                                                            ? {
+                                                                                                  ...s,
+                                                                                                  allocationId:
+                                                                                                      id,
+                                                                                              }
+                                                                                            : s,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    {allocChoices.map(
+                                                                        (a) => (
+                                                                            <option
+                                                                                key={
+                                                                                    a.id
+                                                                                }
+                                                                                value={
+                                                                                    a.id
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    a.name
+                                                                                }
+                                                                            </option>
+                                                                        ),
+                                                                    )}
+                                                                </select>
+                                                            </div>
+                                                            <div className="w-full max-w-sm min-w-[9rem] space-y-1 sm:max-w-[12rem]">
+                                                                <Label
+                                                                    className="text-xs"
+                                                                    htmlFor={`cpaa-${row.key}`}
+                                                                >
+                                                                    Amount
+                                                                </Label>
+                                                                <MoneyInput
+                                                                    id={`cpaa-${row.key}`}
+                                                                    value={
+                                                                        row.amount
+                                                                    }
+                                                                    onChange={(
+                                                                        v,
+                                                                    ) => {
+                                                                        setPurchaseAllocSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.map(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key ===
+                                                                                        row.key
+                                                                                            ? {
+                                                                                                  ...s,
+                                                                                                  amount: v,
+                                                                                              }
+                                                                                            : s,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="self-end"
+                                                                onClick={() => {
+                                                                    setPurchaseAllocSplits(
+                                                                        (
+                                                                            prev,
+                                                                        ) =>
+                                                                            prev.filter(
+                                                                                (
+                                                                                    s,
+                                                                                ) =>
+                                                                                    s.key !==
+                                                                                    row.key,
+                                                                            ),
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    purchaseAllocSplits.length <=
+                                                                    1
+                                                                }
+                                                                aria-label="Remove allocation line"
+                                                            >
+                                                                <Trash2 className="size-4" />
+                                                            </Button>
+                                                        </li>
+                                                    );
+                                                },
+                                            )}
+                                        </ul>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    const used = new Set(
+                                                        purchaseAllocSplits.map(
+                                                            (s) =>
+                                                                s.allocationId,
+                                                        ),
+                                                    );
+                                                    const next =
+                                                        allocationLineOptions.find(
+                                                            (a) =>
+                                                                !used.has(a.id),
+                                                        );
+                                                    if (next) {
+                                                        setPurchaseAllocSplits(
+                                                            (prev) => [
+                                                                ...prev,
+                                                                {
+                                                                    key: newCreditSplitKey(),
+                                                                    allocationId:
+                                                                        next.id,
+                                                                    amount: '',
+                                                                },
+                                                            ],
+                                                        );
+                                                    }
+                                                }}
+                                                disabled={
+                                                    allocationLineOptions.filter(
+                                                        (a) =>
+                                                            !purchaseAllocSplits.some(
+                                                                (s) =>
+                                                                    s.allocationId ===
+                                                                    a.id,
+                                                            ),
+                                                    ).length === 0
+                                                }
+                                            >
+                                                <Plus className="size-4" />
+                                                Add allocation
+                                            </Button>
+                                        </div>
+                                    </>
+                                )}
+                                <InputError message={form.errors.accounts} />
+                                <InputError message={form.errors.allocations} />
+                            </div>
+                        ) : isCreateTransfer && canDoTransfer ? (
+                            <div className="space-y-4">
+                                {canShowAccountTab &&
+                                canShowTransferAllocTab ? (
+                                    <div className="grid gap-2">
+                                        <span className="text-sm font-medium">
+                                            Transfer type
+                                        </span>
+                                        <ToggleGroup
+                                            type="single"
+                                            value={transferKind}
+                                            onValueChange={(v) => {
+                                                if (
+                                                    v !== 'account' &&
+                                                    v !== 'allocation'
+                                                ) {
+                                                    return;
+                                                }
+                                                setTransferKind(v);
+                                                if (v === 'account') {
+                                                    setFromAccountId(
+                                                        accountList[0]!.id,
+                                                    );
+                                                    setToAccountId(
+                                                        accountList[1]!.id,
+                                                    );
+                                                } else {
+                                                    setFromAllocId(
+                                                        transferAllocChoices[0]!
+                                                            .id,
+                                                    );
+                                                    setToAllocId(
+                                                        transferAllocChoices[1]!
+                                                            .id,
+                                                    );
+                                                }
+                                                setTransferAmount('');
+                                                setTransferFeeAmount('');
+                                                setTransferFeeAllocationId(0);
+                                            }}
+                                            variant="outline"
+                                            className="w-full max-w-sm justify-stretch"
+                                        >
+                                            <ToggleGroupItem
+                                                value="account"
+                                                className="min-w-0 flex-1 px-2"
+                                            >
+                                                Account
+                                            </ToggleGroupItem>
+                                            <ToggleGroupItem
+                                                value="allocation"
+                                                className="min-w-0 flex-1 px-2"
+                                            >
+                                                Allocation
+                                            </ToggleGroupItem>
+                                        </ToggleGroup>
+                                    </div>
+                                ) : canShowAccountTab ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        Transfer between two accounts
+                                    </p>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        Transfer between two allocations
+                                    </p>
+                                )}
+
+                                {transferKind === 'account' &&
+                                canShowAccountTab ? (
+                                    <>
+                                        <div className="grid gap-2 sm:max-w-md">
+                                            <Label htmlFor="tx-from-account">
+                                                From
+                                            </Label>
+                                            <select
+                                                id="tx-from-account"
+                                                className={cn(
+                                                    selectClass,
+                                                    invalidClass,
+                                                )}
+                                                value={fromAccountId}
+                                                onChange={(e) => {
+                                                    const id = Number(
+                                                        e.target.value,
+                                                    );
+                                                    setFromAccountId(id);
+                                                    if (id === toAccountId) {
+                                                        const o =
+                                                            accountList.find(
+                                                                (a) =>
+                                                                    a.id !== id,
+                                                            );
+                                                        if (o) {
+                                                            setToAccountId(
+                                                                o.id,
+                                                            );
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {accountList
+                                                    .filter(
+                                                        (a) =>
+                                                            a.id !==
+                                                            toAccountId,
+                                                    )
+                                                    .map((a) => (
+                                                        <option
+                                                            key={a.id}
+                                                            value={a.id}
+                                                        >
+                                                            {a.name}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
+                                        <div className="grid gap-2 sm:max-w-md">
+                                            <Label htmlFor="tx-to-account">
+                                                To
+                                            </Label>
+                                            <select
+                                                id="tx-to-account"
+                                                className={cn(
+                                                    selectClass,
+                                                    invalidClass,
+                                                )}
+                                                value={toAccountId}
+                                                onChange={(e) => {
+                                                    const id = Number(
+                                                        e.target.value,
+                                                    );
+                                                    setToAccountId(id);
+                                                    if (id === fromAccountId) {
+                                                        const o =
+                                                            accountList.find(
+                                                                (a) =>
+                                                                    a.id !== id,
+                                                            );
+                                                        if (o) {
+                                                            setFromAccountId(
+                                                                o.id,
+                                                            );
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {accountList
+                                                    .filter(
+                                                        (a) =>
+                                                            a.id !==
+                                                            fromAccountId,
+                                                    )
+                                                    .map((a) => (
+                                                        <option
+                                                            key={a.id}
+                                                            value={a.id}
+                                                        >
+                                                            {a.name}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
+                                    </>
+                                ) : null}
+
+                                {transferKind === 'allocation' &&
+                                canShowTransferAllocTab ? (
+                                    <>
+                                        <div className="grid gap-2 sm:max-w-md">
+                                            <Label htmlFor="tx-from-alloc">
+                                                From
+                                            </Label>
+                                            <select
+                                                id="tx-from-alloc"
+                                                className={cn(
+                                                    selectClass,
+                                                    invalidClass,
+                                                )}
+                                                value={fromAllocId}
+                                                onChange={(e) => {
+                                                    const id = Number(
+                                                        e.target.value,
+                                                    );
+                                                    setFromAllocId(id);
+                                                    if (id === toAllocId) {
+                                                        const o =
+                                                            transferAllocChoices.find(
+                                                                (a) =>
+                                                                    a.id !== id,
+                                                            );
+                                                        if (o) {
+                                                            setToAllocId(o.id);
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {transferAllocChoices
+                                                    .filter(
+                                                        (a) =>
+                                                            a.id !== toAllocId,
+                                                    )
+                                                    .map((a) => (
+                                                        <option
+                                                            key={a.id}
+                                                            value={a.id}
+                                                        >
+                                                            {a.name}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
+                                        <div className="grid gap-2 sm:max-w-md">
+                                            <Label htmlFor="tx-to-alloc">
+                                                To
+                                            </Label>
+                                            <select
+                                                id="tx-to-alloc"
+                                                className={cn(
+                                                    selectClass,
+                                                    invalidClass,
+                                                )}
+                                                value={toAllocId}
+                                                onChange={(e) => {
+                                                    const id = Number(
+                                                        e.target.value,
+                                                    );
+                                                    setToAllocId(id);
+                                                    if (id === fromAllocId) {
+                                                        const o =
+                                                            transferAllocChoices.find(
+                                                                (a) =>
+                                                                    a.id !== id,
+                                                            );
+                                                        if (o) {
+                                                            setFromAllocId(
+                                                                o.id,
+                                                            );
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {transferAllocChoices
+                                                    .filter(
+                                                        (a) =>
+                                                            a.id !==
+                                                            fromAllocId,
+                                                    )
+                                                    .map((a) => (
+                                                        <option
+                                                            key={a.id}
+                                                            value={a.id}
+                                                        >
+                                                            {a.name}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        </div>
+                                    </>
+                                ) : null}
+
+                                <div className="grid max-w-sm gap-2">
+                                    <Label htmlFor="tx-transfer-amt">
+                                        Amount
+                                    </Label>
+                                    <MoneyInput
+                                        id="tx-transfer-amt"
+                                        name="transfer_amount"
+                                        value={transferAmount}
+                                        onChange={setTransferAmount}
+                                        aria-invalid={
+                                            !!err('accounts.0.amount') ||
+                                            !!err('accounts.1.amount') ||
+                                            !!err('allocations.0.amount') ||
+                                            !!err('allocations.1.amount') ||
+                                            !!err('accounts') ||
+                                            !!err('allocations')
+                                        }
+                                    />
+                                    {transferKind === 'account' &&
+                                    canShowAccountTab ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Destination receives this amount. If
+                                            you add a fee below, the source
+                                            account also decreases by the fee.
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                            From decreases by this amount; to
+                                            increases by the same amount.
+                                        </p>
+                                    )}
+                                </div>
+
+                                {transferKind === 'account' &&
+                                canShowAccountTab ? (
+                                    <div className="max-w-2xl space-y-3 rounded-md border border-border p-4">
+                                        <p className="text-sm font-medium">
+                                            Transfer fee (optional)
+                                        </p>
+                                        <div className="flex flex-row flex-wrap gap-x-4 gap-y-3">
+                                            <div className="grid min-w-[10rem] flex-1 gap-2">
+                                                <Label htmlFor="tx-transfer-fee">
+                                                    Fee
+                                                </Label>
+                                                <MoneyInput
+                                                    id="tx-transfer-fee"
+                                                    name="transfer_fee"
+                                                    value={transferFeeAmount}
+                                                    onChange={
+                                                        setTransferFeeAmount
+                                                    }
+                                                    aria-invalid={
+                                                        transferFeeInputInvalid
+                                                    }
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Taken from the allocation
+                                                    below, or from{' '}
+                                                    <strong>Unallocated</strong>{' '}
+                                                    when “Fee from” is
+                                                    Unallocated.
+                                                </p>
+                                            </div>
+                                            <div className="grid min-w-[10rem] flex-1 gap-2">
+                                                <Label htmlFor="tx-transfer-fee-alloc">
+                                                    Fee from
                                                 </Label>
                                                 <select
-                                                    id={`cc-acct-${row.key}`}
+                                                    id="tx-transfer-fee-alloc"
                                                     className={cn(
                                                         selectClass,
                                                         invalidClass,
                                                     )}
-                                                    value={row.accountId}
-                                                    onChange={(e) => {
-                                                        const id = Number(
-                                                            e.target.value,
-                                                        );
-                                                        setCreditSplits((prev) =>
-                                                            prev.map((s) =>
-                                                                s.key === row.key
-                                                                    ? {
-                                                                          ...s,
-                                                                          accountId:
-                                                                              id,
-                                                                      }
-                                                                    : s,
+                                                    value={
+                                                        transferFeeAllocationId
+                                                    }
+                                                    onChange={(e) =>
+                                                        setTransferFeeAllocationId(
+                                                            Number(
+                                                                e.target.value,
                                                             ),
-                                                        );
-                                                    }}
+                                                        )
+                                                    }
                                                 >
-                                                    {sourceChoices.map((a) => (
+                                                    <option value={0}>
+                                                        Unallocated
+                                                    </option>
+                                                    {allocationLineOptions.map(
+                                                        (a) => (
+                                                            <option
+                                                                key={a.id}
+                                                                value={a.id}
+                                                            >
+                                                                {a.name}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        {transferFeeUnallocatedMissing ? (
+                                            <p className="text-sm text-destructive">
+                                                Unallocated allocation is
+                                                missing; add an account or
+                                                allocation so the system can
+                                                create it, or choose a specific
+                                                envelope for the fee.
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                ) : canShowAccountTab ? (
+                                    <p className="max-w-md text-sm text-muted-foreground">
+                                        Transfer fees are only available for{' '}
+                                        <strong>Account</strong> transfers.
+                                        Switch the type above to Account to add
+                                        a fee.
+                                    </p>
+                                ) : null}
+
+                                <div className="grid max-w-sm gap-2">
+                                    <InputError
+                                        message={err('accounts.0.amount')}
+                                    />
+                                    <InputError
+                                        message={err('accounts.1.amount')}
+                                    />
+                                    <InputError
+                                        message={err('allocations.0.amount')}
+                                    />
+                                    <InputError
+                                        message={err('allocations.1.amount')}
+                                    />
+                                    <InputError message={err('accounts')} />
+                                    <InputError message={err('allocations')} />
+                                </div>
+                            </div>
+                        ) : isCreateLoan ? (
+                            <div className="space-y-6">
+                                <div className="space-y-3 rounded-lg border border-border p-4">
+                                    <Label className="text-base">Person</Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        One counterparty:{' '}
+                                        <strong>They owe me</strong> or{' '}
+                                        <strong>I owe them</strong>. Enter{' '}
+                                        <strong>positive</strong> amounts
+                                        everywhere; funding lines are recorded
+                                        with the opposite sign to the person,
+                                        and allocation lines match the person’s
+                                        sign.
+                                    </p>
+                                    {personAccounts.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            Add a person account first.
+                                        </p>
+                                    ) : (
+                                        <div className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end">
+                                            <div className="min-w-0 flex-1 space-y-1">
+                                                <Label
+                                                    className="text-xs"
+                                                    htmlFor="loan-person-select"
+                                                >
+                                                    Person
+                                                </Label>
+                                                <select
+                                                    id="loan-person-select"
+                                                    className={cn(
+                                                        selectClass,
+                                                        invalidClass,
+                                                    )}
+                                                    value={loanPersonId}
+                                                    onChange={(e) =>
+                                                        setLoanPersonId(
+                                                            Number(
+                                                                e.target.value,
+                                                            ),
+                                                        )
+                                                    }
+                                                >
+                                                    {personAccounts.map((a) => (
                                                         <option
                                                             key={a.id}
                                                             value={a.id}
@@ -1386,334 +2450,165 @@ export function TransactionFormDialog({
                                                     ))}
                                                 </select>
                                             </div>
-                                            <div className="w-full min-w-[9rem] max-w-sm space-y-1 sm:max-w-[12rem]">
+                                            <div className="min-w-0 flex-1 space-y-1">
                                                 <Label
                                                     className="text-xs"
-                                                    htmlFor={`cc-amt-${row.key}`}
+                                                    htmlFor="loan-person-direction"
+                                                >
+                                                    Direction
+                                                </Label>
+                                                <select
+                                                    id="loan-person-direction"
+                                                    className={cn(
+                                                        selectClass,
+                                                        invalidClass,
+                                                    )}
+                                                    value={loanDirection}
+                                                    onChange={(e) => {
+                                                        const v =
+                                                            e.target.value;
+                                                        if (
+                                                            v !== 'they_owe' &&
+                                                            v !== 'i_owe'
+                                                        ) {
+                                                            return;
+                                                        }
+                                                        setLoanDirection(v);
+                                                    }}
+                                                >
+                                                    <option value="they_owe">
+                                                        They owe me
+                                                    </option>
+                                                    <option value="i_owe">
+                                                        I owe them
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div className="w-full max-w-sm min-w-[9rem] space-y-1 sm:max-w-[12rem]">
+                                                <Label
+                                                    className="text-xs"
+                                                    htmlFor="loan-person-amt"
                                                 >
                                                     Amount
                                                 </Label>
                                                 <MoneyInput
-                                                    id={`cc-amt-${row.key}`}
-                                                    value={row.amount}
-                                                    onChange={(v) => {
-                                                        setCreditSplits((prev) =>
-                                                            prev.map((s) =>
-                                                                s.key === row.key
-                                                                    ? {
-                                                                          ...s,
-                                                                          amount: v,
-                                                                      }
-                                                                    : s,
-                                                            ),
-                                                        );
-                                                    }}
+                                                    id="loan-person-amt"
+                                                    value={loanPersonAmount}
+                                                    onChange={
+                                                        setLoanPersonAmount
+                                                    }
                                                 />
                                             </div>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="self-end"
-                                                onClick={() => {
-                                                    setCreditSplits((prev) =>
-                                                        prev.filter(
-                                                            (s) =>
-                                                                s.key !== row.key,
-                                                        ),
-                                                    );
-                                                }}
-                                                disabled={creditSplits.length <= 1}
-                                                aria-label="Remove split"
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                        const used = new Set(
-                                            creditSplits.map((s) => s.accountId),
-                                        );
-                                        const next =
-                                            cardPaymentSourceAccounts.find(
-                                                (a) => !used.has(a.id),
-                                            );
-                                        if (next) {
-                                            setCreditSplits((prev) => [
-                                                ...prev,
-                                                {
-                                                    key: newCreditSplitKey(),
-                                                    accountId: next.id,
-                                                    amount: '',
-                                                },
-                                            ]);
-                                        }
-                                    }}
-                                    disabled={
-                                        cardPaymentSourceAccounts.filter(
-                                            (a) =>
-                                                !creditSplits.some(
-                                                    (s) => s.accountId === a.id,
-                                                ),
-                                        ).length === 0
-                                    }
-                                >
-                                    <Plus className="size-4" />
-                                    Add account
-                                </Button>
-                            </div>
-                            <div className="text-muted-foreground text-sm">
-                                Payment total:{' '}
-                                <span className="text-foreground font-medium tabular-nums">
-                                    {formatPhpMoney(
-                                        creditSplits.reduce((acc, s) => {
-                                            const t = s.amount.trim();
-                                            if (t === '' || t === '-') {
-                                                return acc;
-                                            }
-                                            const n = Number.parseFloat(t);
-                                            return (
-                                                acc +
-                                                (Number.isFinite(n) && n > 0
-                                                    ? n
-                                                    : 0)
-                                            );
-                                        }, 0),
-                                    )}{' '}
-                                </span>
-                                (applied to the selected card)
-                            </div>
-                                </>
-                            ) : (
-                                <>
-                                    <p className="text-muted-foreground text-sm">
-                                        Charge the card: card line{' '}
-                                        <strong>negative</strong>; people who will
-                                        reimburse you <strong>positive</strong>;
-                                        allocations <strong>negative</strong> (
-                                        amounts you enter for envelopes are stored as
-                                        negatives).
-                                    </p>
-                                    <p className="text-sm font-medium">
-                                        People paying you back
-                                    </p>
-                                    <ul className="space-y-3">
-                                        {purchasePersonSplits.map((row, rowIndex) => {
-                                            const sourceChoices =
-                                                cardPaymentSourceOptionsForRow(
-                                                    personAccounts,
-                                                    purchasePersonSplits,
-                                                    rowIndex,
-                                                );
-                                            return (
-                                                <li
-                                                    key={row.key}
-                                                    className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
-                                                >
-                                                    <div className="min-w-0 flex-1 space-y-1">
-                                                        <Label
-                                                            className="text-xs"
-                                                            htmlFor={`cpp-${row.key}`}
-                                                        >
-                                                            Person
-                                                        </Label>
-                                                        <select
-                                                            id={`cpp-${row.key}`}
-                                                            className={cn(
-                                                                selectClass,
-                                                                invalidClass,
-                                                            )}
-                                                            value={row.accountId}
-                                                            onChange={(e) => {
-                                                                const id = Number(
-                                                                    e.target.value,
-                                                                );
-                                                                setPurchasePersonSplits(
-                                                                    (prev) =>
-                                                                        prev.map(
-                                                                            (s) =>
-                                                                                s.key ===
-                                                                                row.key
-                                                                                    ? {
-                                                                                          ...s,
-                                                                                          accountId:
-                                                                                              id,
-                                                                                      }
-                                                                                    : s,
-                                                                        ),
-                                                                );
-                                                            }}
-                                                        >
-                                                            {sourceChoices.map(
-                                                                (a) => (
-                                                                    <option
-                                                                        key={a.id}
-                                                                        value={a.id}
-                                                                    >
-                                                                        {a.name}
-                                                                    </option>
-                                                                ),
-                                                            )}
-                                                        </select>
-                                                    </div>
-                                                    <div className="w-full min-w-[9rem] max-w-sm space-y-1 sm:max-w-[12rem]">
-                                                        <Label
-                                                            className="text-xs"
-                                                            htmlFor={`cpa-${row.key}`}
-                                                        >
-                                                            Amount
-                                                        </Label>
-                                                        <MoneyInput
-                                                            id={`cpa-${row.key}`}
-                                                            value={row.amount}
-                                                            onChange={(v) => {
-                                                                setPurchasePersonSplits(
-                                                                    (prev) =>
-                                                                        prev.map(
-                                                                            (s) =>
-                                                                                s.key ===
-                                                                                row.key
-                                                                                    ? {
-                                                                                          ...s,
-                                                                                          amount: v,
-                                                                                      }
-                                                                                    : s,
-                                                                        ),
-                                                                );
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="self-end"
-                                                        onClick={() => {
-                                                            setPurchasePersonSplits(
-                                                                (prev) =>
-                                                                    prev.filter(
-                                                                        (s) =>
-                                                                            s.key !==
-                                                                            row.key,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                        disabled={
-                                                            purchasePersonSplits
-                                                                .length <= 1
-                                                        }
-                                                        aria-label="Remove person line"
-                                                    >
-                                                        <Trash2 className="size-4" />
-                                                    </Button>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                    <div className="flex flex-wrap items-center gap-2">
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-base">
+                                            Funding accounts
+                                        </Label>
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
+                                            disabled={!canAddLoanFundingLine}
                                             onClick={() => {
                                                 const used = new Set(
-                                                    purchasePersonSplits.map(
-                                                        (s) => s.accountId,
-                                                    ),
+                                                    form.data.accounts
+                                                        .map(
+                                                            (r) => r.account_id,
+                                                        )
+                                                        .filter((id) => id > 0),
                                                 );
-                                                const next = personAccounts.find(
-                                                    (a) => !used.has(a.id),
-                                                );
-                                                if (next) {
-                                                    setPurchasePersonSplits(
-                                                        (prev) => [
-                                                            ...prev,
-                                                            {
-                                                                key: newCreditSplitKey(),
-                                                                accountId: next.id,
-                                                                amount: '',
-                                                            },
-                                                        ],
+                                                const first =
+                                                    loanFundingAccounts.find(
+                                                        (a) => !used.has(a.id),
                                                     );
+                                                if (!first) {
+                                                    return;
                                                 }
+                                                form.setData('accounts', [
+                                                    ...form.data.accounts,
+                                                    {
+                                                        account_id: first.id,
+                                                        amount: '',
+                                                    },
+                                                ]);
                                             }}
-                                            disabled={
-                                                !personAccounts.some(
-                                                    (a) =>
-                                                        !purchasePersonSplits.some(
-                                                            (s) =>
-                                                                s.accountId === a.id,
-                                                        ),
-                                                )
-                                            }
                                         >
                                             <Plus className="size-4" />
-                                            Add person
+                                            Add funding line
                                         </Button>
                                     </div>
-                                    <p className="text-sm font-medium">
-                                        Allocations split
+                                    <p className="text-sm text-muted-foreground">
+                                        Bank, cash, or credit card — enter{' '}
+                                        <strong>positive</strong> amounts; Penny
+                                        stores them with the sign opposite to
+                                        the person line.
                                     </p>
+                                    {form.data.accounts.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No funding lines.
+                                        </p>
+                                    ) : null}
                                     <ul className="space-y-3">
-                                        {purchaseAllocSplits.map((row, rowIndex) => {
-                                            const allocRowsForPicker: LineAllocation[] =
-                                                purchaseAllocSplits.map((s) => ({
-                                                    allocation_id: s.allocationId,
-                                                    amount: s.amount,
-                                                }));
-                                            const allocChoices =
-                                                allocationOptionsForRow(
-                                                    allocationLineOptions,
-                                                    allocRowsForPicker,
-                                                    rowIndex,
-                                                );
+                                        {form.data.accounts.map((row, i) => {
+                                            const accIdKey = `accounts.${i}.account_id`;
+                                            const accAmtKey = `accounts.${i}.amount`;
+                                            const accIdErr = err(accIdKey);
+                                            const accAmtErr = err(accAmtKey);
                                             return (
                                                 <li
-                                                    key={row.key}
-                                                    className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                    key={`loan-f-${i}`}
+                                                    className="flex flex-wrap items-start gap-2"
                                                 >
-                                                    <div className="min-w-0 flex-1 space-y-1">
+                                                    <div className="min-w-[12rem] flex-1 space-y-1">
                                                         <Label
-                                                            className="text-xs"
-                                                            htmlFor={`cpal-${row.key}`}
+                                                            className="sr-only"
+                                                            htmlFor={`loan-acc-${i}`}
                                                         >
-                                                            Allocation
+                                                            Account
                                                         </Label>
                                                         <select
-                                                            id={`cpal-${row.key}`}
+                                                            id={`loan-acc-${i}`}
+                                                            name={accIdKey}
                                                             className={cn(
                                                                 selectClass,
                                                                 invalidClass,
                                                             )}
-                                                            value={row.allocationId}
+                                                            value={
+                                                                row.account_id
+                                                            }
+                                                            aria-invalid={
+                                                                !!accIdErr
+                                                            }
                                                             onChange={(e) => {
-                                                                const id = Number(
-                                                                    e.target.value,
-                                                                );
-                                                                setPurchaseAllocSplits(
-                                                                    (prev) =>
-                                                                        prev.map(
-                                                                            (s) =>
-                                                                                s.key ===
-                                                                                row.key
-                                                                                    ? {
-                                                                                          ...s,
-                                                                                          allocationId:
-                                                                                              id,
-                                                                                      }
-                                                                                    : s,
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .accounts,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    account_id:
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value,
                                                                         ),
+                                                                };
+                                                                form.setData(
+                                                                    'accounts',
+                                                                    next,
                                                                 );
                                                             }}
                                                         >
-                                                            {allocChoices.map((a) => (
+                                                            {accountOptionsForRow(
+                                                                loanFundingAccounts,
+                                                                form.data
+                                                                    .accounts,
+                                                                i,
+                                                            ).map((a) => (
                                                                 <option
                                                                     key={a.id}
                                                                     value={a.id}
@@ -1722,54 +2617,57 @@ export function TransactionFormDialog({
                                                                 </option>
                                                             ))}
                                                         </select>
+                                                        <InputError
+                                                            message={accIdErr}
+                                                        />
                                                     </div>
-                                                    <div className="w-full min-w-[9rem] max-w-sm space-y-1 sm:max-w-[12rem]">
+                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
                                                         <Label
-                                                            className="text-xs"
-                                                            htmlFor={`cpaa-${row.key}`}
+                                                            className="sr-only"
+                                                            htmlFor={`loan-acc-amt-${i}`}
                                                         >
                                                             Amount
                                                         </Label>
                                                         <MoneyInput
-                                                            id={`cpaa-${row.key}`}
+                                                            id={`loan-acc-amt-${i}`}
+                                                            name={accAmtKey}
                                                             value={row.amount}
+                                                            aria-invalid={
+                                                                !!accAmtErr
+                                                            }
                                                             onChange={(v) => {
-                                                                setPurchaseAllocSplits(
-                                                                    (prev) =>
-                                                                        prev.map(
-                                                                            (s) =>
-                                                                                s.key ===
-                                                                                row.key
-                                                                                    ? {
-                                                                                          ...s,
-                                                                                          amount: v,
-                                                                                      }
-                                                                                    : s,
-                                                                        ),
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .accounts,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    amount: v,
+                                                                };
+                                                                form.setData(
+                                                                    'accounts',
+                                                                    next,
                                                                 );
                                                             }}
+                                                        />
+                                                        <InputError
+                                                            message={accAmtErr}
                                                         />
                                                     </div>
                                                     <Button
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="self-end"
+                                                        className="shrink-0 self-end"
                                                         onClick={() => {
-                                                            setPurchaseAllocSplits(
-                                                                (prev) =>
-                                                                    prev.filter(
-                                                                        (s) =>
-                                                                            s.key !==
-                                                                            row.key,
-                                                                    ),
+                                                            form.setData(
+                                                                'accounts',
+                                                                form.data.accounts.filter(
+                                                                    (_, j) =>
+                                                                        j !== i,
+                                                                ),
                                                             );
                                                         }}
-                                                        disabled={
-                                                            purchaseAllocSplits
-                                                                .length <= 1
-                                                        }
-                                                        aria-label="Remove allocation line"
                                                     >
                                                         <Trash2 className="size-4" />
                                                     </Button>
@@ -1777,1214 +2675,676 @@ export function TransactionFormDialog({
                                             );
                                         })}
                                     </ul>
-                                    <div className="flex flex-wrap items-center gap-2">
+                                    {form.data.accounts.length >= 1 && (
+                                        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
+                                            <span>Funding (as recorded)</span>
+                                            <span className="min-w-[9rem] text-right font-medium text-foreground tabular-nums">
+                                                {loanFundingRunning === null
+                                                    ? '—'
+                                                    : formatPhpMoney(
+                                                          loanFundingRunning,
+                                                      )}
+                                            </span>
+                                            <span
+                                                className="size-9 shrink-0"
+                                                aria-hidden
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-base">
+                                            Allocation lines
+                                        </Label>
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
+                                            disabled={!canAddAllocationLine}
                                             onClick={() => {
                                                 const used = new Set(
-                                                    purchaseAllocSplits.map(
-                                                        (s) => s.allocationId,
-                                                    ),
+                                                    form.data.allocations
+                                                        .map(
+                                                            (r) =>
+                                                                r.allocation_id,
+                                                        )
+                                                        .filter((id) => id > 0),
                                                 );
-                                                const next =
+                                                const first =
                                                     allocationLineOptions.find(
                                                         (a) => !used.has(a.id),
                                                     );
-                                                if (next) {
-                                                    setPurchaseAllocSplits(
-                                                        (prev) => [
-                                                            ...prev,
-                                                            {
-                                                                key: newCreditSplitKey(),
-                                                                allocationId:
-                                                                    next.id,
-                                                                amount: '',
-                                                            },
-                                                        ],
-                                                    );
+                                                if (!first) {
+                                                    return;
                                                 }
+                                                form.setData('allocations', [
+                                                    ...form.data.allocations,
+                                                    {
+                                                        allocation_id: first.id,
+                                                        amount: '',
+                                                    },
+                                                ]);
                                             }}
-                                            disabled={
-                                                allocationLineOptions.filter(
-                                                    (a) =>
-                                                        !purchaseAllocSplits.some(
-                                                            (s) =>
-                                                                s.allocationId ===
-                                                                a.id,
-                                                        ),
-                                                ).length === 0
-                                            }
                                         >
                                             <Plus className="size-4" />
-                                            Add allocation
+                                            Add allocation line
                                         </Button>
                                     </div>
-                                </>
-                            )}
-                            <InputError message={form.errors.accounts} />
-                            <InputError message={form.errors.allocations} />
-                        </div>
-                    ) : isCreateTransfer && canDoTransfer ? (
-                        <div className="space-y-4">
-                            {canShowAccountTab && canShowTransferAllocTab ? (
-                                <div className="grid gap-2">
-                                    <span className="text-sm font-medium">
-                                        Transfer type
-                                    </span>
-                                    <ToggleGroup
-                                        type="single"
-                                        value={transferKind}
-                                        onValueChange={(v) => {
-                                            if (v !== 'account' && v !== 'allocation') {
-                                                return;
-                                            }
-                                            setTransferKind(v);
-                                            if (v === 'account') {
-                                                setFromAccountId(
-                                                    accountList[0]!.id,
-                                                );
-                                                setToAccountId(accountList[1]!.id);
-                                            } else {
-                                                setFromAllocId(
-                                                    transferAllocChoices[0]!.id,
-                                                );
-                                                setToAllocId(
-                                                    transferAllocChoices[1]!.id,
-                                                );
-                                            }
-                                            setTransferAmount('');
-                                            setTransferFeeAmount('');
-                                            setTransferFeeAllocationId(0);
-                                        }}
-                                        variant="outline"
-                                        className="w-full max-w-sm justify-stretch"
-                                    >
-                                        <ToggleGroupItem
-                                            value="account"
-                                            className="min-w-0 flex-1 px-2"
-                                        >
-                                            Account
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem
-                                            value="allocation"
-                                            className="min-w-0 flex-1 px-2"
-                                        >
-                                            Allocation
-                                        </ToggleGroupItem>
-                                    </ToggleGroup>
-                                </div>
-                            ) : canShowAccountTab ? (
-                                <p className="text-muted-foreground text-sm">
-                                    Transfer between two accounts
-                                </p>
-                            ) : (
-                                <p className="text-muted-foreground text-sm">
-                                    Transfer between two allocations
-                                </p>
-                            )}
-
-                            {transferKind === 'account' && canShowAccountTab ? (
-                                <>
-                                    <div className="grid gap-2 sm:max-w-md">
-                                        <Label htmlFor="tx-from-account">
-                                            From
-                                        </Label>
-                                        <select
-                                            id="tx-from-account"
-                                            className={cn(
-                                                selectClass,
-                                                invalidClass,
-                                            )}
-                                            value={fromAccountId}
-                                            onChange={(e) => {
-                                                const id = Number(
-                                                    e.target.value,
-                                                );
-                                                setFromAccountId(id);
-                                                if (id === toAccountId) {
-                                                    const o = accountList.find(
-                                                        (a) => a.id !== id,
-                                                    );
-                                                    if (o) {
-                                                        setToAccountId(o.id);
-                                                    }
-                                                }
-                                            }}
-                                        >
-                                            {accountList
-                                                .filter(
-                                                    (a) => a.id !== toAccountId,
-                                                )
-                                                .map((a) => (
-                                                    <option key={a.id} value={a.id}>
-                                                        {a.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                    <div className="grid gap-2 sm:max-w-md">
-                                        <Label htmlFor="tx-to-account">To</Label>
-                                        <select
-                                            id="tx-to-account"
-                                            className={cn(
-                                                selectClass,
-                                                invalidClass,
-                                            )}
-                                            value={toAccountId}
-                                            onChange={(e) => {
-                                                const id = Number(
-                                                    e.target.value,
-                                                );
-                                                setToAccountId(id);
-                                                if (id === fromAccountId) {
-                                                    const o = accountList.find(
-                                                        (a) => a.id !== id,
-                                                    );
-                                                    if (o) {
-                                                        setFromAccountId(o.id);
-                                                    }
-                                                }
-                                            }}
-                                        >
-                                            {accountList
-                                                .filter(
-                                                    (a) => a.id !== fromAccountId,
-                                                )
-                                                .map((a) => (
-                                                    <option key={a.id} value={a.id}>
-                                                        {a.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                </>
-                            ) : null}
-
-                            {transferKind === 'allocation' && canShowTransferAllocTab ? (
-                                <>
-                                    <div className="grid gap-2 sm:max-w-md">
-                                        <Label htmlFor="tx-from-alloc">From</Label>
-                                        <select
-                                            id="tx-from-alloc"
-                                            className={cn(
-                                                selectClass,
-                                                invalidClass,
-                                            )}
-                                            value={fromAllocId}
-                                            onChange={(e) => {
-                                                const id = Number(
-                                                    e.target.value,
-                                                );
-                                                setFromAllocId(id);
-                                                if (id === toAllocId) {
-                                                    const o =
-                                                        transferAllocChoices.find(
-                                                            (a) => a.id !== id,
-                                                        );
-                                                    if (o) {
-                                                        setToAllocId(o.id);
-                                                    }
-                                                }
-                                            }}
-                                        >
-                                            {transferAllocChoices
-                                                .filter(
-                                                    (a) => a.id !== toAllocId,
-                                                )
-                                                .map((a) => (
-                                                    <option key={a.id} value={a.id}>
-                                                        {a.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                    <div className="grid gap-2 sm:max-w-md">
-                                        <Label htmlFor="tx-to-alloc">To</Label>
-                                        <select
-                                            id="tx-to-alloc"
-                                            className={cn(
-                                                selectClass,
-                                                invalidClass,
-                                            )}
-                                            value={toAllocId}
-                                            onChange={(e) => {
-                                                const id = Number(
-                                                    e.target.value,
-                                                );
-                                                setToAllocId(id);
-                                                if (id === fromAllocId) {
-                                                    const o =
-                                                        transferAllocChoices.find(
-                                                            (a) => a.id !== id,
-                                                        );
-                                                    if (o) {
-                                                        setFromAllocId(o.id);
-                                                    }
-                                                }
-                                            }}
-                                        >
-                                            {transferAllocChoices
-                                                .filter(
-                                                    (a) => a.id !== fromAllocId,
-                                                )
-                                                .map((a) => (
-                                                    <option key={a.id} value={a.id}>
-                                                        {a.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                </>
-                            ) : null}
-
-                            <div className="grid max-w-sm gap-2">
-                                <Label htmlFor="tx-transfer-amt">Amount</Label>
-                                <MoneyInput
-                                    id="tx-transfer-amt"
-                                    name="transfer_amount"
-                                    value={transferAmount}
-                                    onChange={setTransferAmount}
-                                    aria-invalid={
-                                        !!err('accounts.0.amount') ||
-                                        !!err('accounts.1.amount') ||
-                                        !!err('allocations.0.amount') ||
-                                        !!err('allocations.1.amount') ||
-                                        !!err('accounts') ||
-                                        !!err('allocations')
-                                    }
-                                />
-                                {transferKind === 'account' && canShowAccountTab ? (
-                                    <p className="text-muted-foreground text-xs">
-                                        Destination receives this amount. If you add a
-                                        fee below, the source account also decreases by
-                                        the fee.
-                                    </p>
-                                ) : (
-                                    <p className="text-muted-foreground text-xs">
-                                        From decreases by this amount; to increases by
-                                        the same amount.
-                                    </p>
-                                )}
-                            </div>
-
-                            {transferKind === 'account' && canShowAccountTab ? (
-                                <div className="max-w-2xl space-y-3 rounded-md border border-border p-4">
-                                    <p className="text-sm font-medium">
-                                        Transfer fee (optional)
-                                    </p>
-                                    <div className="flex flex-row flex-wrap gap-x-4 gap-y-3">
-                                        <div className="grid min-w-[10rem] flex-1 gap-2">
-                                            <Label htmlFor="tx-transfer-fee">
-                                                Fee
-                                            </Label>
-                                            <MoneyInput
-                                                id="tx-transfer-fee"
-                                                name="transfer_fee"
-                                                value={transferFeeAmount}
-                                                onChange={setTransferFeeAmount}
-                                                aria-invalid={
-                                                    transferFeeInputInvalid
-                                                }
-                                            />
-                                            <p className="text-muted-foreground text-xs">
-                                                Taken from the allocation below, or
-                                                from <strong>Unallocated</strong> when
-                                                “Fee from” is Unallocated.
-                                            </p>
-                                        </div>
-                                        <div className="grid min-w-[10rem] flex-1 gap-2">
-                                            <Label htmlFor="tx-transfer-fee-alloc">
-                                                Fee from
-                                            </Label>
-                                            <select
-                                                id="tx-transfer-fee-alloc"
-                                                className={cn(
-                                                    selectClass,
-                                                    invalidClass,
-                                                )}
-                                                value={transferFeeAllocationId}
-                                                onChange={(e) =>
-                                                    setTransferFeeAllocationId(
-                                                        Number(e.target.value),
-                                                    )
-                                                }
-                                            >
-                                                <option value={0}>
-                                                    Unallocated
-                                                </option>
-                                                {allocationLineOptions.map(
-                                                    (a) => (
-                                                        <option
-                                                            key={a.id}
-                                                            value={a.id}
-                                                        >
-                                                            {a.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    {transferFeeUnallocatedMissing ? (
-                                        <p className="text-destructive text-sm">
-                                            Unallocated allocation is missing; add an
-                                            account or allocation so the system can
-                                            create it, or choose a specific envelope for
-                                            the fee.
+                                    {form.data.allocations.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            Optional: envelopes (positive
+                                            amounts; same sign family as the
+                                            person line).
                                         </p>
                                     ) : null}
-                                </div>
-                            ) : canShowAccountTab ? (
-                                <p className="text-muted-foreground max-w-md text-sm">
-                                    Transfer fees are only available for{' '}
-                                    <strong>Account</strong> transfers. Switch the type
-                                    above to Account to add a fee.
-                                </p>
-                            ) : null}
-
-                            <div className="grid max-w-sm gap-2">
-                                <InputError
-                                    message={err('accounts.0.amount')}
-                                />
-                                <InputError
-                                    message={err('accounts.1.amount')}
-                                />
-                                <InputError
-                                    message={err('allocations.0.amount')}
-                                />
-                                <InputError
-                                    message={err('allocations.1.amount')}
-                                />
-                                <InputError message={err('accounts')} />
-                                <InputError message={err('allocations')} />
-                            </div>
-                        </div>
-                    ) : isCreateLoan ? (
-                        <div className="space-y-6">
-                            <div className="space-y-3 rounded-lg border border-border p-4">
-                                <Label className="text-base">Person</Label>
-                                <p className="text-muted-foreground text-sm">
-                                    One counterparty: <strong>They owe me</strong> or{' '}
-                                    <strong>I owe them</strong>. Enter{' '}
-                                    <strong>positive</strong> amounts everywhere;
-                                    funding lines are recorded with the opposite sign to
-                                    the person, and allocation lines match the person’s
-                                    sign.
-                                </p>
-                                {personAccounts.length === 0 ? (
-                                    <p className="text-muted-foreground text-sm">
-                                        Add a person account first.
-                                    </p>
-                                ) : (
-                                    <div className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end">
-                                        <div className="min-w-0 flex-1 space-y-1">
-                                            <Label
-                                                className="text-xs"
-                                                htmlFor="loan-person-select"
-                                            >
-                                                Person
-                                            </Label>
-                                            <select
-                                                id="loan-person-select"
-                                                className={cn(
-                                                    selectClass,
-                                                    invalidClass,
-                                                )}
-                                                value={loanPersonId}
-                                                onChange={(e) =>
-                                                    setLoanPersonId(
-                                                        Number(e.target.value),
-                                                    )
-                                                }
-                                            >
-                                                {personAccounts.map((a) => (
-                                                    <option key={a.id} value={a.id}>
-                                                        {a.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="min-w-0 flex-1 space-y-1">
-                                            <Label
-                                                className="text-xs"
-                                                htmlFor="loan-person-direction"
-                                            >
-                                                Direction
-                                            </Label>
-                                            <select
-                                                id="loan-person-direction"
-                                                className={cn(
-                                                    selectClass,
-                                                    invalidClass,
-                                                )}
-                                                value={loanDirection}
-                                                onChange={(e) => {
-                                                    const v = e.target.value;
-                                                    if (
-                                                        v !== 'they_owe' &&
-                                                        v !== 'i_owe'
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    setLoanDirection(v);
-                                                }}
-                                            >
-                                                <option value="they_owe">
-                                                    They owe me
-                                                </option>
-                                                <option value="i_owe">
-                                                    I owe them
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <div className="w-full min-w-[9rem] max-w-sm space-y-1 sm:max-w-[12rem]">
-                                            <Label
-                                                className="text-xs"
-                                                htmlFor="loan-person-amt"
-                                            >
-                                                Amount
-                                            </Label>
-                                            <MoneyInput
-                                                id="loan-person-amt"
-                                                value={loanPersonAmount}
-                                                onChange={setLoanPersonAmount}
+                                    <ul className="space-y-3">
+                                        {form.data.allocations.map((row, i) => {
+                                            const allocIdKey = `allocations.${i}.allocation_id`;
+                                            const allocAmtKey = `allocations.${i}.amount`;
+                                            const allocIdErr = err(allocIdKey);
+                                            const allocAmtErr =
+                                                err(allocAmtKey);
+                                            return (
+                                                <li
+                                                    key={`loan-l-${i}`}
+                                                    className="flex flex-wrap items-start gap-2"
+                                                >
+                                                    <div className="min-w-[12rem] flex-1 space-y-1">
+                                                        <Label
+                                                            className="sr-only"
+                                                            htmlFor={`loan-alloc-${i}`}
+                                                        >
+                                                            Allocation
+                                                        </Label>
+                                                        <select
+                                                            id={`loan-alloc-${i}`}
+                                                            name={allocIdKey}
+                                                            className={cn(
+                                                                selectClass,
+                                                                invalidClass,
+                                                            )}
+                                                            value={
+                                                                row.allocation_id
+                                                            }
+                                                            aria-invalid={
+                                                                !!allocIdErr
+                                                            }
+                                                            onChange={(e) => {
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .allocations,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    allocation_id:
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        ),
+                                                                };
+                                                                form.setData(
+                                                                    'allocations',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        >
+                                                            {allocationOptionsForRow(
+                                                                allocationLineOptions,
+                                                                form.data
+                                                                    .allocations,
+                                                                i,
+                                                            ).map((a) => (
+                                                                <option
+                                                                    key={a.id}
+                                                                    value={a.id}
+                                                                >
+                                                                    {a.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <InputError
+                                                            message={allocIdErr}
+                                                        />
+                                                    </div>
+                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
+                                                        <Label
+                                                            className="sr-only"
+                                                            htmlFor={`loan-alloc-amt-${i}`}
+                                                        >
+                                                            Amount
+                                                        </Label>
+                                                        <MoneyInput
+                                                            id={`loan-alloc-amt-${i}`}
+                                                            name={allocAmtKey}
+                                                            value={row.amount}
+                                                            aria-invalid={
+                                                                !!allocAmtErr
+                                                            }
+                                                            onChange={(v) => {
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .allocations,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    amount: v,
+                                                                };
+                                                                form.setData(
+                                                                    'allocations',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        />
+                                                        <InputError
+                                                            message={
+                                                                allocAmtErr
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="shrink-0 self-end"
+                                                        onClick={() => {
+                                                            form.setData(
+                                                                'allocations',
+                                                                form.data.allocations.filter(
+                                                                    (_, j) =>
+                                                                        j !== i,
+                                                                ),
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                    {form.data.allocations.length >= 1 && (
+                                        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
+                                            <span>
+                                                Allocations (as recorded)
+                                            </span>
+                                            <span className="min-w-[9rem] text-right font-medium text-foreground tabular-nums">
+                                                {loanAllocRunning === null
+                                                    ? '—'
+                                                    : formatPhpMoney(
+                                                          loanAllocRunning,
+                                                      )}
+                                            </span>
+                                            <span
+                                                className="size-9 shrink-0"
+                                                aria-hidden
                                             />
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
 
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-base">
-                                        Funding accounts
-                                    </Label>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={!canAddLoanFundingLine}
-                                        onClick={() => {
-                                            const used = new Set(
-                                                form.data.accounts
-                                                    .map((r) => r.account_id)
-                                                    .filter((id) => id > 0),
-                                            );
-                                            const first =
-                                                loanFundingAccounts.find(
+                                <div
+                                    className={cn(
+                                        'rounded-md border p-3 text-sm',
+                                        loanBalanceGap !== null &&
+                                            Math.abs(loanBalanceGap) < 0.02
+                                            ? 'border-green-600/50 bg-green-600/5'
+                                            : 'border-border bg-muted/30',
+                                    )}
+                                >
+                                    <p className="font-medium">
+                                        Match Penny totals
+                                    </p>
+                                    <ul className="mt-2 space-y-1 text-muted-foreground">
+                                        <li className="flex flex-wrap justify-between gap-2">
+                                            <span>Person (signed)</span>
+                                            <span className="font-medium text-foreground tabular-nums">
+                                                {loanPersonSignedTotal === null
+                                                    ? '—'
+                                                    : formatPhpMoney(
+                                                          loanPersonSignedTotal,
+                                                      )}
+                                            </span>
+                                        </li>
+                                        <li className="flex flex-wrap justify-between gap-2">
+                                            <span>+ Funding (signed)</span>
+                                            <span className="font-medium text-foreground tabular-nums">
+                                                {loanFundingRunning === null
+                                                    ? '—'
+                                                    : formatPhpMoney(
+                                                          loanFundingRunning,
+                                                      )}
+                                            </span>
+                                        </li>
+                                        <li className="flex flex-wrap justify-between gap-2">
+                                            <span>
+                                                Allocations total (signed)
+                                            </span>
+                                            <span className="font-medium text-foreground tabular-nums">
+                                                {loanAllocRunning === null
+                                                    ? '—'
+                                                    : formatPhpMoney(
+                                                          loanAllocRunning,
+                                                      )}
+                                            </span>
+                                        </li>
+                                        <li className="mt-2 flex flex-wrap justify-between gap-2 border-t border-border pt-2 font-medium text-foreground">
+                                            <span>Difference (need 0.00)</span>
+                                            <span
+                                                className={cn(
+                                                    'tabular-nums',
+                                                    loanBalanceGap !== null &&
+                                                        Math.abs(
+                                                            loanBalanceGap,
+                                                        ) < 0.02
+                                                        ? 'text-green-600 dark:text-green-400'
+                                                        : 'text-destructive',
+                                                )}
+                                            >
+                                                {loanBalanceGap === null
+                                                    ? '—'
+                                                    : formatPhpMoney(
+                                                          loanBalanceGap,
+                                                      )}
+                                            </span>
+                                        </li>
+                                    </ul>
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                        Sum check: person + funding must equal
+                                        allocations (Penny requires the same
+                                        total on both sides). Example (they owe
+                                        you): person 500, funding 300 → record
+                                        −300 from that account; allocations
+                                        should total 200.
+                                    </p>
+                                </div>
+                                <InputError message={form.errors.accounts} />
+                                <InputError message={form.errors.allocations} />
+                            </div>
+                        ) : !isCreateTransfer &&
+                          !isCreateCredit &&
+                          !isCreateLoan ? (
+                            <div className="grid gap-6 lg:grid-cols-2">
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <Label className="text-base">
+                                            Account lines
+                                        </Label>
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={!canAddAccountLine}
+                                            onClick={() => {
+                                                const used = new Set(
+                                                    form.data.accounts
+                                                        .map(
+                                                            (r) => r.account_id,
+                                                        )
+                                                        .filter((id) => id > 0),
+                                                );
+                                                const first = accountList.find(
                                                     (a) => !used.has(a.id),
                                                 );
-                                            if (!first) {
-                                                return;
-                                            }
-                                            form.setData('accounts', [
-                                                ...form.data.accounts,
-                                                {
-                                                    account_id: first.id,
-                                                    amount: '',
-                                                },
-                                            ]);
-                                        }}
-                                    >
-                                        <Plus className="size-4" />
-                                        Add funding line
-                                    </Button>
-                                </div>
-                                <p className="text-muted-foreground text-sm">
-                                    Bank, cash, or credit card — enter{' '}
-                                    <strong>positive</strong> amounts; Penny stores them
-                                    with the sign opposite to the person line.
-                                </p>
-                                {form.data.accounts.length === 0 ? (
-                                    <p className="text-muted-foreground text-sm">
-                                        No funding lines.
-                                    </p>
-                                ) : null}
-                                <ul className="space-y-3">
-                                    {form.data.accounts.map((row, i) => {
-                                        const accIdKey = `accounts.${i}.account_id`;
-                                        const accAmtKey = `accounts.${i}.amount`;
-                                        const accIdErr = err(accIdKey);
-                                        const accAmtErr = err(accAmtKey);
-                                        return (
-                                            <li
-                                                key={`loan-f-${i}`}
-                                                className="flex flex-wrap items-start gap-2"
-                                            >
-                                                <div className="min-w-[12rem] flex-1 space-y-1">
-                                                    <Label
-                                                        className="sr-only"
-                                                        htmlFor={`loan-acc-${i}`}
-                                                    >
-                                                        Account
-                                                    </Label>
-                                                    <select
-                                                        id={`loan-acc-${i}`}
-                                                        name={accIdKey}
-                                                        className={cn(
-                                                            selectClass,
-                                                            invalidClass,
-                                                        )}
-                                                        value={row.account_id}
-                                                        aria-invalid={!!accIdErr}
-                                                        onChange={(e) => {
-                                                            const next = [
-                                                                ...form.data.accounts,
-                                                            ];
-                                                            next[i] = {
-                                                                ...next[i],
-                                                                account_id: Number(
-                                                                    e.target.value,
+                                                if (!first) {
+                                                    return;
+                                                }
+                                                form.setData('accounts', [
+                                                    ...form.data.accounts,
+                                                    {
+                                                        account_id: first.id,
+                                                        amount: '',
+                                                    },
+                                                ]);
+                                            }}
+                                        >
+                                            <Plus className="size-4" />
+                                            Add
+                                        </Button>
+                                    </div>
+                                    {form.data.accounts.length === 0 && (
+                                        <p className="text-sm text-muted-foreground">
+                                            No account lines.
+                                        </p>
+                                    )}
+                                    <ul className="space-y-3">
+                                        {form.data.accounts.map((row, i) => {
+                                            const accIdKey = `accounts.${i}.account_id`;
+                                            const accAmtKey = `accounts.${i}.amount`;
+                                            const accIdErr = err(accIdKey);
+                                            const accAmtErr = err(accAmtKey);
+                                            return (
+                                                <li
+                                                    key={`a-${i}`}
+                                                    className="flex flex-wrap items-start gap-2"
+                                                >
+                                                    <div className="min-w-[12rem] flex-1 space-y-1">
+                                                        <Label
+                                                            className="sr-only"
+                                                            htmlFor={`acc-${i}`}
+                                                        >
+                                                            Account
+                                                        </Label>
+                                                        <select
+                                                            id={`acc-${i}`}
+                                                            name={accIdKey}
+                                                            className={cn(
+                                                                selectClass,
+                                                                invalidClass,
+                                                            )}
+                                                            value={
+                                                                row.account_id
+                                                            }
+                                                            aria-invalid={
+                                                                !!accIdErr
+                                                            }
+                                                            onChange={(e) => {
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .accounts,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    account_id:
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        ),
+                                                                };
+                                                                form.setData(
+                                                                    'accounts',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        >
+                                                            {accountOptionsForRow(
+                                                                accountList,
+                                                                form.data
+                                                                    .accounts,
+                                                                i,
+                                                            ).map((a) => (
+                                                                <option
+                                                                    key={a.id}
+                                                                    value={a.id}
+                                                                >
+                                                                    {a.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <InputError
+                                                            message={accIdErr}
+                                                        />
+                                                    </div>
+                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
+                                                        <Label
+                                                            className="sr-only"
+                                                            htmlFor={`acc-amt-${i}`}
+                                                        >
+                                                            Amount
+                                                        </Label>
+                                                        <MoneyInput
+                                                            id={`acc-amt-${i}`}
+                                                            name={accAmtKey}
+                                                            value={row.amount}
+                                                            aria-invalid={
+                                                                !!accAmtErr
+                                                            }
+                                                            onChange={(v) => {
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .accounts,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    amount: v,
+                                                                };
+                                                                form.setData(
+                                                                    'accounts',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        />
+                                                        <InputError
+                                                            message={accAmtErr}
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="shrink-0 self-end"
+                                                        onClick={() => {
+                                                            form.setData(
+                                                                'accounts',
+                                                                form.data.accounts.filter(
+                                                                    (_, j) =>
+                                                                        j !== i,
                                                                 ),
-                                                            };
-                                                            form.setData(
-                                                                'accounts',
-                                                                next,
                                                             );
                                                         }}
                                                     >
-                                                        {accountOptionsForRow(
-                                                            loanFundingAccounts,
-                                                            form.data.accounts,
-                                                            i,
-                                                        ).map((a) => (
-                                                            <option
-                                                                key={a.id}
-                                                                value={a.id}
-                                                            >
-                                                                {a.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <InputError message={accIdErr} />
-                                                </div>
-                                                <div className="min-w-[9rem] max-w-[14rem] shrink-0 space-y-1">
-                                                    <Label
-                                                        className="sr-only"
-                                                        htmlFor={`loan-acc-amt-${i}`}
-                                                    >
-                                                        Amount
-                                                    </Label>
-                                                    <MoneyInput
-                                                        id={`loan-acc-amt-${i}`}
-                                                        name={accAmtKey}
-                                                        value={row.amount}
-                                                        aria-invalid={!!accAmtErr}
-                                                        onChange={(v) => {
-                                                            const next = [
-                                                                ...form.data.accounts,
-                                                            ];
-                                                            next[i] = {
-                                                                ...next[i],
-                                                                amount: v,
-                                                            };
-                                                            form.setData(
-                                                                'accounts',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    />
-                                                    <InputError message={accAmtErr} />
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="shrink-0 self-end"
-                                                    onClick={() => {
-                                                        form.setData(
-                                                            'accounts',
-                                                            form.data.accounts.filter(
-                                                                (_, j) => j !== i,
-                                                            ),
-                                                        );
-                                                    }}
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                                {form.data.accounts.length >= 1 && (
-                                    <div className="text-muted-foreground flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm">
-                                        <span>Funding (as recorded)</span>
-                                        <span className="text-foreground min-w-[9rem] text-right font-medium tabular-nums">
-                                            {loanFundingRunning === null
-                                                ? '—'
-                                                : formatPhpMoney(
-                                                      loanFundingRunning,
-                                                  )}
-                                        </span>
-                                        <span
-                                            className="size-9 shrink-0"
-                                            aria-hidden
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-base">
-                                        Allocation lines
-                                    </Label>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={!canAddAllocationLine}
-                                        onClick={() => {
-                                            const used = new Set(
-                                                form.data.allocations
-                                                    .map((r) => r.allocation_id)
-                                                    .filter((id) => id > 0),
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </li>
                                             );
-                                            const first =
-                                                allocationLineOptions.find(
-                                                    (a) => !used.has(a.id),
-                                                );
-                                            if (!first) {
-                                                return;
-                                            }
-                                            form.setData('allocations', [
-                                                ...form.data.allocations,
-                                                {
-                                                    allocation_id: first.id,
-                                                    amount: '',
-                                                },
-                                            ]);
-                                        }}
-                                    >
-                                        <Plus className="size-4" />
-                                        Add allocation line
-                                    </Button>
+                                        })}
+                                    </ul>
+                                    {form.data.accounts.length >= 2 && (
+                                        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
+                                            <span>Total</span>
+                                            <span className="min-w-[9rem] text-right font-medium text-foreground tabular-nums">
+                                                {formatPhpMoney(
+                                                    accountLinesTotal,
+                                                )}
+                                            </span>
+                                            <span
+                                                className="size-9 shrink-0"
+                                                aria-hidden
+                                            />
+                                        </div>
+                                    )}
+                                    <InputError
+                                        message={form.errors.accounts}
+                                    />
                                 </div>
-                                {form.data.allocations.length === 0 ? (
-                                    <p className="text-muted-foreground text-sm">
-                                        Optional: envelopes (positive amounts; same
-                                        sign family as the person line).
-                                    </p>
-                                ) : null}
-                                <ul className="space-y-3">
-                                    {form.data.allocations.map((row, i) => {
-                                        const allocIdKey =
-                                            `allocations.${i}.allocation_id`;
-                                        const allocAmtKey =
-                                            `allocations.${i}.amount`;
-                                        const allocIdErr = err(allocIdKey);
-                                        const allocAmtErr = err(allocAmtKey);
-                                        return (
-                                            <li
-                                                key={`loan-l-${i}`}
-                                                className="flex flex-wrap items-start gap-2"
-                                            >
-                                                <div className="min-w-[12rem] flex-1 space-y-1">
-                                                    <Label
-                                                        className="sr-only"
-                                                        htmlFor={`loan-alloc-${i}`}
-                                                    >
-                                                        Allocation
-                                                    </Label>
-                                                    <select
-                                                        id={`loan-alloc-${i}`}
-                                                        name={allocIdKey}
-                                                        className={cn(
-                                                            selectClass,
-                                                            invalidClass,
-                                                        )}
-                                                        value={row.allocation_id}
-                                                        aria-invalid={!!allocIdErr}
-                                                        onChange={(e) => {
-                                                            const next = [
-                                                                ...form.data
-                                                                    .allocations,
-                                                            ];
-                                                            next[i] = {
-                                                                ...next[i],
-                                                                allocation_id:
-                                                                    Number(
-                                                                        e.target
-                                                                            .value,
-                                                                    ),
-                                                            };
-                                                            form.setData(
-                                                                'allocations',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    >
-                                                        {allocationOptionsForRow(
-                                                            allocationLineOptions,
-                                                            form.data.allocations,
-                                                            i,
-                                                        ).map((a) => (
-                                                            <option
-                                                                key={a.id}
-                                                                value={a.id}
-                                                            >
-                                                                {a.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <InputError
-                                                        message={allocIdErr}
-                                                    />
-                                                </div>
-                                                <div className="min-w-[9rem] max-w-[14rem] shrink-0 space-y-1">
-                                                    <Label
-                                                        className="sr-only"
-                                                        htmlFor={`loan-alloc-amt-${i}`}
-                                                    >
-                                                        Amount
-                                                    </Label>
-                                                    <MoneyInput
-                                                        id={`loan-alloc-amt-${i}`}
-                                                        name={allocAmtKey}
-                                                        value={row.amount}
-                                                        aria-invalid={!!allocAmtErr}
-                                                        onChange={(v) => {
-                                                            const next = [
-                                                                ...form.data
-                                                                    .allocations,
-                                                            ];
-                                                            next[i] = {
-                                                                ...next[i],
-                                                                amount: v,
-                                                            };
-                                                            form.setData(
-                                                                'allocations',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    />
-                                                    <InputError
-                                                        message={allocAmtErr}
-                                                    />
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="shrink-0 self-end"
-                                                    onClick={() => {
-                                                        form.setData(
-                                                            'allocations',
-                                                            form.data.allocations.filter(
-                                                                (_, j) => j !== i,
-                                                            ),
-                                                        );
-                                                    }}
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <Label className="text-base">
+                                            Allocation lines
+                                        </Label>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={!canAddAllocationLine}
+                                            onClick={() => {
+                                                const used = new Set(
+                                                    form.data.allocations
+                                                        .map(
+                                                            (r) =>
+                                                                r.allocation_id,
+                                                        )
+                                                        .filter((id) => id > 0),
+                                                );
+                                                const first =
+                                                    allocationLineOptions.find(
+                                                        (a) => !used.has(a.id),
+                                                    );
+                                                if (!first) {
+                                                    return;
+                                                }
+                                                form.setData('allocations', [
+                                                    ...form.data.allocations,
+                                                    {
+                                                        allocation_id: first.id,
+                                                        amount: '',
+                                                    },
+                                                ]);
+                                            }}
+                                        >
+                                            <Plus className="size-4" />
+                                            Add
+                                        </Button>
+                                    </div>
+                                    {form.data.allocations.length === 0 && (
+                                        <p className="text-sm text-muted-foreground">
+                                            Optional allocation lines.
+                                        </p>
+                                    )}
+                                    <ul className="space-y-3">
+                                        {form.data.allocations.map((row, i) => {
+                                            const allocIdKey = `allocations.${i}.allocation_id`;
+                                            const allocAmtKey = `allocations.${i}.amount`;
+                                            const allocIdErr = err(allocIdKey);
+                                            const allocAmtErr =
+                                                err(allocAmtKey);
+                                            return (
+                                                <li
+                                                    key={`l-${i}`}
+                                                    className="flex flex-wrap items-start gap-2"
                                                 >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                                {form.data.allocations.length >= 1 && (
-                                    <div className="text-muted-foreground flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm">
-                                        <span>Allocations (as recorded)</span>
-                                        <span className="text-foreground min-w-[9rem] text-right font-medium tabular-nums">
-                                            {loanAllocRunning === null
-                                                ? '—'
-                                                : formatPhpMoney(loanAllocRunning)}
-                                        </span>
-                                        <span
-                                            className="size-9 shrink-0"
-                                            aria-hidden
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div
-                                className={cn(
-                                    'rounded-md border p-3 text-sm',
-                                    loanBalanceGap !== null &&
-                                        Math.abs(loanBalanceGap) < 0.02
-                                        ? 'border-green-600/50 bg-green-600/5'
-                                        : 'border-border bg-muted/30',
-                                )}
-                            >
-                                <p className="font-medium">Match Penny totals</p>
-                                <ul className="mt-2 space-y-1 text-muted-foreground">
-                                    <li className="flex flex-wrap justify-between gap-2">
-                                        <span>Person (signed)</span>
-                                        <span className="text-foreground font-medium tabular-nums">
-                                            {loanPersonSignedTotal === null
-                                                ? '—'
-                                                : formatPhpMoney(
-                                                      loanPersonSignedTotal,
-                                                  )}
-                                        </span>
-                                    </li>
-                                    <li className="flex flex-wrap justify-between gap-2">
-                                        <span>+ Funding (signed)</span>
-                                        <span className="text-foreground font-medium tabular-nums">
-                                            {loanFundingRunning === null
-                                                ? '—'
-                                                : formatPhpMoney(
-                                                      loanFundingRunning,
-                                                  )}
-                                        </span>
-                                    </li>
-                                    <li className="flex flex-wrap justify-between gap-2">
-                                        <span>Allocations total (signed)</span>
-                                        <span className="text-foreground font-medium tabular-nums">
-                                            {loanAllocRunning === null
-                                                ? '—'
-                                                : formatPhpMoney(loanAllocRunning)}
-                                        </span>
-                                    </li>
-                                    <li className="text-foreground mt-2 flex flex-wrap justify-between gap-2 border-t border-border pt-2 font-medium">
-                                        <span>Difference (need 0.00)</span>
-                                        <span
-                                            className={cn(
-                                                'tabular-nums',
-                                                loanBalanceGap !== null &&
-                                                    Math.abs(loanBalanceGap) < 0.02
-                                                    ? 'text-green-600 dark:text-green-400'
-                                                    : 'text-destructive',
-                                            )}
-                                        >
-                                            {loanBalanceGap === null
-                                                ? '—'
-                                                : formatPhpMoney(loanBalanceGap)}
-                                        </span>
-                                    </li>
-                                </ul>
-                                <p className="text-muted-foreground mt-2 text-xs">
-                                    Sum check: person + funding must equal allocations
-                                    (Penny requires the same total on both sides).
-                                    Example (they owe you): person 500, funding 300 →
-                                    record −300 from that account; allocations should
-                                    total 200.
-                                </p>
-                            </div>
-                            <InputError message={form.errors.accounts} />
-                            <InputError message={form.errors.allocations} />
-                        </div>
-                    ) : !isCreateTransfer && !isCreateCredit && !isCreateLoan ? (
-                    <>
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-base">Account lines</Label>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={!canAddAccountLine}
-                                onClick={() => {
-                                    const used = new Set(
-                                        form.data.accounts
-                                            .map((r) => r.account_id)
-                                            .filter((id) => id > 0),
-                                    );
-                                    const first = accountList.find(
-                                        (a) => !used.has(a.id),
-                                    );
-                                    if (!first) {
-                                        return;
-                                    }
-                                    form.setData('accounts', [
-                                        ...form.data.accounts,
-                                        {
-                                            account_id: first.id,
-                                            amount: '',
-                                        },
-                                    ]);
-                                }}
-                            >
-                                <Plus className="size-4" />
-                                Add account line
-                            </Button>
-                        </div>
-                        {form.data.accounts.length === 0 && (
-                            <p className="text-muted-foreground text-sm">
-                                No account lines — use “Add account line” or add
-                                allocation lines below.
-                            </p>
-                        )}
-                        <ul className="space-y-3">
-                            {form.data.accounts.map((row, i) => {
-                                const accIdKey = `accounts.${i}.account_id`;
-                                const accAmtKey = `accounts.${i}.amount`;
-                                const accIdErr = err(accIdKey);
-                                const accAmtErr = err(accAmtKey);
-                                return (
-                                <li
-                                    key={`a-${i}`}
-                                    className="flex flex-wrap items-start gap-2"
-                                >
-                                    <div className="min-w-[12rem] flex-1 space-y-1">
-                                        <Label
-                                            className="sr-only"
-                                            htmlFor={`acc-${i}`}
-                                        >
-                                            Account
-                                        </Label>
-                                        <select
-                                            id={`acc-${i}`}
-                                            name={accIdKey}
-                                            className={cn(
-                                                selectClass,
-                                                invalidClass,
-                                            )}
-                                            value={row.account_id}
-                                            aria-invalid={!!accIdErr}
-                                            onChange={(e) => {
-                                                const next = [
-                                                    ...form.data.accounts,
-                                                ];
-                                                next[i] = {
-                                                    ...next[i],
-                                                    account_id: Number(
-                                                        e.target.value,
-                                                    ),
-                                                };
-                                                form.setData('accounts', next);
-                                            }}
-                                        >
-                                            {accountOptionsForRow(
-                                                accountList,
-                                                form.data.accounts,
-                                                i,
-                                            ).map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError message={accIdErr} />
-                                    </div>
-                                    <div className="min-w-[9rem] max-w-[14rem] shrink-0 space-y-1">
-                                        <Label
-                                            className="sr-only"
-                                            htmlFor={`acc-amt-${i}`}
-                                        >
-                                            Amount
-                                        </Label>
-                                        <MoneyInput
-                                            id={`acc-amt-${i}`}
-                                            name={accAmtKey}
-                                            value={row.amount}
-                                            aria-invalid={!!accAmtErr}
-                                            onChange={(v) => {
-                                                const next = [
-                                                    ...form.data.accounts,
-                                                ];
-                                                next[i] = {
-                                                    ...next[i],
-                                                    amount: v,
-                                                };
-                                                form.setData('accounts', next);
-                                            }}
-                                        />
-                                        <InputError message={accAmtErr} />
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="shrink-0 self-end"
-                                        onClick={() => {
-                                            form.setData(
-                                                'accounts',
-                                                form.data.accounts.filter(
-                                                    (_, j) => j !== i,
-                                                ),
+                                                    <div className="min-w-[12rem] flex-1 space-y-1">
+                                                        <Label
+                                                            className="sr-only"
+                                                            htmlFor={`alloc-${i}`}
+                                                        >
+                                                            Allocation
+                                                        </Label>
+                                                        <select
+                                                            id={`alloc-${i}`}
+                                                            name={allocIdKey}
+                                                            className={cn(
+                                                                selectClass,
+                                                                invalidClass,
+                                                            )}
+                                                            value={
+                                                                row.allocation_id
+                                                            }
+                                                            aria-invalid={
+                                                                !!allocIdErr
+                                                            }
+                                                            onChange={(e) => {
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .allocations,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    allocation_id:
+                                                                        Number(
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        ),
+                                                                };
+                                                                form.setData(
+                                                                    'allocations',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        >
+                                                            {allocationOptionsForRow(
+                                                                allocationLineOptions,
+                                                                form.data
+                                                                    .allocations,
+                                                                i,
+                                                            ).map((a) => (
+                                                                <option
+                                                                    key={a.id}
+                                                                    value={a.id}
+                                                                >
+                                                                    {a.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <InputError
+                                                            message={allocIdErr}
+                                                        />
+                                                    </div>
+                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
+                                                        <Label
+                                                            className="sr-only"
+                                                            htmlFor={`alloc-amt-${i}`}
+                                                        >
+                                                            Amount
+                                                        </Label>
+                                                        <MoneyInput
+                                                            id={`alloc-amt-${i}`}
+                                                            name={allocAmtKey}
+                                                            value={row.amount}
+                                                            aria-invalid={
+                                                                !!allocAmtErr
+                                                            }
+                                                            onChange={(v) => {
+                                                                const next = [
+                                                                    ...form.data
+                                                                        .allocations,
+                                                                ];
+                                                                next[i] = {
+                                                                    ...next[i],
+                                                                    amount: v,
+                                                                };
+                                                                form.setData(
+                                                                    'allocations',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        />
+                                                        <InputError
+                                                            message={
+                                                                allocAmtErr
+                                                            }
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="shrink-0 self-end"
+                                                        onClick={() => {
+                                                            form.setData(
+                                                                'allocations',
+                                                                form.data.allocations.filter(
+                                                                    (_, j) =>
+                                                                        j !== i,
+                                                                ),
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </li>
                                             );
-                                        }}
-                                    >
-                                        <Trash2 className="size-4" />
-                                    </Button>
-                                </li>
-                                );
-                            })}
-                        </ul>
-                        {form.data.accounts.length >= 2 && (
-                            <div className="text-muted-foreground flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm">
-                                <span>Total</span>
-                                <span className="text-foreground min-w-[9rem] text-right font-medium tabular-nums">
-                                    {formatPhpMoney(accountLinesTotal)}
-                                </span>
-                                <span
-                                    className="size-9 shrink-0"
-                                    aria-hidden
-                                />
+                                        })}
+                                    </ul>
+                                    {form.data.allocations.length >= 2 && (
+                                        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
+                                            <span>Total</span>
+                                            <span className="min-w-[9rem] text-right font-medium text-foreground tabular-nums">
+                                                {formatPhpMoney(
+                                                    allocationLinesTotal,
+                                                )}
+                                            </span>
+                                            <span
+                                                className="size-9 shrink-0"
+                                                aria-hidden
+                                            />
+                                        </div>
+                                    )}
+                                    <InputError
+                                        message={form.errors.allocations}
+                                    />
+                                </div>
                             </div>
-                        )}
-                        <InputError message={form.errors.accounts} />
+                        ) : null}
                     </div>
 
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-base">Allocation lines</Label>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={!canAddAllocationLine}
-                                onClick={() => {
-                                    const used = new Set(
-                                        form.data.allocations
-                                            .map((r) => r.allocation_id)
-                                            .filter((id) => id > 0),
-                                    );
-                                    const first = allocationLineOptions.find(
-                                        (a) => !used.has(a.id),
-                                    );
-                                    if (!first) {
-                                        return;
-                                    }
-                                    form.setData('allocations', [
-                                        ...form.data.allocations,
-                                        {
-                                            allocation_id: first.id,
-                                            amount: '',
-                                        },
-                                    ]);
-                                }}
-                            >
-                                <Plus className="size-4" />
-                                Add allocation line
-                            </Button>
-                        </div>
-                        {form.data.allocations.length === 0 && (
-                            <p className="text-muted-foreground text-sm">
-                                Optional: add lines to assign money to
-                                allocations. The sum of account line amounts and
-                                the sum of allocation line amounts must match
-                                (use only account lines when they net to zero,
-                                e.g. transfers).
-                            </p>
-                        )}
-                        <ul className="space-y-3">
-                            {form.data.allocations.map((row, i) => {
-                                const allocIdKey = `allocations.${i}.allocation_id`;
-                                const allocAmtKey = `allocations.${i}.amount`;
-                                const allocIdErr = err(allocIdKey);
-                                const allocAmtErr = err(allocAmtKey);
-                                return (
-                                <li
-                                    key={`l-${i}`}
-                                    className="flex flex-wrap items-start gap-2"
-                                >
-                                    <div className="min-w-[12rem] flex-1 space-y-1">
-                                        <Label
-                                            className="sr-only"
-                                            htmlFor={`alloc-${i}`}
-                                        >
-                                            Allocation
-                                        </Label>
-                                        <select
-                                            id={`alloc-${i}`}
-                                            name={allocIdKey}
-                                            className={cn(
-                                                selectClass,
-                                                invalidClass,
-                                            )}
-                                            value={row.allocation_id}
-                                            aria-invalid={!!allocIdErr}
-                                            onChange={(e) => {
-                                                const next = [
-                                                    ...form.data.allocations,
-                                                ];
-                                                next[i] = {
-                                                    ...next[i],
-                                                    allocation_id: Number(
-                                                        e.target.value,
-                                                    ),
-                                                };
-                                                form.setData(
-                                                    'allocations',
-                                                    next,
-                                                );
-                                            }}
-                                        >
-                                            {allocationOptionsForRow(
-                                                allocationLineOptions,
-                                                form.data.allocations,
-                                                i,
-                                            ).map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError message={allocIdErr} />
-                                    </div>
-                                    <div className="min-w-[9rem] max-w-[14rem] shrink-0 space-y-1">
-                                        <Label
-                                            className="sr-only"
-                                            htmlFor={`alloc-amt-${i}`}
-                                        >
-                                            Amount
-                                        </Label>
-                                        <MoneyInput
-                                            id={`alloc-amt-${i}`}
-                                            name={allocAmtKey}
-                                            value={row.amount}
-                                            aria-invalid={!!allocAmtErr}
-                                            onChange={(v) => {
-                                                const next = [
-                                                    ...form.data.allocations,
-                                                ];
-                                                next[i] = {
-                                                    ...next[i],
-                                                    amount: v,
-                                                };
-                                                form.setData(
-                                                    'allocations',
-                                                    next,
-                                                );
-                                            }}
-                                        />
-                                        <InputError message={allocAmtErr} />
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="shrink-0 self-end"
-                                        onClick={() => {
-                                            form.setData(
-                                                'allocations',
-                                                form.data.allocations.filter(
-                                                    (_, j) => j !== i,
-                                                ),
-                                            );
-                                        }}
-                                    >
-                                        <Trash2 className="size-4" />
-                                    </Button>
-                                </li>
-                                );
-                            })}
-                        </ul>
-                        {form.data.allocations.length >= 2 && (
-                            <div className="text-muted-foreground flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm">
-                                <span>Total</span>
-                                <span className="text-foreground min-w-[9rem] text-right font-medium tabular-nums">
-                                    {formatPhpMoney(allocationLinesTotal)}
-                                </span>
-                                <span
-                                    className="size-9 shrink-0"
-                                    aria-hidden
-                                />
-                            </div>
-                        )}
-                        <InputError message={form.errors.allocations} />
-                    </div>
-                    </>
-                    ) : null}
-                    </div>
-
-                    <DialogFooter className="shrink-0 border-border border-t pt-4">
+                    <DialogFooter className="shrink-0 border-t border-border pt-4">
                         <Button
                             type="button"
                             variant="secondary"

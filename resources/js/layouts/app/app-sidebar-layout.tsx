@@ -4,6 +4,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { type BreadcrumbItem } from '@/types';
+import { PreviewBanner } from '@/components/preview-banner';
 import { type PropsWithChildren } from 'react';
 
 export default function AppSidebarLayout({
@@ -15,6 +16,7 @@ export default function AppSidebarLayout({
             <FlashToasts />
             <AppSidebar />
             <AppContent variant="sidebar" className="overflow-x-hidden">
+                <PreviewBanner />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 {children}
             </AppContent>

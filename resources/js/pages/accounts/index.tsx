@@ -6,17 +6,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 
@@ -74,7 +67,11 @@ function groupAccountsByType(rows: AccountRow[]): {
     }));
 }
 
-export default function AccountsIndex({ accounts }: { accounts: AccountPaginator }) {
+export default function AccountsIndex({
+    accounts,
+}: {
+    accounts: AccountPaginator;
+}) {
     const grouped = useMemo(
         () => groupAccountsByType(accounts.data),
         [accounts.data],
@@ -87,8 +84,9 @@ export default function AccountsIndex({ accounts }: { accounts: AccountPaginator
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold">Accounts</h1>
-                        <p className="text-muted-foreground text-sm">
-                            Wallets, banks, and other balances you track in Penny.
+                        <p className="text-sm text-muted-foreground">
+                            Wallets, banks, and other balances you track in
+                            Penny.
                         </p>
                     </div>
                     <Button asChild>
@@ -99,124 +97,113 @@ export default function AccountsIndex({ accounts }: { accounts: AccountPaginator
                     </Button>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>All accounts</CardTitle>
-                        <CardDescription>
-                            Edit or remove an account. Balances change when you
-                            record transactions.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {accounts.data.length === 0 ? (
-                            <p className="text-muted-foreground px-6 py-8 text-center text-sm">
-                                No accounts yet. Create one to get started.
-                            </p>
-                        ) : (
-                            <div className="divide-y divide-border">
-                                {grouped.map((group) => (
-                                    <section
-                                        key={group.type}
-                                        aria-label={formatTypeLabel(group.type)}
-                                    >
-                                        <div className="bg-muted/50 px-6 py-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
-                                            {formatTypeLabel(group.type)}
-                                        </div>
-                                        <ul className="divide-y divide-border">
-                                            {group.items.map((row) => (
-                                                <li key={row.id}>
-                                                    <div className="hover:bg-muted/50 flex items-start gap-1 px-6 py-4 transition-colors">
-                                                        <Link
-                                                            href={AccountController.edit(
-                                                                {
-                                                                    account: row.id,
-                                                                },
-                                                            )}
-                                                            className="focus-visible:ring-ring min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:outline-none"
+                {accounts.data.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                        No accounts yet. Create one to get started.
+                    </p>
+                ) : (
+                    <div className="divide-y divide-border overflow-hidden">
+                        {grouped.map((group) => (
+                            <section
+                                key={group.type}
+                                aria-label={formatTypeLabel(group.type)}
+                            >
+                                <div className="border-y border-primary/10 bg-primary/[0.06] px-3 py-2.5 text-xs font-semibold tracking-wide text-primary/80 dark:border-primary/20 dark:bg-primary/[0.1] dark:text-primary">
+                                    {formatTypeLabel(group.type)}
+                                </div>
+                                <ul className="divide-y divide-border">
+                                    {group.items.map((row) => (
+                                        <li key={row.id}>
+                                            <div className="flex items-start gap-1 px-3 py-4 transition-colors hover:bg-muted/50">
+                                                <Link
+                                                    href={AccountController.edit(
+                                                        {
+                                                            account: row.id,
+                                                        },
+                                                    )}
+                                                    className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                                >
+                                                    <p className="min-w-0 truncate font-medium">
+                                                        {row.name}
+                                                    </p>
+                                                    <p className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                                                        {formatPhpMoney(
+                                                            row.balance,
+                                                        )}
+                                                    </p>
+                                                </Link>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger
+                                                        asChild
+                                                    >
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="shrink-0 text-muted-foreground"
+                                                            aria-label={`Actions for ${row.name}`}
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                            }}
+                                                            onPointerDown={(
+                                                                e,
+                                                            ) => {
+                                                                e.stopPropagation();
+                                                            }}
                                                         >
-                                                            <p className="font-medium">
-                                                                {row.name}
-                                                            </p>
-                                                            <p className="text-muted-foreground text-sm">
-                                                                {formatPhpMoney(
-                                                                    row.balance,
+                                                            <MoreVertical className="size-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem
+                                                            asChild
+                                                        >
+                                                            <Link
+                                                                href={AccountController.edit(
+                                                                    {
+                                                                        account:
+                                                                            row.id,
+                                                                    },
                                                                 )}
-                                                            </p>
-                                                        </Link>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger
-                                                                asChild
                                                             >
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="text-muted-foreground shrink-0"
-                                                                    aria-label={`Actions for ${row.name}`}
-                                                                    onClick={(
-                                                                        e,
-                                                                    ) => {
-                                                                        e.preventDefault();
-                                                                        e.stopPropagation();
-                                                                    }}
-                                                                    onPointerDown={(
-                                                                        e,
-                                                                    ) => {
-                                                                        e.stopPropagation();
-                                                                    }}
-                                                                >
-                                                                    <MoreVertical className="size-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem
-                                                                    asChild
-                                                                >
-                                                                    <Link
-                                                                        href={AccountController.edit(
-                                                                            {
-                                                                                account: row.id,
-                                                                            },
-                                                                        )}
-                                                                    >
-                                                                        <Pencil className="size-4" />
-                                                                        Edit
-                                                                    </Link>
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    variant="destructive"
-                                                                    onClick={() => {
-                                                                        if (
-                                                                            !confirm(
-                                                                                'Delete this account? This is only allowed when it has no transaction lines.',
-                                                                            )
-                                                                        ) {
-                                                                            return;
-                                                                        }
-                                                                        router.delete(
-                                                                            AccountController.destroy.url(
-                                                                                {
-                                                                                    account: row.id,
-                                                                                },
-                                                                            ),
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="size-4" />
-                                                                    Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </section>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                                                <Pencil className="size-4" />
+                                                                Edit
+                                                            </Link>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            variant="destructive"
+                                                            onClick={() => {
+                                                                if (
+                                                                    !confirm(
+                                                                        'Delete this account? This is only allowed when it has no transaction lines.',
+                                                                    )
+                                                                ) {
+                                                                    return;
+                                                                }
+                                                                router.delete(
+                                                                    AccountController.destroy.url(
+                                                                        {
+                                                                            account:
+                                                                                row.id,
+                                                                        },
+                                                                    ),
+                                                                );
+                                                            }}
+                                                        >
+                                                            <Trash2 className="size-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        ))}
+                    </div>
+                )}
 
                 {accounts.last_page > 1 && (
                     <div className="flex flex-wrap items-center justify-center gap-1">
@@ -225,7 +212,7 @@ export default function AccountsIndex({ accounts }: { accounts: AccountPaginator
                                 return (
                                     <span
                                         key={i}
-                                        className="text-muted-foreground flex size-9 items-center justify-center text-sm"
+                                        className="flex size-9 items-center justify-center text-sm text-muted-foreground"
                                     >
                                         <span
                                             dangerouslySetInnerHTML={{
@@ -240,7 +227,9 @@ export default function AccountsIndex({ accounts }: { accounts: AccountPaginator
                                     key={i}
                                     asChild
                                     size="icon"
-                                    variant={link.active ? 'default' : 'outline'}
+                                    variant={
+                                        link.active ? 'default' : 'outline'
+                                    }
                                 >
                                     <Link href={link.url} preserveState>
                                         <span

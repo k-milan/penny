@@ -1,10 +1,3 @@
-import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
     formatTransactionGroupDate,
     formatTransactionTime,
@@ -14,6 +7,13 @@ import {
     type AccountOption,
     type AllocationOption,
 } from '@/components/transaction-form-dialog';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     ensureTransactionRow,
     type DashboardTransactionRow,
@@ -105,9 +105,7 @@ export function TransactionScrollList({
     }, [sortedTransactionRows]);
 
     if (sortedTransactionRows.length === 0) {
-        return (
-            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-        );
+        return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
     }
 
     return (
@@ -127,11 +125,9 @@ export function TransactionScrollList({
                     <>
                         {transactionGroups.map((group) => (
                             <div key={group.date}>
-                                <div className="bg-muted/50 px-3 py-1.5">
-                                    <p className="text-xs font-semibold text-muted-foreground">
-                                        {formatTransactionGroupDate(
-                                            group.date,
-                                        )}
+                                <div className="border-y border-primary/10 bg-primary/[0.06] px-3 py-1.5 dark:border-primary/20 dark:bg-primary/[0.1]">
+                                    <p className="text-xs font-semibold text-primary/80 dark:text-primary">
+                                        {formatTransactionGroupDate(group.date)}
                                     </p>
                                 </div>
                                 <ul className="divide-y divide-border">
@@ -158,7 +154,7 @@ export function TransactionScrollList({
                                                                     }
                                                                 </span>
                                                                 {timeLabel ? (
-                                                                    <span className="text-xs tabular-nums text-muted-foreground">
+                                                                    <span className="text-xs text-muted-foreground tabular-nums">
                                                                         {
                                                                             timeLabel
                                                                         }
@@ -187,7 +183,9 @@ export function TransactionScrollList({
                                                                 size="icon"
                                                                 className="size-8 shrink-0 text-muted-foreground"
                                                                 aria-label="Transaction actions"
-                                                                onClick={(e) => {
+                                                                onClick={(
+                                                                    e,
+                                                                ) => {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
                                                                 }}

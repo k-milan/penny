@@ -2,13 +2,6 @@ import IncomeTemplateController from '@/actions/App/Http/Controllers/IncomeTempl
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -53,7 +46,7 @@ function versionRowActions(row: IncomeTemplateVersionRow) {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground shrink-0"
+                    className="shrink-0 text-muted-foreground"
                     aria-label={`Actions for ${row.name} v${row.version}`}
                     onClick={(e) => {
                         e.preventDefault();
@@ -69,9 +62,11 @@ function versionRowActions(row: IncomeTemplateVersionRow) {
             <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                     <Link
-                        href={IncomeTemplateController.edit({
-                            income_template: row.id,
-                        }).url}
+                        href={
+                            IncomeTemplateController.edit({
+                                income_template: row.id,
+                            }).url
+                        }
                     >
                         <Pencil className="size-4" />
                         Edit
@@ -125,7 +120,7 @@ export default function IncomesIndex({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold">Incomes</h1>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Expected pay and how you split it across accounts
                             and allocations. Each line is one saved version; new
                             versions stay grouped with the rest.
@@ -139,112 +134,87 @@ export default function IncomesIndex({
                     </Button>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Templates</CardTitle>
-                        <CardDescription>
-                            Payroll, freelancing, or other recurring income
-                            patterns. Multiple versions of the same template
-                            appear together.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {totalTemplates === 0 ? (
-                            <p className="text-muted-foreground px-6 py-8 text-center text-sm">
-                                No income templates yet. Create one to record
-                                expected payouts and splits.
-                            </p>
-                        ) : (
-                            <ul className="divide-y divide-border">
-                                {incomeTemplateSeries.map((series) => (
-                                    <Fragment key={series.id}>
-                                        {series.versions.length > 1 ? (
-                                            <li className="bg-muted/40 px-6 py-2">
-                                                <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                                                    Same template ·{' '}
-                                                    {series.versions.length}{' '}
-                                                    versions
-                                                </p>
-                                            </li>
-                                        ) : null}
-                                        {series.versions.map((row) => (
-                                            <li key={row.id}>
-                                                <div className="hover:bg-muted/50 flex items-start gap-1 px-6 py-4 transition-colors">
-                                                    <Link
-                                                        href={
-                                                            IncomeTemplateController.edit(
-                                                                {
-                                                                    income_template:
-                                                                        row.id,
-                                                                },
-                                                            ).url
-                                                        }
-                                                        className="focus-visible:ring-ring min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:outline-none"
+                {totalTemplates === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                        No income templates yet. Create one to record expected
+                        payouts and splits.
+                    </p>
+                ) : (
+                    <ul className="divide-y divide-border overflow-hidden">
+                        {incomeTemplateSeries.map((series) => (
+                            <Fragment key={series.id}>
+                                {series.versions.length > 1 ? (
+                                    <li className="border-y border-primary/10 bg-primary/[0.06] px-3 py-2 dark:border-primary/20 dark:bg-primary/[0.1]">
+                                        <p className="text-xs font-medium tracking-wide text-primary/80 uppercase dark:text-primary">
+                                            Same template ·{' '}
+                                            {series.versions.length} versions
+                                        </p>
+                                    </li>
+                                ) : null}
+                                {series.versions.map((row) => (
+                                    <li key={row.id}>
+                                        <div className="flex items-start gap-1 px-3 py-4 transition-colors hover:bg-muted/50">
+                                            <Link
+                                                href={
+                                                    IncomeTemplateController.edit(
+                                                        {
+                                                            income_template:
+                                                                row.id,
+                                                        },
+                                                    ).url
+                                                }
+                                                className="min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                            >
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <p className="font-medium">
+                                                        {row.name}
+                                                    </p>
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="tabular-nums"
                                                     >
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <p className="font-medium">
-                                                                {row.name}
-                                                            </p>
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="tabular-nums"
-                                                            >
-                                                                v
-                                                                {row.version}
-                                                            </Badge>
-                                                        </div>
-                                                        {row.company_name ? (
-                                                            <p className="text-muted-foreground mt-0.5 text-sm">
-                                                                {
-                                                                    row.company_name
-                                                                }
-                                                            </p>
-                                                        ) : null}
-                                                        {row.description ? (
-                                                            <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
-                                                                {
-                                                                    row.description
-                                                                }
-                                                            </p>
-                                                        ) : null}
-                                                        <p className="text-muted-foreground mt-1.5 text-sm">
-                                                            {
-                                                                row.payout_frequency_label
-                                                            }
-                                                            {' · '}
-                                                            <span className="text-foreground font-medium tabular-nums">
-                                                                {formatPhpMoney(
-                                                                    row.expected_income,
-                                                                )}
-                                                            </span>
-                                                            {' · '}
-                                                            {row.accounts_count}{' '}
-                                                            account
-                                                            {row.accounts_count ===
-                                                            1
-                                                                ? ''
-                                                                : 's'}
-                                                            {', '}
-                                                            {
-                                                                row.allocations_count
-                                                            }{' '}
-                                                            allocation
-                                                            {row.allocations_count ===
-                                                            1
-                                                                ? ''
-                                                                : 's'}
-                                                        </p>
-                                                    </Link>
-                                                    {versionRowActions(row)}
+                                                        v{row.version}
+                                                    </Badge>
                                                 </div>
-                                            </li>
-                                        ))}
-                                    </Fragment>
+                                                {row.company_name ? (
+                                                    <p className="mt-0.5 text-sm text-muted-foreground">
+                                                        {row.company_name}
+                                                    </p>
+                                                ) : null}
+                                                {row.description ? (
+                                                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                                        {row.description}
+                                                    </p>
+                                                ) : null}
+                                                <p className="mt-1.5 text-sm text-muted-foreground">
+                                                    {row.payout_frequency_label}
+                                                    {' · '}
+                                                    <span className="font-medium text-foreground tabular-nums">
+                                                        {formatPhpMoney(
+                                                            row.expected_income,
+                                                        )}
+                                                    </span>
+                                                    {' · '}
+                                                    {row.accounts_count} account
+                                                    {row.accounts_count === 1
+                                                        ? ''
+                                                        : 's'}
+                                                    {', '}
+                                                    {row.allocations_count}{' '}
+                                                    allocation
+                                                    {row.allocations_count === 1
+                                                        ? ''
+                                                        : 's'}
+                                                </p>
+                                            </Link>
+                                            {versionRowActions(row)}
+                                        </div>
+                                    </li>
                                 ))}
-                            </ul>
-                        )}
-                    </CardContent>
-                </Card>
+                            </Fragment>
+                        ))}
+                    </ul>
+                )}
             </div>
         </AppLayout>
     );

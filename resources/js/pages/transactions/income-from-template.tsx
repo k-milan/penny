@@ -14,12 +14,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import { formatPhpMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import type { FormEvent, ReactElement } from 'react';
 import { useMemo } from 'react';
 
@@ -44,7 +44,11 @@ type IncomeTemplateOption = {
 };
 
 type AccountLine = { key: string; account_id: number | ''; amount: string };
-type AllocationLine = { key: string; allocation_id: number | ''; amount: string };
+type AllocationLine = {
+    key: string;
+    allocation_id: number | '';
+    amount: string;
+};
 
 function newKey(): string {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -113,8 +117,7 @@ function sumUserAllocationAmounts(
             ? rows
             : rows.filter(
                   (r) =>
-                      r.allocation_id === '' ||
-                      Number(r.allocation_id) !== uid,
+                      r.allocation_id === '' || Number(r.allocation_id) !== uid,
               );
     return sumAllocationAmounts(filtered);
 }
@@ -228,8 +231,7 @@ export default function IncomeFromTemplatePage({
 
         const accountPayload = form.data.accounts
             .filter(
-                (r) =>
-                    r.account_id !== '' && String(r.amount).trim() !== '',
+                (r) => r.account_id !== '' && String(r.amount).trim() !== '',
             )
             .map((r) => ({
                 account_id: Number(r.account_id),
@@ -297,19 +299,29 @@ export default function IncomeFromTemplatePage({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Record income" />
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                        asChild
+                    >
+                        <Link
+                            href={dashboard().url}
+                            aria-label="Back to dashboard"
+                        >
+                            <ArrowLeft className="size-4" />
+                        </Link>
+                    </Button>
                     <div>
                         <h1 className="text-2xl font-semibold">
                             Record income
                         </h1>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Start from an income template, then adjust amounts.
                             Saving creates a normal transaction.
                         </p>
                     </div>
-                    <Button variant="outline" asChild>
-                        <Link href={dashboard().url}>Back to dashboard</Link>
-                    </Button>
                 </div>
 
                 {incomeTemplates.length === 0 ? (
@@ -317,8 +329,8 @@ export default function IncomeFromTemplatePage({
                         <CardHeader>
                             <CardTitle>No income templates yet</CardTitle>
                             <CardDescription>
-                                Create a template first to use this shortcut,
-                                or add a transaction from the dashboard.
+                                Create a template first to use this shortcut, or
+                                add a transaction from the dashboard.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -334,525 +346,596 @@ export default function IncomeFromTemplatePage({
                 ) : null}
 
                 {incomeTemplates.length === 0 ? null : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Income transaction</CardTitle>
-                        <CardDescription>
-                            Template values are a starting point only—edit
-                            anything before you save.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form className="space-y-8" onSubmit={handleSubmit}>
-                            <div className="grid gap-2">
-                                <Label htmlFor="template_id">Template</Label>
-                                <select
-                                    id="template_id"
-                                    name="template_id"
-                                    className={selectClass}
-                                    value={
-                                        form.data.template_id === ''
-                                            ? ''
-                                            : String(form.data.template_id)
-                                    }
-                                    disabled={incomeTemplates.length === 0}
-                                    onChange={(e) => {
-                                        const v = e.target.value;
-                                        if (v === '') {
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Income transaction</CardTitle>
+                            <CardDescription>
+                                Template values are a starting point only—edit
+                                anything before you save.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form className="space-y-8" onSubmit={handleSubmit}>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="template_id">
+                                        Template
+                                    </Label>
+                                    <select
+                                        id="template_id"
+                                        name="template_id"
+                                        className={selectClass}
+                                        value={
+                                            form.data.template_id === ''
+                                                ? ''
+                                                : String(form.data.template_id)
+                                        }
+                                        disabled={incomeTemplates.length === 0}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            if (v === '') {
+                                                form.setData({
+                                                    ...form.data,
+                                                    template_id: '',
+                                                    name: '',
+                                                    note: '',
+                                                    expected_income: '',
+                                                    accounts: [
+                                                        emptyAccountLine(),
+                                                    ],
+                                                    allocations: [
+                                                        emptyAllocationLine(),
+                                                    ],
+                                                });
+                                                return;
+                                            }
+                                            const id = Number(v);
+                                            const t = incomeTemplates.find(
+                                                (x) => x.id === id,
+                                            );
+                                            if (t === undefined) {
+                                                return;
+                                            }
+                                            const note =
+                                                composeNoteFromTemplate(
+                                                    t,
+                                                    t.expected_income,
+                                                );
+                                            const allocLines = t.allocations
+                                                .filter(
+                                                    (a) => !a.is_unallocated,
+                                                )
+                                                .map((a) => ({
+                                                    key: newKey(),
+                                                    allocation_id:
+                                                        a.allocation_id,
+                                                    amount: a.amount,
+                                                }));
                                             form.setData({
                                                 ...form.data,
-                                                template_id: '',
-                                                name: '',
-                                                note: '',
-                                                expected_income: '',
-                                                accounts: [
-                                                    emptyAccountLine(),
-                                                ],
-                                                allocations: [
-                                                    emptyAllocationLine(),
-                                                ],
+                                                template_id: t.id,
+                                                name: t.name.slice(0, 255),
+                                                note,
+                                                expected_income:
+                                                    t.expected_income,
+                                                accounts:
+                                                    t.accounts.length > 0
+                                                        ? t.accounts.map(
+                                                              (a) => ({
+                                                                  key: newKey(),
+                                                                  account_id:
+                                                                      a.account_id,
+                                                                  amount: a.amount,
+                                                              }),
+                                                          )
+                                                        : [emptyAccountLine()],
+                                                allocations:
+                                                    allocLines.length > 0
+                                                        ? allocLines
+                                                        : [
+                                                              emptyAllocationLine(),
+                                                          ],
                                             });
-                                            return;
-                                        }
-                                        const id = Number(v);
-                                        const t = incomeTemplates.find(
-                                            (x) => x.id === id,
-                                        );
-                                        if (t === undefined) {
-                                            return;
-                                        }
-                                        const note = composeNoteFromTemplate(
-                                            t,
-                                            t.expected_income,
-                                        );
-                                        const allocLines = t.allocations
-                                            .filter((a) => !a.is_unallocated)
-                                            .map((a) => ({
-                                                key: newKey(),
-                                                allocation_id:
-                                                    a.allocation_id,
-                                                amount: a.amount,
-                                            }));
-                                        form.setData({
-                                            ...form.data,
-                                            template_id: t.id,
-                                            name: t.name.slice(0, 255),
-                                            note,
-                                            expected_income: t.expected_income,
-                                            accounts:
-                                                t.accounts.length > 0
-                                                    ? t.accounts.map((a) => ({
-                                                          key: newKey(),
-                                                          account_id:
-                                                              a.account_id,
-                                                          amount: a.amount,
-                                                      }))
-                                                    : [emptyAccountLine()],
-                                            allocations:
-                                                allocLines.length > 0
-                                                    ? allocLines
-                                                    : [
-                                                          emptyAllocationLine(),
-                                                      ],
-                                        });
-                                    }}
-                                >
-                                    <option value="">
-                                        Select a template…
-                                    </option>
-                                    {incomeTemplates.map((t) => (
-                                        <option key={t.id} value={t.id}>
-                                            {t.name}
-                                            {t.version > 1
-                                                ? ` (v${t.version})`
-                                                : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="date">Date</Label>
-                                <Input
-                                    id="date"
-                                    type="date"
-                                    name="date"
-                                    value={form.data.date}
-                                    onChange={(e) =>
-                                        form.setData('date', e.target.value)
-                                    }
-                                    required
-                                />
-                                <InputError message={form.errors.date} />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    value={form.data.name}
-                                    onChange={(e) =>
-                                        form.setData('name', e.target.value)
-                                    }
-                                    required
-                                    maxLength={255}
-                                    placeholder="Short title for this transaction"
-                                />
-                                <InputError
-                                    message={
-                                        (
-                                            form.errors as {
-                                                description?: string;
-                                            }
-                                        ).description
-                                    }
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="expected_income">
-                                    Expected income (guide)
-                                </Label>
-                                <MoneyInput
-                                    id="expected_income"
-                                    name="expected_income"
-                                    value={form.data.expected_income}
-                                    onChange={(v) =>
-                                        form.setData('expected_income', v)
-                                    }
-                                />
-                                <p className="text-muted-foreground text-xs">
-                                    Used for deposit / split hints only; account
-                                    and allocation totals decide what you post.
-                                </p>
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="note">Details (note)</Label>
-                                <textarea
-                                    id="note"
-                                    name="note"
-                                    className={cn(
-                                        selectClass,
-                                        'min-h-[120px] resize-y py-2',
-                                    )}
-                                    value={form.data.note}
-                                    onChange={(e) =>
-                                        form.setData('note', e.target.value)
-                                    }
-                                    rows={5}
-                                />
-                                <InputError message={form.errors.note} />
-                            </div>
-
-                            <div className="grid gap-6 border-border border-t pt-6 md:grid-cols-2 md:gap-8">
-                                <div className="space-y-3">
-                                    <div>
-                                        <h3 className="text-sm font-medium">
-                                            Deposit accounts
-                                        </h3>
-                                        <p className="text-muted-foreground text-sm">
-                                            Amounts increase these account
-                                            balances (money in).
-                                        </p>
-                                        {expectedPayout !== null ? (
-                                            <p
-                                                className={cn(
-                                                    'mt-2 text-xs tabular-nums',
-                                                    accountDepositTotal -
-                                                        expectedPayout >
-                                                        0.004
-                                                        ? 'text-destructive font-medium'
-                                                        : 'text-muted-foreground',
-                                                )}
-                                            >
-                                                {accountDepositTotal -
-                                                    expectedPayout >
-                                                0.004
-                                                    ? `${formatPhpMoney(accountDepositTotal - expectedPayout)} over expected`
-                                                    : `${formatPhpMoney(
-                                                          Math.max(
-                                                              0,
-                                                              expectedPayout -
-                                                                  accountDepositTotal,
-                                                          ),
-                                                      )} remaining vs expected`}
-                                            </p>
-                                        ) : null}
-                                    </div>
-                                    <ul className="space-y-3">
-                                        {form.data.accounts.map((row, i) => (
-                                            <li
-                                                key={row.key}
-                                                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
-                                            >
-                                                <div className="min-w-0 flex-1 space-y-1">
-                                                    <Label
-                                                        className="text-xs"
-                                                        htmlFor={`acct-${row.key}`}
-                                                    >
-                                                        Account
-                                                    </Label>
-                                                    <select
-                                                        id={`acct-${row.key}`}
-                                                        className={selectClass}
-                                                        value={
-                                                            row.account_id ===
-                                                            ''
-                                                                ? ''
-                                                                : String(
-                                                                      row.account_id,
-                                                                  )
-                                                        }
-                                                        onChange={(e) => {
-                                                            const v =
-                                                                e.target.value;
-                                                            const next = [
-                                                                ...form.data
-                                                                    .accounts,
-                                                            ];
-                                                            next[i] = {
-                                                                ...row,
-                                                                account_id:
-                                                                    v === ''
-                                                                        ? ''
-                                                                        : Number(
-                                                                              v,
-                                                                          ),
-                                                            };
-                                                            form.setData(
-                                                                'accounts',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    >
-                                                        <option value="">
-                                                            Select account
-                                                        </option>
-                                                        {accounts.map((a) => (
-                                                            <option
-                                                                key={a.id}
-                                                                value={a.id}
-                                                            >
-                                                                {a.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <div className="w-full min-w-[8rem] sm:w-40">
-                                                    <Label
-                                                        className="text-xs"
-                                                        htmlFor={`acct-amt-${row.key}`}
-                                                    >
-                                                        Amount
-                                                    </Label>
-                                                    <MoneyInput
-                                                        id={`acct-amt-${row.key}`}
-                                                        value={row.amount}
-                                                        onChange={(v) => {
-                                                            const next = [
-                                                                ...form.data
-                                                                    .accounts,
-                                                            ];
-                                                            next[i] = {
-                                                                ...row,
-                                                                amount: v,
-                                                            };
-                                                            form.setData(
-                                                                'accounts',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    />
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="shrink-0 text-muted-foreground"
-                                                    onClick={() => {
-                                                        const next =
-                                                            form.data.accounts.filter(
-                                                                (_, j) =>
-                                                                    j !== i,
-                                                            );
-                                                        form.setData(
-                                                            'accounts',
-                                                            next.length
-                                                                ? next
-                                                                : [
-                                                                      emptyAccountLine(),
-                                                                  ],
-                                                        );
-                                                    }}
-                                                    aria-label="Remove account line"
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() =>
-                                            form.setData('accounts', [
-                                                ...form.data.accounts,
-                                                emptyAccountLine(),
-                                            ])
-                                        }
+                                        }}
                                     >
-                                        <Plus className="size-4" />
-                                        Add account
-                                    </Button>
-                                    <InputError message={form.errors.accounts} />
+                                        <option value="">
+                                            Select a template…
+                                        </option>
+                                        {incomeTemplates.map((t) => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.name}
+                                                {t.version > 1
+                                                    ? ` (v${t.version})`
+                                                    : ''}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
 
-                                <div className="space-y-3">
-                                    <div>
-                                        <h3 className="text-sm font-medium">
-                                            Allocations
-                                        </h3>
-                                        <p className="text-muted-foreground text-sm">
-                                            Must match deposit totals. Extra
-                                            goes to Unallocated on save.
-                                        </p>
-                                        {accountDepositTotal > 0 ||
-                                        allocationSplitTotal > 0 ? (
-                                            <p
-                                                className={cn(
-                                                    'mt-2 text-xs tabular-nums',
-                                                    allocationGapVsAccounts <
-                                                        -0.02
-                                                        ? 'text-destructive font-medium'
-                                                        : 'text-muted-foreground',
-                                                )}
-                                            >
-                                                {allocationGapVsAccounts <
-                                                -0.02
-                                                    ? `${formatPhpMoney(Math.abs(allocationGapVsAccounts))} over deposit total`
-                                                    : allocationGapVsAccounts >
-                                                        0.004
-                                                      ? unallocatedAllocationId !==
-                                                            null
-                                                          ? `${formatPhpMoney(allocationGapVsAccounts)} to Unallocated`
-                                                          : `${formatPhpMoney(allocationGapVsAccounts)} remaining (set up Unallocated)`
-                                                      : 'Balanced with deposits'}
-                                            </p>
-                                        ) : null}
-                                    </div>
-                                    <ul className="space-y-3">
-                                        {form.data.allocations.map((row, i) => (
-                                            <li
-                                                key={row.key}
-                                                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
-                                            >
-                                                <div className="min-w-0 flex-1 space-y-1">
-                                                    <Label
-                                                        className="text-xs"
-                                                        htmlFor={`alloc-${row.key}`}
-                                                    >
-                                                        Allocation
-                                                    </Label>
-                                                    <select
-                                                        id={`alloc-${row.key}`}
-                                                        className={selectClass}
-                                                        value={
-                                                            row.allocation_id ===
-                                                            ''
-                                                                ? ''
-                                                                : String(
-                                                                      row.allocation_id,
-                                                                  )
-                                                        }
-                                                        onChange={(e) => {
-                                                            const v =
-                                                                e.target.value;
-                                                            const next = [
-                                                                ...form.data
-                                                                    .allocations,
-                                                            ];
-                                                            next[i] = {
-                                                                ...row,
-                                                                allocation_id:
-                                                                    v === ''
-                                                                        ? ''
-                                                                        : Number(
-                                                                              v,
-                                                                          ),
-                                                            };
-                                                            form.setData(
-                                                                'allocations',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    >
-                                                        <option value="">
-                                                            Select allocation
-                                                        </option>
-                                                        {allocations.map(
-                                                            (a) => (
-                                                                <option
-                                                                    key={a.id}
-                                                                    value={
-                                                                        a.id
-                                                                    }
-                                                                >
-                                                                    {a.name}
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                </div>
-                                                <div className="w-full min-w-[8rem] sm:w-40">
-                                                    <Label
-                                                        className="text-xs"
-                                                        htmlFor={`alloc-amt-${row.key}`}
-                                                    >
-                                                        Amount
-                                                    </Label>
-                                                    <MoneyInput
-                                                        id={`alloc-amt-${row.key}`}
-                                                        value={row.amount}
-                                                        onChange={(v) => {
-                                                            const next = [
-                                                                ...form.data
-                                                                    .allocations,
-                                                            ];
-                                                            next[i] = {
-                                                                ...row,
-                                                                amount: v,
-                                                            };
-                                                            form.setData(
-                                                                'allocations',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    />
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="shrink-0 text-muted-foreground"
-                                                    onClick={() => {
-                                                        const next =
-                                                            form.data.allocations.filter(
-                                                                (_, j) =>
-                                                                    j !== i,
-                                                            );
-                                                        form.setData(
-                                                            'allocations',
-                                                            next.length
-                                                                ? next
-                                                                : [
-                                                                      emptyAllocationLine(),
-                                                                  ],
-                                                        );
-                                                    }}
-                                                    aria-label="Remove allocation line"
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                </Button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() =>
-                                            form.setData('allocations', [
-                                                ...form.data.allocations,
-                                                emptyAllocationLine(),
-                                            ])
+                                <div className="grid gap-2">
+                                    <Label htmlFor="date">Date</Label>
+                                    <Input
+                                        id="date"
+                                        type="date"
+                                        name="date"
+                                        value={form.data.date}
+                                        onChange={(e) =>
+                                            form.setData('date', e.target.value)
                                         }
-                                    >
-                                        <Plus className="size-4" />
-                                        Add allocation
-                                    </Button>
+                                        required
+                                    />
+                                    <InputError message={form.errors.date} />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name">Name</Label>
+                                    <Input
+                                        id="name"
+                                        name="name"
+                                        value={form.data.name}
+                                        onChange={(e) =>
+                                            form.setData('name', e.target.value)
+                                        }
+                                        required
+                                        maxLength={255}
+                                        placeholder="Short title for this transaction"
+                                    />
                                     <InputError
-                                        message={form.errors.allocations}
+                                        message={
+                                            (
+                                                form.errors as {
+                                                    description?: string;
+                                                }
+                                            ).description
+                                        }
                                     />
                                 </div>
-                            </div>
 
-                            <div className="flex flex-wrap gap-2 border-border border-t pt-4">
-                                <Button
-                                    type="submit"
-                                    disabled={form.processing}
-                                >
-                                    Save transaction
-                                </Button>
-                                <Button variant="outline" type="button" asChild>
-                                    <Link href={dashboard().url}>Cancel</Link>
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="expected_income">
+                                        Expected income (guide)
+                                    </Label>
+                                    <MoneyInput
+                                        id="expected_income"
+                                        name="expected_income"
+                                        value={form.data.expected_income}
+                                        onChange={(v) =>
+                                            form.setData('expected_income', v)
+                                        }
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Used for deposit / split hints only;
+                                        account and allocation totals decide
+                                        what you post.
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="note">Details (note)</Label>
+                                    <textarea
+                                        id="note"
+                                        name="note"
+                                        className={cn(
+                                            selectClass,
+                                            'min-h-[120px] resize-y py-2',
+                                        )}
+                                        value={form.data.note}
+                                        onChange={(e) =>
+                                            form.setData('note', e.target.value)
+                                        }
+                                        rows={5}
+                                    />
+                                    <InputError message={form.errors.note} />
+                                </div>
+
+                                <div className="grid gap-6 border-t border-border pt-6 md:grid-cols-2 md:gap-8">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <h3 className="text-sm font-medium">
+                                                Deposit accounts
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                Amounts increase these account
+                                                balances (money in).
+                                            </p>
+                                            {expectedPayout !== null ? (
+                                                <p
+                                                    className={cn(
+                                                        'mt-2 text-xs tabular-nums',
+                                                        accountDepositTotal -
+                                                            expectedPayout >
+                                                            0.004
+                                                            ? 'font-medium text-destructive'
+                                                            : 'text-muted-foreground',
+                                                    )}
+                                                >
+                                                    {accountDepositTotal -
+                                                        expectedPayout >
+                                                    0.004
+                                                        ? `${formatPhpMoney(accountDepositTotal - expectedPayout)} over expected`
+                                                        : `${formatPhpMoney(
+                                                              Math.max(
+                                                                  0,
+                                                                  expectedPayout -
+                                                                      accountDepositTotal,
+                                                              ),
+                                                          )} remaining vs expected`}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                        <ul className="space-y-3">
+                                            {form.data.accounts.map(
+                                                (row, i) => (
+                                                    <li
+                                                        key={row.key}
+                                                        className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                    >
+                                                        <div className="min-w-0 flex-1 space-y-1">
+                                                            <Label
+                                                                className="text-xs"
+                                                                htmlFor={`acct-${row.key}`}
+                                                            >
+                                                                Account
+                                                            </Label>
+                                                            <select
+                                                                id={`acct-${row.key}`}
+                                                                className={
+                                                                    selectClass
+                                                                }
+                                                                value={
+                                                                    row.account_id ===
+                                                                    ''
+                                                                        ? ''
+                                                                        : String(
+                                                                              row.account_id,
+                                                                          )
+                                                                }
+                                                                onChange={(
+                                                                    e,
+                                                                ) => {
+                                                                    const v =
+                                                                        e.target
+                                                                            .value;
+                                                                    const next =
+                                                                        [
+                                                                            ...form
+                                                                                .data
+                                                                                .accounts,
+                                                                        ];
+                                                                    next[i] = {
+                                                                        ...row,
+                                                                        account_id:
+                                                                            v ===
+                                                                            ''
+                                                                                ? ''
+                                                                                : Number(
+                                                                                      v,
+                                                                                  ),
+                                                                    };
+                                                                    form.setData(
+                                                                        'accounts',
+                                                                        next,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <option value="">
+                                                                    Select
+                                                                    account
+                                                                </option>
+                                                                {accounts.map(
+                                                                    (a) => (
+                                                                        <option
+                                                                            key={
+                                                                                a.id
+                                                                            }
+                                                                            value={
+                                                                                a.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                a.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                        <div className="w-full min-w-[8rem] sm:w-40">
+                                                            <Label
+                                                                className="text-xs"
+                                                                htmlFor={`acct-amt-${row.key}`}
+                                                            >
+                                                                Amount
+                                                            </Label>
+                                                            <MoneyInput
+                                                                id={`acct-amt-${row.key}`}
+                                                                value={
+                                                                    row.amount
+                                                                }
+                                                                onChange={(
+                                                                    v,
+                                                                ) => {
+                                                                    const next =
+                                                                        [
+                                                                            ...form
+                                                                                .data
+                                                                                .accounts,
+                                                                        ];
+                                                                    next[i] = {
+                                                                        ...row,
+                                                                        amount: v,
+                                                                    };
+                                                                    form.setData(
+                                                                        'accounts',
+                                                                        next,
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="shrink-0 text-muted-foreground"
+                                                            onClick={() => {
+                                                                const next =
+                                                                    form.data.accounts.filter(
+                                                                        (
+                                                                            _,
+                                                                            j,
+                                                                        ) =>
+                                                                            j !==
+                                                                            i,
+                                                                    );
+                                                                form.setData(
+                                                                    'accounts',
+                                                                    next.length
+                                                                        ? next
+                                                                        : [
+                                                                              emptyAccountLine(),
+                                                                          ],
+                                                                );
+                                                            }}
+                                                            aria-label="Remove account line"
+                                                        >
+                                                            <Trash2 className="size-4" />
+                                                        </Button>
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() =>
+                                                form.setData('accounts', [
+                                                    ...form.data.accounts,
+                                                    emptyAccountLine(),
+                                                ])
+                                            }
+                                        >
+                                            <Plus className="size-4" />
+                                            Add account
+                                        </Button>
+                                        <InputError
+                                            message={form.errors.accounts}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div>
+                                            <h3 className="text-sm font-medium">
+                                                Allocations
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                Must match deposit totals. Extra
+                                                goes to Unallocated on save.
+                                            </p>
+                                            {accountDepositTotal > 0 ||
+                                            allocationSplitTotal > 0 ? (
+                                                <p
+                                                    className={cn(
+                                                        'mt-2 text-xs tabular-nums',
+                                                        allocationGapVsAccounts <
+                                                            -0.02
+                                                            ? 'font-medium text-destructive'
+                                                            : 'text-muted-foreground',
+                                                    )}
+                                                >
+                                                    {allocationGapVsAccounts <
+                                                    -0.02
+                                                        ? `${formatPhpMoney(Math.abs(allocationGapVsAccounts))} over deposit total`
+                                                        : allocationGapVsAccounts >
+                                                            0.004
+                                                          ? unallocatedAllocationId !==
+                                                            null
+                                                              ? `${formatPhpMoney(allocationGapVsAccounts)} to Unallocated`
+                                                              : `${formatPhpMoney(allocationGapVsAccounts)} remaining (set up Unallocated)`
+                                                          : 'Balanced with deposits'}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                        <ul className="space-y-3">
+                                            {form.data.allocations.map(
+                                                (row, i) => (
+                                                    <li
+                                                        key={row.key}
+                                                        className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                    >
+                                                        <div className="min-w-0 flex-1 space-y-1">
+                                                            <Label
+                                                                className="text-xs"
+                                                                htmlFor={`alloc-${row.key}`}
+                                                            >
+                                                                Allocation
+                                                            </Label>
+                                                            <select
+                                                                id={`alloc-${row.key}`}
+                                                                className={
+                                                                    selectClass
+                                                                }
+                                                                value={
+                                                                    row.allocation_id ===
+                                                                    ''
+                                                                        ? ''
+                                                                        : String(
+                                                                              row.allocation_id,
+                                                                          )
+                                                                }
+                                                                onChange={(
+                                                                    e,
+                                                                ) => {
+                                                                    const v =
+                                                                        e.target
+                                                                            .value;
+                                                                    const next =
+                                                                        [
+                                                                            ...form
+                                                                                .data
+                                                                                .allocations,
+                                                                        ];
+                                                                    next[i] = {
+                                                                        ...row,
+                                                                        allocation_id:
+                                                                            v ===
+                                                                            ''
+                                                                                ? ''
+                                                                                : Number(
+                                                                                      v,
+                                                                                  ),
+                                                                    };
+                                                                    form.setData(
+                                                                        'allocations',
+                                                                        next,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <option value="">
+                                                                    Select
+                                                                    allocation
+                                                                </option>
+                                                                {allocations.map(
+                                                                    (a) => (
+                                                                        <option
+                                                                            key={
+                                                                                a.id
+                                                                            }
+                                                                            value={
+                                                                                a.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                a.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                        <div className="w-full min-w-[8rem] sm:w-40">
+                                                            <Label
+                                                                className="text-xs"
+                                                                htmlFor={`alloc-amt-${row.key}`}
+                                                            >
+                                                                Amount
+                                                            </Label>
+                                                            <MoneyInput
+                                                                id={`alloc-amt-${row.key}`}
+                                                                value={
+                                                                    row.amount
+                                                                }
+                                                                onChange={(
+                                                                    v,
+                                                                ) => {
+                                                                    const next =
+                                                                        [
+                                                                            ...form
+                                                                                .data
+                                                                                .allocations,
+                                                                        ];
+                                                                    next[i] = {
+                                                                        ...row,
+                                                                        amount: v,
+                                                                    };
+                                                                    form.setData(
+                                                                        'allocations',
+                                                                        next,
+                                                                    );
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="shrink-0 text-muted-foreground"
+                                                            onClick={() => {
+                                                                const next =
+                                                                    form.data.allocations.filter(
+                                                                        (
+                                                                            _,
+                                                                            j,
+                                                                        ) =>
+                                                                            j !==
+                                                                            i,
+                                                                    );
+                                                                form.setData(
+                                                                    'allocations',
+                                                                    next.length
+                                                                        ? next
+                                                                        : [
+                                                                              emptyAllocationLine(),
+                                                                          ],
+                                                                );
+                                                            }}
+                                                            aria-label="Remove allocation line"
+                                                        >
+                                                            <Trash2 className="size-4" />
+                                                        </Button>
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() =>
+                                                form.setData('allocations', [
+                                                    ...form.data.allocations,
+                                                    emptyAllocationLine(),
+                                                ])
+                                            }
+                                        >
+                                            <Plus className="size-4" />
+                                            Add allocation
+                                        </Button>
+                                        <InputError
+                                            message={form.errors.allocations}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+                                    <Button
+                                        type="submit"
+                                        disabled={form.processing}
+                                    >
+                                        Save transaction
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        type="button"
+                                        asChild
+                                    >
+                                        <Link href={dashboard().url}>
+                                            Cancel
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
                 )}
             </div>
         </AppLayout>

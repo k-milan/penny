@@ -6,16 +6,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { formatDateYmd, formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { type BreadcrumbItem } from '@/types';
-import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { Head, Link, router } from '@inertiajs/react';
 import { MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -75,11 +68,7 @@ function savingsProgressPercent(
         goalAmount != null && String(goalAmount).trim() !== ''
             ? Number.parseFloat(String(goalAmount))
             : NaN;
-    if (
-        !Number.isFinite(current) ||
-        !Number.isFinite(goal) ||
-        goal <= 0
-    ) {
+    if (!Number.isFinite(current) || !Number.isFinite(goal) || goal <= 0) {
         return 0;
     }
     return Math.min(100, Math.max(0, (current / goal) * 100));
@@ -111,7 +100,9 @@ function groupAllocationsByType(rows: AllocationRow[]): {
         }
     }
     const rest = [...byType.keys()]
-        .filter((k) => !(ALLOCATION_TYPE_ORDER as readonly string[]).includes(k))
+        .filter(
+            (k) => !(ALLOCATION_TYPE_ORDER as readonly string[]).includes(k),
+        )
         .sort();
     for (const t of rest) {
         const items = byType.get(t);
@@ -144,7 +135,7 @@ export default function AllocationsIndex({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold">Allocations</h1>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Envelopes, bills, and savings you assign money to.
                         </p>
                     </div>
@@ -158,11 +149,11 @@ export default function AllocationsIndex({
 
                 {defaultUnallocated &&
                     showUnallocatedRow(defaultUnallocated.balance) && (
-                        <div className="text-muted-foreground flex w-full items-baseline justify-between gap-2 border-b border-dashed border-border pb-2.5 text-sm">
+                        <div className="flex w-full items-baseline justify-between gap-2 border-b border-dashed border-border pb-2.5 text-sm text-muted-foreground">
                             <span className="min-w-0">
                                 {defaultUnallocated.name}{' '}
                                 <Link
-                                    className="text-primary text-xs font-normal underline"
+                                    className="text-xs font-normal text-primary underline"
                                     href={AllocationController.edit({
                                         allocation: defaultUnallocated.id,
                                     })}
@@ -170,219 +161,203 @@ export default function AllocationsIndex({
                                     (default)
                                 </Link>
                             </span>
-                            <span className="text-foreground font-medium tabular-nums">
+                            <span className="font-medium text-foreground tabular-nums">
                                 {formatPhpMoney(defaultUnallocated.balance)}
                             </span>
                         </div>
                     )}
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>All allocations</CardTitle>
-                        <CardDescription>
-                            Edit or remove. Balances change when you record
-                            transactions.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {allocations.data.length === 0 ? (
-                            <p className="text-muted-foreground px-6 py-8 text-center text-sm">
-                                No allocations yet. Create one to get started.
-                            </p>
-                        ) : (
-                            <div className="divide-y divide-border">
-                                {grouped.map((group) => (
-                                    <section
-                                        key={group.type}
-                                        aria-label={formatTypeLabel(group.type)}
-                                    >
-                                        <div className="bg-muted/50 px-6 py-2.5 text-xs font-semibold tracking-wide text-muted-foreground">
-                                            {formatTypeLabel(group.type)}
-                                        </div>
-                                        <ul className="divide-y divide-border">
-                                            {group.items.map((row) => {
-                                                const isSavings =
-                                                    row.type === TYPE_SAVINGS;
-                                                const hasSavingsGoal =
-                                                    isSavings &&
-                                                    savingsHasGoal(
-                                                        row.goal_amount,
-                                                    );
-                                                const savingsPct =
-                                                    isSavings
-                                                        ? savingsProgressPercent(
-                                                              row.balance,
-                                                              row.goal_amount,
-                                                          )
-                                                        : 0;
-                                                return (
-                                                    <li key={row.id}>
-                                                        <div className="hover:bg-muted/50 flex items-start gap-1 px-6 py-4 transition-colors">
-                                                            <Link
-                                                                href={AllocationController.edit(
-                                                                    {
-                                                                        allocation:
-                                                                            row.id,
-                                                                    },
-                                                                )}
-                                                                className="focus-visible:ring-ring min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:outline-none"
-                                                            >
-                                                                <p className="font-medium">
+                {allocations.data.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                        No allocations yet. Create one to get started.
+                    </p>
+                ) : (
+                    <div className="divide-y divide-border overflow-hidden">
+                        {grouped.map((group) => (
+                            <section
+                                key={group.type}
+                                aria-label={formatTypeLabel(group.type)}
+                            >
+                                <div className="border-y border-primary/10 bg-primary/[0.06] px-3 py-2.5 text-xs font-semibold tracking-wide text-primary/80 dark:border-primary/20 dark:bg-primary/[0.1] dark:text-primary">
+                                    {formatTypeLabel(group.type)}
+                                </div>
+                                <ul className="divide-y divide-border">
+                                    {group.items.map((row) => {
+                                        const isSavings =
+                                            row.type === TYPE_SAVINGS;
+                                        const hasSavingsGoal =
+                                            isSavings &&
+                                            savingsHasGoal(row.goal_amount);
+                                        const savingsPct = isSavings
+                                            ? savingsProgressPercent(
+                                                  row.balance,
+                                                  row.goal_amount,
+                                              )
+                                            : 0;
+                                        return (
+                                            <li key={row.id}>
+                                                <div className="flex items-start gap-1 px-3 py-4 transition-colors hover:bg-muted/50">
+                                                    <Link
+                                                        href={AllocationController.edit(
+                                                            {
+                                                                allocation:
+                                                                    row.id,
+                                                            },
+                                                        )}
+                                                        className="min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                                    >
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <p className="truncate font-medium">
                                                                     {row.name}
                                                                 </p>
+                                                                {!isSavings &&
+                                                                row.due_date ? (
+                                                                    <p className="mt-0.5 text-sm text-muted-foreground">
+                                                                        Due{' '}
+                                                                        {formatDateYmd(
+                                                                            row.due_date,
+                                                                        )}
+                                                                    </p>
+                                                                ) : null}
+                                                            </div>
+                                                            <div className="shrink-0 text-right text-sm tabular-nums">
                                                                 {isSavings ? (
-                                                                    <>
-                                                                        <p className="mt-0.5 text-sm">
-                                                                            <span className="text-foreground font-medium tabular-nums">
-                                                                                {formatPhpMoney(
-                                                                                    row.balance,
-                                                                                )}
-                                                                            </span>
-                                                                            <span className="text-muted-foreground">
-                                                                                {' '}
-                                                                                /{' '}
-                                                                            </span>
-                                                                            <span className="text-muted-foreground tabular-nums">
-                                                                                {hasSavingsGoal &&
-                                                                                row.goal_amount
-                                                                                    ? formatPhpMoney(
-                                                                                          row.goal_amount,
-                                                                                      )
-                                                                                    : '—'}
-                                                                            </span>
-                                                                        </p>
-                                                                        <div
-                                                                            className="bg-muted mt-2 h-2 w-full max-w-md overflow-hidden rounded-full"
-                                                                            role="progressbar"
-                                                                            aria-valuenow={
-                                                                                hasSavingsGoal
-                                                                                    ? Math.round(
-                                                                                          savingsPct,
-                                                                                      )
-                                                                                    : 0
-                                                                            }
-                                                                            aria-valuemin={0}
-                                                                            aria-valuemax={100}
-                                                                            aria-label={
-                                                                                hasSavingsGoal
-                                                                                    ? `Savings progress for ${row.name}`
-                                                                                    : `No savings goal set for ${row.name}`
-                                                                            }
-                                                                        >
-                                                                            <div
-                                                                                className="bg-primary h-full rounded-full transition-[width]"
-                                                                                style={{
-                                                                                    width: `${savingsPct}%`,
-                                                                                }}
-                                                                            />
-                                                                        </div>
-                                                                    </>
-                                                                ) : (
-                                                                    <p className="text-muted-foreground mt-0.5 text-sm">
-                                                                        {[
-                                                                            row.due_date
-                                                                                ? `Due ${row.due_date}`
-                                                                                : null,
-                                                                            formatTypeLabel(
-                                                                                String(
-                                                                                    row.type,
-                                                                                ),
-                                                                            ),
-                                                                            formatPhpMoney(
+                                                                    <p>
+                                                                        <span className="font-medium text-foreground">
+                                                                            {formatPhpMoney(
                                                                                 row.balance,
-                                                                            ),
-                                                                        ]
-                                                                            .filter(
-                                                                                (
-                                                                                    s,
-                                                                                ): s is string =>
-                                                                                    Boolean(
-                                                                                        s,
-                                                                                    ),
-                                                                            )
-                                                                            .join(
-                                                                                ' · ',
                                                                             )}
+                                                                        </span>
+                                                                        <span className="text-muted-foreground">
+                                                                            {' '}
+                                                                            /{' '}
+                                                                        </span>
+                                                                        <span className="text-muted-foreground">
+                                                                            {hasSavingsGoal &&
+                                                                            row.goal_amount
+                                                                                ? formatPhpMoney(
+                                                                                      row.goal_amount,
+                                                                                  )
+                                                                                : '—'}
+                                                                        </span>
+                                                                    </p>
+                                                                ) : (
+                                                                    <p className="text-muted-foreground">
+                                                                        {formatPhpMoney(
+                                                                            row.balance,
+                                                                        )}
                                                                     </p>
                                                                 )}
-                                                            </Link>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger
-                                                                    asChild
-                                                                >
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="text-muted-foreground shrink-0"
-                                                                        aria-label={`Actions for ${row.name}`}
-                                                                        onClick={(
-                                                                            e,
-                                                                        ) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                        }}
-                                                                        onPointerDown={(
-                                                                            e,
-                                                                        ) => {
-                                                                            e.stopPropagation();
-                                                                        }}
-                                                                    >
-                                                                        <MoreVertical className="size-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem
-                                                                        asChild
-                                                                    >
-                                                                        <Link
-                                                                            href={AllocationController.edit(
-                                                                                {
-                                                                                    allocation:
-                                                                                        row.id,
-                                                                                },
-                                                                            )}
-                                                                        >
-                                                                            <Pencil className="size-4" />
-                                                                            Edit
-                                                                        </Link>
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem
-                                                                        variant="destructive"
-                                                                        onClick={() => {
-                                                                            if (
-                                                                                !confirm(
-                                                                                    'Delete this allocation? This is only allowed when it has no transaction lines.',
-                                                                                )
-                                                                            ) {
-                                                                                return;
-                                                                            }
-                                                                            router.delete(
-                                                                                AllocationController.destroy.url(
-                                                                                    {
-                                                                                        allocation:
-                                                                                            row.id,
-                                                                                    },
-                                                                                ),
-                                                                            );
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="size-4" />
-                                                                        Delete
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
+                                                            </div>
                                                         </div>
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    </section>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                                        {isSavings ? (
+                                                            <div
+                                                                className="mt-2 h-2 w-full max-w-md overflow-hidden rounded-full bg-muted"
+                                                                role="progressbar"
+                                                                aria-valuenow={
+                                                                    hasSavingsGoal
+                                                                        ? Math.round(
+                                                                              savingsPct,
+                                                                          )
+                                                                        : 0
+                                                                }
+                                                                aria-valuemin={
+                                                                    0
+                                                                }
+                                                                aria-valuemax={
+                                                                    100
+                                                                }
+                                                                aria-label={
+                                                                    hasSavingsGoal
+                                                                        ? `Savings progress for ${row.name}`
+                                                                        : `No savings goal set for ${row.name}`
+                                                                }
+                                                            >
+                                                                <div
+                                                                    className="h-full rounded-full bg-primary transition-[width]"
+                                                                    style={{
+                                                                        width: `${savingsPct}%`,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ) : null}
+                                                    </Link>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger
+                                                            asChild
+                                                        >
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="shrink-0 text-muted-foreground"
+                                                                aria-label={`Actions for ${row.name}`}
+                                                                onClick={(
+                                                                    e,
+                                                                ) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                }}
+                                                                onPointerDown={(
+                                                                    e,
+                                                                ) => {
+                                                                    e.stopPropagation();
+                                                                }}
+                                                            >
+                                                                <MoreVertical className="size-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                asChild
+                                                            >
+                                                                <Link
+                                                                    href={AllocationController.edit(
+                                                                        {
+                                                                            allocation:
+                                                                                row.id,
+                                                                        },
+                                                                    )}
+                                                                >
+                                                                    <Pencil className="size-4" />
+                                                                    Edit
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                variant="destructive"
+                                                                onClick={() => {
+                                                                    if (
+                                                                        !confirm(
+                                                                            'Delete this allocation? This is only allowed when it has no transaction lines.',
+                                                                        )
+                                                                    ) {
+                                                                        return;
+                                                                    }
+                                                                    router.delete(
+                                                                        AllocationController.destroy.url(
+                                                                            {
+                                                                                allocation:
+                                                                                    row.id,
+                                                                            },
+                                                                        ),
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <Trash2 className="size-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </section>
+                        ))}
+                    </div>
+                )}
 
                 {allocations.last_page > 1 && (
                     <div className="flex flex-wrap items-center justify-center gap-1">
@@ -391,7 +366,7 @@ export default function AllocationsIndex({
                                 return (
                                     <span
                                         key={i}
-                                        className="text-muted-foreground flex size-9 items-center justify-center text-sm"
+                                        className="flex size-9 items-center justify-center text-sm text-muted-foreground"
                                     >
                                         <span
                                             dangerouslySetInnerHTML={{
@@ -406,7 +381,9 @@ export default function AllocationsIndex({
                                     key={i}
                                     asChild
                                     size="icon"
-                                    variant={link.active ? 'default' : 'outline'}
+                                    variant={
+                                        link.active ? 'default' : 'outline'
+                                    }
                                 >
                                     <Link href={link.url} preserveState>
                                         <span

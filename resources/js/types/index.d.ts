@@ -30,6 +30,10 @@ export interface SharedData {
         success?: string | null;
         error?: string | null;
     };
+    preview?: {
+        enabled: boolean;
+        expires_at: string | null;
+    };
     sidebarOpen: boolean;
     [key: string]: unknown;
 }

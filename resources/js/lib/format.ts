@@ -24,6 +24,29 @@ export function formatPhpMoney(amount: string | number): string {
     }).format(v);
 }
 
+export function formatDateYmd(dateYmd: string): string {
+    const parts = dateYmd.split('-').map((p) => Number.parseInt(p, 10));
+    const y = parts[0];
+    const m = parts[1];
+    const d = parts[2];
+
+    if (
+        !Number.isFinite(y) ||
+        !Number.isFinite(m) ||
+        !Number.isFinite(d) ||
+        m === undefined ||
+        d === undefined
+    ) {
+        return dateYmd;
+    }
+
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    }).format(new Date(y, m - 1, d));
+}
+
 /**
  * Strips currency noise and keeps a single decimal money string for form state.
  */

@@ -1,20 +1,19 @@
 import IncomeTemplateController from '@/actions/App/Http/Controllers/IncomeTemplateController';
 import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
 import { MoneyInput } from '@/components/money-input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { formatPhpMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Info, Plus, Trash2 } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
@@ -26,7 +25,11 @@ export type IncomeAllocationOption = { id: number; name: string };
 export type PayoutFrequencyOption = { value: string; label: string };
 
 type AccountLine = { key: string; account_id: number | ''; amount: string };
-type AllocationLine = { key: string; allocation_id: number | ''; amount: string };
+type AllocationLine = {
+    key: string;
+    allocation_id: number | '';
+    amount: string;
+};
 
 function newKey(): string {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -96,10 +99,28 @@ function sumUserAllocationAmounts(
             ? rows
             : rows.filter(
                   (r) =>
-                      r.allocation_id === '' ||
-                      Number(r.allocation_id) !== uid,
+                      r.allocation_id === '' || Number(r.allocation_id) !== uid,
               );
     return sumAllocationAmounts(filtered);
+}
+
+function SectionInfoTooltip({ children }: { children: React.ReactNode }) {
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <button
+                    type="button"
+                    className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    aria-label="Show details"
+                >
+                    <Info className="size-4" aria-hidden />
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="start" className="max-w-xs">
+                <p>{children}</p>
+            </TooltipContent>
+        </Tooltip>
+    );
 }
 
 type FormState = {
@@ -146,9 +167,7 @@ export function IncomeTemplateFormFields({
     headTitle,
 }: IncomeTemplateFormProps): ReactElement {
     const defaultFrequency =
-        initial?.payout_frequency ??
-        payoutFrequencies[0]?.value ??
-        'monthly';
+        initial?.payout_frequency ?? payoutFrequencies[0]?.value ?? 'monthly';
 
     const form = useForm<FormState>({
         name: initial?.name ?? '',
@@ -217,10 +236,7 @@ export function IncomeTemplateFormFields({
             );
             let allocationPayload = userAllocationRows;
             if (uid !== null && expectedForAlloc !== null) {
-                const userSum = sumUserAllocationAmounts(
-                    data.allocations,
-                    uid,
-                );
+                const userSum = sumUserAllocationAmounts(data.allocations, uid);
                 const remainder = expectedForAlloc - userSum;
                 if (remainder > 0.004) {
                     allocationPayload = [
@@ -235,8 +251,7 @@ export function IncomeTemplateFormFields({
 
             const payload = {
                 name: data.name,
-                description:
-                    data.description === '' ? null : data.description,
+                description: data.description === '' ? null : data.description,
                 company_name:
                     data.company_name === '' ? null : data.company_name,
                 payout_frequency: data.payout_frequency,
@@ -271,31 +286,36 @@ export function IncomeTemplateFormFields({
         <>
             <Head title={headTitle} />
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                        asChild
+                    >
+                        <Link
+                            href={IncomeTemplateController.index().url}
+                            aria-label="Back to income templates"
+                        >
+                            <ArrowLeft className="size-4" />
+                        </Link>
+                    </Button>
                     <div>
                         <h1 className="text-2xl font-semibold">{heading}</h1>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Plan expected payouts, deposit accounts, and how
                             much goes to each allocation.
                         </p>
                     </div>
-                    <Button variant="outline" asChild>
-                        <Link href={IncomeTemplateController.index().url}>
-                            Back to list
-                        </Link>
-                    </Button>
                 </div>
 
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="pb-3">
                         <CardTitle>Template</CardTitle>
-                        <CardDescription>
-                            Expected gross income per payout and pay schedule.
-                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form
-                            className="space-y-8"
+                            className="space-y-5"
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 applyTransform();
@@ -309,122 +329,130 @@ export function IncomeTemplateFormFields({
                                 ) {
                                     form.put(
                                         IncomeTemplateController.update.url({
-                                            income_template:
-                                                incomeTemplateId,
+                                            income_template: incomeTemplateId,
                                         }),
                                     );
                                 }
                             }}
                         >
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    value={form.data.name}
-                                    onChange={(e) =>
-                                        form.setData('name', e.target.value)
-                                    }
-                                    required
-                                    autoFocus
-                                />
-                                <InputError message={form.errors.name} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="company_name">
-                                    Company name (optional)
-                                </Label>
-                                <Input
-                                    id="company_name"
-                                    name="company_name"
-                                    value={form.data.company_name}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'company_name',
-                                            e.target.value,
-                                        )
-                                    }
-                                />
-                                <InputError
-                                    message={form.errors.company_name}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="description">
-                                    Description (optional)
-                                </Label>
-                                <textarea
-                                    id="description"
-                                    name="description"
-                                    className={cn(
-                                        selectClass,
-                                        'min-h-[88px] resize-y py-2',
-                                    )}
-                                    value={form.data.description}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'description',
-                                            e.target.value,
-                                        )
-                                    }
-                                    rows={3}
-                                />
-                                <InputError message={form.errors.description} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="payout_frequency">
-                                    Payout frequency
-                                </Label>
-                                <select
-                                    id="payout_frequency"
-                                    name="payout_frequency"
-                                    className={selectClass}
-                                    value={form.data.payout_frequency}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'payout_frequency',
-                                            e.target.value,
-                                        )
-                                    }
-                                >
-                                    {payoutFrequencies.map((p) => (
-                                        <option key={p.value} value={p.value}>
-                                            {p.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <InputError
-                                    message={form.errors.payout_frequency}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="expected_income">
-                                    Expected income (per payout)
-                                </Label>
-                                <MoneyInput
-                                    id="expected_income"
-                                    name="expected_income"
-                                    value={form.data.expected_income}
-                                    onChange={(v) =>
-                                        form.setData('expected_income', v)
-                                    }
-                                />
-                                <InputError
-                                    message={form.errors.expected_income}
-                                />
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name">Name</Label>
+                                    <Input
+                                        id="name"
+                                        name="name"
+                                        value={form.data.name}
+                                        onChange={(e) =>
+                                            form.setData('name', e.target.value)
+                                        }
+                                        required
+                                        autoFocus
+                                    />
+                                    <InputError message={form.errors.name} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="company_name">
+                                        Company name (optional)
+                                    </Label>
+                                    <Input
+                                        id="company_name"
+                                        name="company_name"
+                                        value={form.data.company_name}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'company_name',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <InputError
+                                        message={form.errors.company_name}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="payout_frequency">
+                                        Payout frequency
+                                    </Label>
+                                    <select
+                                        id="payout_frequency"
+                                        name="payout_frequency"
+                                        className={selectClass}
+                                        value={form.data.payout_frequency}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'payout_frequency',
+                                                e.target.value,
+                                            )
+                                        }
+                                    >
+                                        {payoutFrequencies.map((p) => (
+                                            <option
+                                                key={p.value}
+                                                value={p.value}
+                                            >
+                                                {p.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError
+                                        message={form.errors.payout_frequency}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="expected_income">
+                                        Expected income (per payout)
+                                    </Label>
+                                    <MoneyInput
+                                        id="expected_income"
+                                        name="expected_income"
+                                        value={form.data.expected_income}
+                                        onChange={(v) =>
+                                            form.setData('expected_income', v)
+                                        }
+                                    />
+                                    <InputError
+                                        message={form.errors.expected_income}
+                                    />
+                                </div>
+                                <div className="grid gap-2 md:col-span-2">
+                                    <Label htmlFor="description">
+                                        Description (optional)
+                                    </Label>
+                                    <textarea
+                                        id="description"
+                                        name="description"
+                                        className={cn(
+                                            selectClass,
+                                            'min-h-[4.5rem] resize-y py-2',
+                                        )}
+                                        value={form.data.description}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'description',
+                                                e.target.value,
+                                            )
+                                        }
+                                        rows={2}
+                                    />
+                                    <InputError
+                                        message={form.errors.description}
+                                    />
+                                </div>
                             </div>
 
-                            <div className="grid gap-6 border-border border-t pt-6 md:grid-cols-2 md:gap-8">
+                            <div className="grid gap-6 border-t border-border pt-5 md:grid-cols-2 md:gap-8">
                                 <div className="space-y-3">
                                     <div>
-                                        <h3 className="text-sm font-medium">
-                                            Deposit accounts
-                                        </h3>
-                                        <p className="text-muted-foreground text-sm">
-                                            Left: where this income usually
-                                            lands (amount&nbsp;per payout per
-                                            account).
-                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                            <h3 className="text-sm font-medium">
+                                                Deposit accounts
+                                            </h3>
+                                            <SectionInfoTooltip>
+                                                Where this income usually lands.
+                                                Amounts are per payout per
+                                                account.
+                                            </SectionInfoTooltip>
+                                        </div>
                                         {expectedPayout !== null ? (
                                             <p
                                                 className={cn(
@@ -432,7 +460,7 @@ export function IncomeTemplateFormFields({
                                                     accountDepositTotal -
                                                         expectedPayout >
                                                         0.004
-                                                        ? 'text-destructive font-medium'
+                                                        ? 'font-medium text-destructive'
                                                         : 'text-muted-foreground',
                                                 )}
                                             >
@@ -450,19 +478,17 @@ export function IncomeTemplateFormFields({
                                             </p>
                                         ) : null}
                                     </div>
-                                    <ul className="space-y-3">
-                                    {form.data.accounts.map((row, i) => (
-                                        <li
-                                            key={row.key}
-                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
-                                        >
-                                            <div className="min-w-0 flex-1 space-y-1">
-                                                <Label
-                                                    className="text-xs"
-                                                    htmlFor={`acct-${row.key}`}
-                                                >
-                                                    Account
-                                                </Label>
+                                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(7rem,10rem)_2.25rem] gap-2 px-1 text-xs font-medium text-muted-foreground">
+                                        <span>Account</span>
+                                        <span>Amount</span>
+                                        <span className="sr-only">Remove</span>
+                                    </div>
+                                    <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+                                        {form.data.accounts.map((row, i) => (
+                                            <li
+                                                key={row.key}
+                                                className="grid grid-cols-[minmax(0,1fr)_minmax(7rem,10rem)_2.25rem] items-start gap-2 p-2"
+                                            >
                                                 <select
                                                     id={`acct-${row.key}`}
                                                     className={selectClass}
@@ -485,15 +511,14 @@ export function IncomeTemplateFormFields({
                                                             account_id:
                                                                 v === ''
                                                                     ? ''
-                                                                    : Number(
-                                                                          v,
-                                                                      ),
+                                                                    : Number(v),
                                                         };
                                                         form.setData(
                                                             'accounts',
                                                             next,
                                                         );
                                                     }}
+                                                    aria-label="Account"
                                                 >
                                                     <option value="">
                                                         Select account
@@ -507,14 +532,6 @@ export function IncomeTemplateFormFields({
                                                         </option>
                                                     ))}
                                                 </select>
-                                            </div>
-                                            <div className="w-full min-w-[8rem] sm:w-40">
-                                                <Label
-                                                    className="text-xs"
-                                                    htmlFor={`acct-amt-${row.key}`}
-                                                >
-                                                    Amount
-                                                </Label>
                                                 <MoneyInput
                                                     id={`acct-amt-${row.key}`}
                                                     value={row.amount}
@@ -532,61 +549,68 @@ export function IncomeTemplateFormFields({
                                                             next,
                                                         );
                                                     }}
+                                                    aria-label="Amount"
                                                 />
-                                            </div>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="shrink-0 text-muted-foreground"
-                                                onClick={() => {
-                                                    const next = form.data.accounts.filter(
-                                                        (_, j) => j !== i,
-                                                    );
-                                                    form.setData(
-                                                        'accounts',
-                                                        next.length
-                                                            ? next
-                                                            : [
-                                                                  emptyAccountLine(),
-                                                              ],
-                                                    );
-                                                }}
-                                                aria-label="Remove account line"
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() =>
-                                        form.setData('accounts', [
-                                            ...form.data.accounts,
-                                            emptyAccountLine(),
-                                        ])
-                                    }
-                                >
-                                    <Plus className="size-4" />
-                                    Add account
-                                </Button>
-                                <InputError message={form.errors.accounts} />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="shrink-0 self-center text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                                                    onClick={() => {
+                                                        const next =
+                                                            form.data.accounts.filter(
+                                                                (_, j) =>
+                                                                    j !== i,
+                                                            );
+                                                        form.setData(
+                                                            'accounts',
+                                                            next.length
+                                                                ? next
+                                                                : [
+                                                                      emptyAccountLine(),
+                                                                  ],
+                                                        );
+                                                    }}
+                                                    aria-label="Remove account line"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() =>
+                                            form.setData('accounts', [
+                                                ...form.data.accounts,
+                                                emptyAccountLine(),
+                                            ])
+                                        }
+                                    >
+                                        <Plus className="size-4" />
+                                        Add account
+                                    </Button>
+                                    <InputError
+                                        message={form.errors.accounts}
+                                    />
                                 </div>
 
                                 <div className="space-y-3">
                                     <div>
-                                        <h3 className="text-sm font-medium">
-                                            Allocation split (optional)
-                                        </h3>
-                                        <p className="text-muted-foreground text-sm">
-                                            Right: planned amounts per payout
-                                            (Unallocated is not listed here). Any
-                                            gap vs expected income is added to
-                                            Unallocated when you save.
-                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                            <h3 className="text-sm font-medium">
+                                                Allocation split (optional)
+                                            </h3>
+                                            <SectionInfoTooltip>
+                                                Planned amounts per payout.
+                                                Unallocated is not listed here;
+                                                any gap vs expected income is
+                                                added to Unallocated when you
+                                                save.
+                                            </SectionInfoTooltip>
+                                        </div>
                                         {expectedPayout !== null ? (
                                             <p
                                                 className={cn(
@@ -594,7 +618,7 @@ export function IncomeTemplateFormFields({
                                                     allocationSplitTotal -
                                                         expectedPayout >
                                                         0.004
-                                                        ? 'text-destructive font-medium'
+                                                        ? 'font-medium text-destructive'
                                                         : 'text-muted-foreground',
                                                 )}
                                             >
@@ -625,19 +649,17 @@ export function IncomeTemplateFormFields({
                                             </p>
                                         ) : null}
                                     </div>
-                                    <ul className="space-y-3">
-                                    {form.data.allocations.map((row, i) => (
-                                        <li
-                                            key={row.key}
-                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
-                                        >
-                                            <div className="min-w-0 flex-1 space-y-1">
-                                                <Label
-                                                    className="text-xs"
-                                                    htmlFor={`alloc-${row.key}`}
-                                                >
-                                                    Allocation
-                                                </Label>
+                                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(7rem,10rem)_2.25rem] gap-2 px-1 text-xs font-medium text-muted-foreground">
+                                        <span>Allocation</span>
+                                        <span>Amount</span>
+                                        <span className="sr-only">Remove</span>
+                                    </div>
+                                    <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+                                        {form.data.allocations.map((row, i) => (
+                                            <li
+                                                key={row.key}
+                                                className="grid grid-cols-[minmax(0,1fr)_minmax(7rem,10rem)_2.25rem] items-start gap-2 p-2"
+                                            >
                                                 <select
                                                     id={`alloc-${row.key}`}
                                                     className={selectClass}
@@ -660,15 +682,14 @@ export function IncomeTemplateFormFields({
                                                             allocation_id:
                                                                 v === ''
                                                                     ? ''
-                                                                    : Number(
-                                                                          v,
-                                                                      ),
+                                                                    : Number(v),
                                                         };
                                                         form.setData(
                                                             'allocations',
                                                             next,
                                                         );
                                                     }}
+                                                    aria-label="Allocation"
                                                 >
                                                     <option value="">
                                                         Select allocation
@@ -682,14 +703,6 @@ export function IncomeTemplateFormFields({
                                                         </option>
                                                     ))}
                                                 </select>
-                                            </div>
-                                            <div className="w-full min-w-[8rem] sm:w-40">
-                                                <Label
-                                                    className="text-xs"
-                                                    htmlFor={`alloc-amt-${row.key}`}
-                                                >
-                                                    Amount
-                                                </Label>
                                                 <MoneyInput
                                                     id={`alloc-amt-${row.key}`}
                                                     value={row.amount}
@@ -707,55 +720,60 @@ export function IncomeTemplateFormFields({
                                                             next,
                                                         );
                                                     }}
+                                                    aria-label="Amount"
                                                 />
-                                            </div>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="shrink-0 text-muted-foreground"
-                                                onClick={() => {
-                                                    const next = form.data.allocations.filter(
-                                                        (_, j) => j !== i,
-                                                    );
-                                                    form.setData(
-                                                        'allocations',
-                                                        next.length
-                                                            ? next
-                                                            : [
-                                                                  emptyAllocationLine(),
-                                                              ],
-                                                    );
-                                                }}
-                                                aria-label="Remove allocation line"
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() =>
-                                        form.setData('allocations', [
-                                            ...form.data.allocations,
-                                            emptyAllocationLine(),
-                                        ])
-                                    }
-                                >
-                                    <Plus className="size-4" />
-                                    Add allocation
-                                </Button>
-                                <InputError
-                                    message={form.errors.allocations}
-                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="shrink-0 self-center text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                                                    onClick={() => {
+                                                        const next =
+                                                            form.data.allocations.filter(
+                                                                (_, j) =>
+                                                                    j !== i,
+                                                            );
+                                                        form.setData(
+                                                            'allocations',
+                                                            next.length
+                                                                ? next
+                                                                : [
+                                                                      emptyAllocationLine(),
+                                                                  ],
+                                                        );
+                                                    }}
+                                                    aria-label="Remove allocation line"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() =>
+                                            form.setData('allocations', [
+                                                ...form.data.allocations,
+                                                emptyAllocationLine(),
+                                            ])
+                                        }
+                                    >
+                                        <Plus className="size-4" />
+                                        Add allocation
+                                    </Button>
+                                    <InputError
+                                        message={form.errors.allocations}
+                                    />
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2 border-border border-t pt-4">
-                                <Button type="submit" disabled={form.processing}>
+                            <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+                                <Button
+                                    type="submit"
+                                    disabled={form.processing}
+                                >
                                     {mode === 'create'
                                         ? 'Create'
                                         : 'Save changes'}

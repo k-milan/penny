@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -32,6 +33,12 @@ final class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        assert($user instanceof User || $user === null);
+        $previewExpiresAt = $user !== null && array_key_exists('preview_expires_at', $user->getAttributes())
+            ? $user->preview_expires_at
+            : null;
+
         $quote = Inspiring::quotes()->random();
         assert(is_string($quote));
 
@@ -42,7 +49,11 @@ final class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'quote' => ['message' => mb_trim((string) $message), 'author' => mb_trim((string) $author)],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+            ],
+            'preview' => [
+                'enabled' => $previewExpiresAt !== null,
+                'expires_at' => $previewExpiresAt?->toIso8601String(),
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
