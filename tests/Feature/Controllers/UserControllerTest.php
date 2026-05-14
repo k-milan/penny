@@ -40,6 +40,15 @@ it('may register a new user', function (): void {
     Event::assertDispatched(Registered::class);
 });
 
+it('allows unverified users to access the dashboard', function (): void {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard', absolute: false))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('dashboard'));
+});
+
 it('requires name', function (): void {
     $response = $this->fromRoute('register')
         ->post(route('register.store'), [

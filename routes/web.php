@@ -31,7 +31,7 @@ Route::get('/', function () {
 
 Route::get('preview', PreviewController::class)->name('preview');
 
-Route::middleware(['auth', 'verified'])->group(function (): void {
+Route::middleware(['auth'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('transactions/income', [IncomeFromTemplateController::class, 'create'])->name('transactions.income');
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');

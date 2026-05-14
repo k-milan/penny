@@ -7,7 +7,6 @@ namespace App\Models;
 use App\Actions\EnsureUnallocatedAllocationForUser;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -33,7 +32,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, IncomeTemplate> $incomeTemplates
  * @property-read \Illuminate\Database\Eloquent\Collection<int, IncomeTemplateSeries> $incomeTemplateSeries
  */
-final class User extends Authenticatable implements MustVerifyEmail
+final class User extends Authenticatable
 {
     /**
      * @use HasFactory<UserFactory>
