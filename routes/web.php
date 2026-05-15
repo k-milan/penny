@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomeFromTemplateController;
 use App\Http\Controllers\IncomeTemplateController;
 use App\Http\Controllers\PreviewController;
+use App\Http\Controllers\RecalculateUnallocatedController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserController;
@@ -41,6 +42,7 @@ Route::middleware(['auth'])->group(function (): void {
     Route::resource('accounts', AccountController::class)->only([
         'index', 'create', 'store', 'edit', 'update', 'destroy',
     ]);
+    Route::post('allocations/recalculate-unallocated', RecalculateUnallocatedController::class)->name('allocations.recalculate-unallocated');
     Route::resource('allocations', AllocationController::class)->only([
         'index', 'create', 'store', 'edit', 'update', 'destroy',
     ]);

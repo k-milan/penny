@@ -36,7 +36,7 @@ final readonly class CreateAccount
                 'balance' => $balance,
             ]);
 
-            if (bccomp($balance, '0.00', 2) > 0) {
+            if (bccomp($balance, '0.00', 2) !== 0) {
                 $unallocated = $this->ensureUnallocated->handle($user);
                 $this->addToAllocationBalance->handle((int) $unallocated->id, $balance);
             }

@@ -54,7 +54,7 @@ final class StoreAllocationRequest extends FormRequest
             ],
             'due_date' => ['nullable', 'date'],
             'goal_amount' => ['nullable', 'numeric'],
-            'initial_balance' => ['nullable', 'numeric', 'min:0'],
+            'initial_balance' => ['nullable', 'numeric'],
         ];
     }
 

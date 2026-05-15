@@ -1,4 +1,5 @@
 import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
+import RecalculateUnallocatedController from '@/actions/App/Http/Controllers/RecalculateUnallocatedController';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +38,8 @@ export default function AllocationsEdit({
     allocation: AllocationProps;
     types: { value: string; label: string }[];
 }) {
+    const recalculateForm = useForm({});
+
     const form = useForm({
         name: allocation.name,
         type: allocation.type,
@@ -75,6 +78,34 @@ export default function AllocationsEdit({
                             cannot be changed, and it cannot be deleted.
                         </p>
                     </div>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Recalculate</CardTitle>
+                            <CardDescription>
+                                Resets the balance to the correct value: total
+                                account balances minus all other allocation
+                                balances.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    recalculateForm.post(
+                                        RecalculateUnallocatedController.url(),
+                                    );
+                                }}
+                            >
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={recalculateForm.processing}
+                                >
+                                    Recalculate balance
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
                     <Button variant="secondary" asChild>
                         <Link href={AllocationController.index()}>Back</Link>
                     </Button>
