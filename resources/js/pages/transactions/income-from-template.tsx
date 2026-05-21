@@ -1,6 +1,10 @@
 import IncomeFromTemplateController from '@/actions/App/Http/Controllers/IncomeFromTemplateController';
 import IncomeTemplateController from '@/actions/App/Http/Controllers/IncomeTemplateController';
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
+import {
+    renderGroupedAccountOptions,
+    renderGroupedAllocationOptions,
+} from '@/lib/grouped-options';
 import InputError from '@/components/input-error';
 import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
@@ -184,8 +188,8 @@ export default function IncomeFromTemplatePage({
     unallocated_allocation_id: unallocatedAllocationId,
 }: {
     incomeTemplates: IncomeTemplateOption[];
-    accounts: { id: number; name: string }[];
-    allocations: { id: number; name: string }[];
+    accounts: { id: number; name: string; type: string }[];
+    allocations: { id: number; name: string; type: string }[];
     unallocated_allocation_id: number | null;
 }): ReactElement {
     const form = useForm<FormState>({
@@ -621,21 +625,8 @@ export default function IncomeFromTemplatePage({
                                                                     Select
                                                                     account
                                                                 </option>
-                                                                {accounts.map(
-                                                                    (a) => (
-                                                                        <option
-                                                                            key={
-                                                                                a.id
-                                                                            }
-                                                                            value={
-                                                                                a.id
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                a.name
-                                                                            }
-                                                                        </option>
-                                                                    ),
+                                                                {renderGroupedAccountOptions(
+                                                                    accounts,
                                                                 )}
                                                             </select>
                                                         </div>
@@ -814,21 +805,8 @@ export default function IncomeFromTemplatePage({
                                                                     Select
                                                                     allocation
                                                                 </option>
-                                                                {allocations.map(
-                                                                    (a) => (
-                                                                        <option
-                                                                            key={
-                                                                                a.id
-                                                                            }
-                                                                            value={
-                                                                                a.id
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                a.name
-                                                                            }
-                                                                        </option>
-                                                                    ),
+                                                                {renderGroupedAllocationOptions(
+                                                                    allocations,
                                                                 )}
                                                             </select>
                                                         </div>

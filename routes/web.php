@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountShareTokenController;
 use App\Http\Controllers\AllocationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomeFromTemplateController;
 use App\Http\Controllers\IncomeTemplateController;
 use App\Http\Controllers\PreviewController;
+use App\Http\Controllers\PublicAccountShareController;
 use App\Http\Controllers\RecalculateUnallocatedController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\TransactionController;
@@ -31,6 +33,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('preview', PreviewController::class)->name('preview');
+Route::get('share/account/{token}', PublicAccountShareController::class)->name('accounts.share');
 
 Route::middleware(['auth'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -39,12 +42,13 @@ Route::middleware(['auth'])->group(function (): void {
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
-    Route::resource('accounts', AccountController::class)->only([
-        'index', 'create', 'store', 'edit', 'update', 'destroy',
-    ]);
     Route::post('allocations/recalculate-unallocated', RecalculateUnallocatedController::class)->name('allocations.recalculate-unallocated');
+    Route::resource('accounts', AccountController::class)->only([
+        'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
+    ]);
+    Route::post('accounts/{account}/share-token', AccountShareTokenController::class)->name('accounts.share-token');
     Route::resource('allocations', AllocationController::class)->only([
-        'index', 'create', 'store', 'edit', 'update', 'destroy',
+        'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
     ]);
     Route::resource('income-templates', IncomeTemplateController::class)->only([
         'index', 'create', 'store', 'edit', 'update', 'destroy',

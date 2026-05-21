@@ -1,4 +1,5 @@
 import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
+import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -152,14 +153,14 @@ export default function AllocationsIndex({
                         <div className="flex w-full items-baseline justify-between gap-2 border-b border-dashed border-border pb-2.5 text-sm text-muted-foreground">
                             <span className="min-w-0">
                                 {defaultUnallocated.name}{' '}
-                                <Link
-                                    className="text-xs font-normal text-primary underline"
-                                    href={AllocationController.edit({
-                                        allocation: defaultUnallocated.id,
-                                    })}
-                                >
-                                    (default)
-                                </Link>
+                                            <Link
+                                                className="text-xs font-normal text-primary underline"
+                                                href={AllocationController.show({
+                                                    allocation: defaultUnallocated.id,
+                                                })}
+                                            >
+                                                (default)
+                                            </Link>
                             </span>
                             <span className="font-medium text-foreground tabular-nums">
                                 {formatPhpMoney(defaultUnallocated.balance)}
@@ -198,7 +199,7 @@ export default function AllocationsIndex({
                                             <li key={row.id}>
                                                 <div className="flex items-start gap-1 px-3 py-4 transition-colors hover:bg-muted/50">
                                                     <Link
-                                                        href={AllocationController.edit(
+                                                        href={AllocationController.show(
                                                             {
                                                                 allocation:
                                                                     row.id,
@@ -360,42 +361,7 @@ export default function AllocationsIndex({
                 )}
 
                 {allocations.last_page > 1 && (
-                    <div className="flex flex-wrap items-center justify-center gap-1">
-                        {allocations.links.map((link, i) => {
-                            if (link.url === null) {
-                                return (
-                                    <span
-                                        key={i}
-                                        className="flex size-9 items-center justify-center text-sm text-muted-foreground"
-                                    >
-                                        <span
-                                            dangerouslySetInnerHTML={{
-                                                __html: link.label,
-                                            }}
-                                        />
-                                    </span>
-                                );
-                            }
-                            return (
-                                <Button
-                                    key={i}
-                                    asChild
-                                    size="icon"
-                                    variant={
-                                        link.active ? 'default' : 'outline'
-                                    }
-                                >
-                                    <Link href={link.url} preserveState>
-                                        <span
-                                            dangerouslySetInnerHTML={{
-                                                __html: link.label,
-                                            }}
-                                        />
-                                    </Link>
-                                </Button>
-                            );
-                        })}
-                    </div>
+                    <Pagination links={allocations.links} />
                 )}
             </div>
         </AppLayout>

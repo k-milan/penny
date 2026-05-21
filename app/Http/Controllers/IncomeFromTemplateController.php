@@ -52,10 +52,11 @@ final readonly class IncomeFromTemplateController
         $accounts = Account::query()
             ->where('user_id', $user->id)
             ->orderBy('name', 'asc')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'type'])
             ->map(static fn (Account $a): array => [
                 'id' => $a->id,
                 'name' => $a->name,
+                'type' => $a->type->value,
             ])
             ->values()
             ->all();
@@ -64,10 +65,11 @@ final readonly class IncomeFromTemplateController
             ->where('user_id', $user->id)
             ->where('is_unallocated', false)
             ->orderBy('name', 'asc')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'type'])
             ->map(static fn (Allocation $a): array => [
                 'id' => $a->id,
                 'name' => $a->name,
+                'type' => $a->type->value,
             ])
             ->values()
             ->all();

@@ -712,7 +712,7 @@ export default function Dashboard() {
                                         <li key={a.id}>
                                             <div className="flex items-center gap-1 px-1 py-1.5 transition-colors first:pt-0 hover:bg-muted/50">
                                                 <Link
-                                                    href={AccountController.edit(
+                                                    href={AccountController.show(
                                                         {
                                                             account: a.id,
                                                         },
@@ -844,7 +844,7 @@ export default function Dashboard() {
                                         <li key={a.id}>
                                             <div className="flex items-center gap-1 px-1 py-1.5 transition-colors first:pt-0 hover:bg-muted/50">
                                                 <Link
-                                                    href={AllocationController.edit(
+                                                    href={AllocationController.show(
                                                         {
                                                             allocation: a.id,
                                                         },

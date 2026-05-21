@@ -3,6 +3,10 @@ import InputError from '@/components/input-error';
 import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
 import {
+    renderGroupedAccountOptions,
+    renderGroupedAllocationOptions,
+} from '@/lib/grouped-options';
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -1147,7 +1151,7 @@ export function TransactionFormDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-5xl flex-col gap-4 overflow-hidden p-4 sm:max-h-[calc(100vh-64px)] sm:p-6">
+            <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col gap-4 overflow-hidden p-4 sm:max-h-[calc(100vh-64px)] sm:p-6 xl:max-w-3xl">
                 <div className="shrink-0">
                     <DialogHeader className="text-left">
                         <div className="flex items-start gap-2 pr-8">
@@ -1319,11 +1323,9 @@ export function TransactionFormDialog({
                                                 )
                                             }
                                         >
-                                            {creditCardAccounts.map((a) => (
-                                                <option key={a.id} value={a.id}>
-                                                    {a.name}
-                                                </option>
-                                            ))}
+                                            {renderGroupedAccountOptions(
+                                                creditCardAccounts,
+                                            )}
                                         </select>
                                     </div>
                                 )}
@@ -1428,21 +1430,8 @@ export function TransactionFormDialog({
                                                                         );
                                                                     }}
                                                                 >
-                                                                    {sourceChoices.map(
-                                                                        (a) => (
-                                                                            <option
-                                                                                key={
-                                                                                    a.id
-                                                                                }
-                                                                                value={
-                                                                                    a.id
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    a.name
-                                                                                }
-                                                                            </option>
-                                                                        ),
+                                                                    {renderGroupedAccountOptions(
+                                                                        sourceChoices,
                                                                     )}
                                                                 </select>
                                                             </div>
@@ -1506,7 +1495,7 @@ export function TransactionFormDialog({
                                                                 }
                                                                 aria-label="Remove split"
                                                             >
-                                                                <Trash2 className="size-4" />
+                                                                <Trash2 className="size-4 text-destructive" />
                                                             </Button>
                                                         </li>
                                                     );
@@ -1666,21 +1655,8 @@ export function TransactionFormDialog({
                                                                         );
                                                                     }}
                                                                 >
-                                                                    {sourceChoices.map(
-                                                                        (a) => (
-                                                                            <option
-                                                                                key={
-                                                                                    a.id
-                                                                                }
-                                                                                value={
-                                                                                    a.id
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    a.name
-                                                                                }
-                                                                            </option>
-                                                                        ),
+                                                                    {renderGroupedAccountOptions(
+                                                                        sourceChoices,
                                                                     )}
                                                                 </select>
                                                             </div>
@@ -1744,7 +1720,7 @@ export function TransactionFormDialog({
                                                                 }
                                                                 aria-label="Remove person line"
                                                             >
-                                                                <Trash2 className="size-4" />
+                                                                <Trash2 className="size-4 text-destructive" />
                                                             </Button>
                                                         </li>
                                                     );
@@ -1944,7 +1920,7 @@ export function TransactionFormDialog({
                                                                 }
                                                                 aria-label="Remove allocation line"
                                                             >
-                                                                <Trash2 className="size-4" />
+                                                                <Trash2 className="size-4 text-destructive" />
                                                             </Button>
                                                         </li>
                                                     );
@@ -2102,20 +2078,13 @@ export function TransactionFormDialog({
                                                     }
                                                 }}
                                             >
-                                                {accountList
-                                                    .filter(
+                                                {renderGroupedAccountOptions(
+                                                    accountList.filter(
                                                         (a) =>
                                                             a.id !==
                                                             toAccountId,
-                                                    )
-                                                    .map((a) => (
-                                                        <option
-                                                            key={a.id}
-                                                            value={a.id}
-                                                        >
-                                                            {a.name}
-                                                        </option>
-                                                    ))}
+                                                    ),
+                                                )}
                                             </select>
                                         </div>
                                         <div className="grid gap-2 sm:max-w-md">
@@ -2148,20 +2117,13 @@ export function TransactionFormDialog({
                                                     }
                                                 }}
                                             >
-                                                {accountList
-                                                    .filter(
+                                                {renderGroupedAccountOptions(
+                                                    accountList.filter(
                                                         (a) =>
                                                             a.id !==
                                                             fromAccountId,
-                                                    )
-                                                    .map((a) => (
-                                                        <option
-                                                            key={a.id}
-                                                            value={a.id}
-                                                        >
-                                                            {a.name}
-                                                        </option>
-                                                    ))}
+                                                    ),
+                                                )}
                                             </select>
                                         </div>
                                     </>
@@ -2198,19 +2160,12 @@ export function TransactionFormDialog({
                                                     }
                                                 }}
                                             >
-                                                {transferAllocChoices
-                                                    .filter(
+                                                {renderGroupedAllocationOptions(
+                                                    transferAllocChoices.filter(
                                                         (a) =>
                                                             a.id !== toAllocId,
-                                                    )
-                                                    .map((a) => (
-                                                        <option
-                                                            key={a.id}
-                                                            value={a.id}
-                                                        >
-                                                            {a.name}
-                                                        </option>
-                                                    ))}
+                                                    ),
+                                                )}
                                             </select>
                                         </div>
                                         <div className="grid gap-2 sm:max-w-md">
@@ -2243,20 +2198,13 @@ export function TransactionFormDialog({
                                                     }
                                                 }}
                                             >
-                                                {transferAllocChoices
-                                                    .filter(
+                                                {renderGroupedAllocationOptions(
+                                                    transferAllocChoices.filter(
                                                         (a) =>
                                                             a.id !==
                                                             fromAllocId,
-                                                    )
-                                                    .map((a) => (
-                                                        <option
-                                                            key={a.id}
-                                                            value={a.id}
-                                                        >
-                                                            {a.name}
-                                                        </option>
-                                                    ))}
+                                                    ),
+                                                )}
                                             </select>
                                         </div>
                                     </>
@@ -2440,14 +2388,9 @@ export function TransactionFormDialog({
                                                         )
                                                     }
                                                 >
-                                                    {personAccounts.map((a) => (
-                                                        <option
-                                                            key={a.id}
-                                                            value={a.id}
-                                                        >
-                                                            {a.name}
-                                                        </option>
-                                                    ))}
+                                                    {renderGroupedAccountOptions(
+                                                        personAccounts,
+                                                    )}
                                                 </select>
                                             </div>
                                             <div className="min-w-0 flex-1 space-y-1">
@@ -2561,9 +2504,9 @@ export function TransactionFormDialog({
                                             return (
                                                 <li
                                                     key={`loan-f-${i}`}
-                                                    className="flex flex-wrap items-start gap-2"
+                                                    className="flex items-start gap-2"
                                                 >
-                                                    <div className="min-w-[12rem] flex-1 space-y-1">
+                                                    <div className="min-w-0 flex-1 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`loan-acc-${i}`}
@@ -2603,25 +2546,20 @@ export function TransactionFormDialog({
                                                                 );
                                                             }}
                                                         >
-                                                            {accountOptionsForRow(
-                                                                loanFundingAccounts,
-                                                                form.data
-                                                                    .accounts,
-                                                                i,
-                                                            ).map((a) => (
-                                                                <option
-                                                                    key={a.id}
-                                                                    value={a.id}
-                                                                >
-                                                                    {a.name}
-                                                                </option>
-                                                            ))}
+                                                            {renderGroupedAccountOptions(
+                                                                accountOptionsForRow(
+                                                                    loanFundingAccounts,
+                                                                    form.data
+                                                                        .accounts,
+                                                                    i,
+                                                                ),
+                                                            )}
                                                         </select>
                                                         <InputError
                                                             message={accIdErr}
                                                         />
                                                     </div>
-                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
+                                                    <div className="w-28 shrink-0 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`loan-acc-amt-${i}`}
@@ -2669,7 +2607,7 @@ export function TransactionFormDialog({
                                                             );
                                                         }}
                                                     >
-                                                        <Trash2 className="size-4" />
+                                                        <Trash2 className="size-4 text-destructive" />
                                                     </Button>
                                                 </li>
                                             );
@@ -2749,9 +2687,9 @@ export function TransactionFormDialog({
                                             return (
                                                 <li
                                                     key={`loan-l-${i}`}
-                                                    className="flex flex-wrap items-start gap-2"
+                                                    className="flex items-start gap-2"
                                                 >
-                                                    <div className="min-w-[12rem] flex-1 space-y-1">
+                                                    <div className="min-w-0 flex-1 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`loan-alloc-${i}`}
@@ -2791,25 +2729,20 @@ export function TransactionFormDialog({
                                                                 );
                                                             }}
                                                         >
-                                                            {allocationOptionsForRow(
-                                                                allocationLineOptions,
-                                                                form.data
-                                                                    .allocations,
-                                                                i,
-                                                            ).map((a) => (
-                                                                <option
-                                                                    key={a.id}
-                                                                    value={a.id}
-                                                                >
-                                                                    {a.name}
-                                                                </option>
-                                                            ))}
+                                                            {renderGroupedAllocationOptions(
+                                                                allocationOptionsForRow(
+                                                                    allocationLineOptions,
+                                                                    form.data
+                                                                        .allocations,
+                                                                    i,
+                                                                ),
+                                                            )}
                                                         </select>
                                                         <InputError
                                                             message={allocIdErr}
                                                         />
                                                     </div>
-                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
+                                                    <div className="w-28 shrink-0 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`loan-alloc-amt-${i}`}
@@ -2859,7 +2792,7 @@ export function TransactionFormDialog({
                                                             );
                                                         }}
                                                     >
-                                                        <Trash2 className="size-4" />
+                                                        <Trash2 className="size-4 text-destructive" />
                                                     </Button>
                                                 </li>
                                             );
@@ -3019,9 +2952,9 @@ export function TransactionFormDialog({
                                             return (
                                                 <li
                                                     key={`a-${i}`}
-                                                    className="flex flex-wrap items-start gap-2"
+                                                    className="flex items-start gap-2"
                                                 >
-                                                    <div className="min-w-[12rem] flex-1 space-y-1">
+                                                    <div className="min-w-0 flex-1 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`acc-${i}`}
@@ -3061,25 +2994,20 @@ export function TransactionFormDialog({
                                                                 );
                                                             }}
                                                         >
-                                                            {accountOptionsForRow(
-                                                                accountList,
-                                                                form.data
-                                                                    .accounts,
-                                                                i,
-                                                            ).map((a) => (
-                                                                <option
-                                                                    key={a.id}
-                                                                    value={a.id}
-                                                                >
-                                                                    {a.name}
-                                                                </option>
-                                                            ))}
+                                                            {renderGroupedAccountOptions(
+                                                                accountOptionsForRow(
+                                                                    accountList,
+                                                                    form.data
+                                                                        .accounts,
+                                                                    i,
+                                                                ),
+                                                            )}
                                                         </select>
                                                         <InputError
                                                             message={accIdErr}
                                                         />
                                                     </div>
-                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
+                                                    <div className="w-28 shrink-0 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`acc-amt-${i}`}
@@ -3127,26 +3055,12 @@ export function TransactionFormDialog({
                                                             );
                                                         }}
                                                     >
-                                                        <Trash2 className="size-4" />
+                                                        <Trash2 className="size-4 text-destructive" />
                                                     </Button>
                                                 </li>
                                             );
                                         })}
                                     </ul>
-                                    {form.data.accounts.length >= 2 && (
-                                        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
-                                            <span>Total</span>
-                                            <span className="min-w-[9rem] text-right font-medium text-foreground tabular-nums">
-                                                {formatPhpMoney(
-                                                    accountLinesTotal,
-                                                )}
-                                            </span>
-                                            <span
-                                                className="size-9 shrink-0"
-                                                aria-hidden
-                                            />
-                                        </div>
-                                    )}
                                     <InputError
                                         message={form.errors.accounts}
                                     />
@@ -3206,9 +3120,9 @@ export function TransactionFormDialog({
                                             return (
                                                 <li
                                                     key={`l-${i}`}
-                                                    className="flex flex-wrap items-start gap-2"
+                                                    className="flex items-start gap-2"
                                                 >
-                                                    <div className="min-w-[12rem] flex-1 space-y-1">
+                                                    <div className="min-w-0 flex-1 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`alloc-${i}`}
@@ -3248,25 +3162,20 @@ export function TransactionFormDialog({
                                                                 );
                                                             }}
                                                         >
-                                                            {allocationOptionsForRow(
-                                                                allocationLineOptions,
-                                                                form.data
-                                                                    .allocations,
-                                                                i,
-                                                            ).map((a) => (
-                                                                <option
-                                                                    key={a.id}
-                                                                    value={a.id}
-                                                                >
-                                                                    {a.name}
-                                                                </option>
-                                                            ))}
+                                                            {renderGroupedAllocationOptions(
+                                                                allocationOptionsForRow(
+                                                                    allocationLineOptions,
+                                                                    form.data
+                                                                        .allocations,
+                                                                    i,
+                                                                ),
+                                                            )}
                                                         </select>
                                                         <InputError
                                                             message={allocIdErr}
                                                         />
                                                     </div>
-                                                    <div className="max-w-[14rem] min-w-[9rem] shrink-0 space-y-1">
+                                                    <div className="w-28 shrink-0 space-y-1">
                                                         <Label
                                                             className="sr-only"
                                                             htmlFor={`alloc-amt-${i}`}
@@ -3316,26 +3225,12 @@ export function TransactionFormDialog({
                                                             );
                                                         }}
                                                     >
-                                                        <Trash2 className="size-4" />
+                                                        <Trash2 className="size-4 text-destructive" />
                                                     </Button>
                                                 </li>
                                             );
                                         })}
                                     </ul>
-                                    {form.data.allocations.length >= 2 && (
-                                        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
-                                            <span>Total</span>
-                                            <span className="min-w-[9rem] text-right font-medium text-foreground tabular-nums">
-                                                {formatPhpMoney(
-                                                    allocationLinesTotal,
-                                                )}
-                                            </span>
-                                            <span
-                                                className="size-9 shrink-0"
-                                                aria-hidden
-                                            />
-                                        </div>
-                                    )}
                                     <InputError
                                         message={form.errors.allocations}
                                     />
@@ -3344,30 +3239,54 @@ export function TransactionFormDialog({
                         ) : null}
                     </div>
 
-                    <DialogFooter className="shrink-0 border-t border-border pt-4">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => onOpenChange(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={
-                                form.processing ||
-                                (isCreateTransfer
-                                    ? !canSubmitTransfer
-                                    : isCreateCredit
-                                      ? !canSubmitCredit
-                                      : isCreateLoan
-                                        ? !canSubmitLoan
-                                        : !canSubmit)
-                            }
-                        >
-                            {mode === 'create' ? 'Save' : 'Update'}
-                        </Button>
-                    </DialogFooter>
+                    <div className="shrink-0 space-y-3 border-t border-border pt-4 mt-4">
+                        {!isCreateTransfer &&
+                        !isCreateCredit &&
+                        !isCreateLoan ? (
+                            <div className="grid gap-x-6 gap-y-1 text-sm lg:grid-cols-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-muted-foreground">
+                                        Accounts total
+                                    </span>
+                                    <span className="tabular-nums font-medium">
+                                        {formatPhpMoney(accountLinesTotal)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-muted-foreground">
+                                        Allocations total
+                                    </span>
+                                    <span className="tabular-nums font-medium">
+                                        {formatPhpMoney(allocationLinesTotal)}
+                                    </span>
+                                </div>
+                            </div>
+                        ) : null}
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => onOpenChange(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={
+                                    form.processing ||
+                                    (isCreateTransfer
+                                        ? !canSubmitTransfer
+                                        : isCreateCredit
+                                          ? !canSubmitCredit
+                                          : isCreateLoan
+                                            ? !canSubmitLoan
+                                            : !canSubmit)
+                                }
+                            >
+                                {mode === 'create' ? 'Save' : 'Update'}
+                            </Button>
+                        </DialogFooter>
+                    </div>
                 </form>
             </DialogContent>
         </Dialog>

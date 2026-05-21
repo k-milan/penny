@@ -1,4 +1,5 @@
 import AccountController from '@/actions/App/Http/Controllers/AccountController';
+import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -116,7 +117,7 @@ export default function AccountsIndex({
                                         <li key={row.id}>
                                             <div className="flex items-start gap-1 px-3 py-4 transition-colors hover:bg-muted/50">
                                                 <Link
-                                                    href={AccountController.edit(
+                                                    href={AccountController.show(
                                                         {
                                                             account: row.id,
                                                         },
@@ -206,42 +207,7 @@ export default function AccountsIndex({
                 )}
 
                 {accounts.last_page > 1 && (
-                    <div className="flex flex-wrap items-center justify-center gap-1">
-                        {accounts.links.map((link, i) => {
-                            if (link.url === null) {
-                                return (
-                                    <span
-                                        key={i}
-                                        className="flex size-9 items-center justify-center text-sm text-muted-foreground"
-                                    >
-                                        <span
-                                            dangerouslySetInnerHTML={{
-                                                __html: link.label,
-                                            }}
-                                        />
-                                    </span>
-                                );
-                            }
-                            return (
-                                <Button
-                                    key={i}
-                                    asChild
-                                    size="icon"
-                                    variant={
-                                        link.active ? 'default' : 'outline'
-                                    }
-                                >
-                                    <Link href={link.url} preserveState>
-                                        <span
-                                            dangerouslySetInnerHTML={{
-                                                __html: link.label,
-                                            }}
-                                        />
-                                    </Link>
-                                </Button>
-                            );
-                        })}
-                    </div>
+                    <Pagination links={accounts.links} />
                 )}
             </div>
         </AppLayout>

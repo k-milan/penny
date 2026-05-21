@@ -10,8 +10,12 @@ use App\Actions\UpdateAllocation;
 use App\Enums\AllocationType;
 use App\Http\Requests\StoreAllocationRequest;
 use App\Http\Requests\UpdateAllocationRequest;
+use App\Http\Resources\AccountResource;
 use App\Http\Resources\AllocationResource;
+use App\Http\Resources\TransactionResource;
+use App\Models\Account;
 use App\Models\Allocation;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Support\UnallocatedAmount;
 use DomainException;
@@ -44,6 +48,63 @@ final readonly class AllocationController
             'defaultUnallocated' => $defaultUnallocated
                 ? (new AllocationResource($defaultUnallocated))->resolve()
                 : null,
+        ]);
+    }
+
+    public function show(Request $request, Allocation $allocation): Response
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        $accounts = Account::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get();
+
+        $allAllocations = Allocation::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get();
+
+        $unallocatedAllocationId = Allocation::query()
+            ->where('user_id', $user->id)
+            ->where('is_unallocated', true)
+            ->value('id');
+
+        return Inertia::render('allocations/show', [
+            'allocation' => [
+                'id' => $allocation->id,
+                'name' => $allocation->name,
+                'type' => $allocation->type->value,
+                'balance' => (string) $allocation->balance,
+                'is_unallocated' => $allocation->is_unallocated,
+            ],
+            'accounts' => AccountResource::collection($accounts)->resolve(),
+            'allocations' => AllocationResource::collection($allAllocations)->resolve(),
+            'unallocated_allocation_id' => $unallocatedAllocationId !== null
+                ? (int) $unallocatedAllocationId
+                : null,
+            'transactions' => Inertia::scroll(
+                static function () use ($allocation): mixed {
+                    $paginator = Transaction::query()
+                        ->whereHas(
+                            'transactionAllocations',
+                            static fn ($q) => $q->where('allocation_id', $allocation->id)
+                        )
+                        ->with([
+                            'transactionAccounts.account',
+                            'transactionAllocations.allocation',
+                        ])
+                        ->orderByDesc('date')
+                        ->orderByDesc('created_at')
+                        ->orderByDesc('id')
+                        ->paginate(20, ['*'], 'transactions');
+
+                    return $paginator->through(
+                        static fn (Transaction $t): array => (new TransactionResource($t))->resolve(request())
+                    );
+                }
+            ),
         ]);
     }
 

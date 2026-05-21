@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read string $name
  * @property-read AccountType $type
  * @property-read string $balance
+ * @property-read string|null $share_token
  * @property-read CarbonInterface $created_at
  * @property-read CarbonInterface $updated_at
  * @property-read User $user
@@ -37,6 +38,7 @@ final class Account extends Model
             'name' => 'string',
             'type' => AccountType::class,
             'balance' => 'decimal:2',
+            'share_token' => 'string',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
