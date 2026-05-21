@@ -44,7 +44,7 @@ export default function AccountShare() {
     return (
         <>
             <FlashToasts />
-            <Head title={`${account.name} — Balance`} />
+            <Head title={`Your balance with ${owner_name}`} />
             <div className="bg-background text-foreground flex min-h-screen flex-col">
                 <header className="border-b">
                     <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-4 py-4">
@@ -58,22 +58,25 @@ export default function AccountShare() {
                 </header>
 
                 <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
+                    <h1 className="mb-4 text-2xl font-semibold">
+                        Hi, {account.name}
+                    </h1>
                     <div className="mb-8 rounded-xl border bg-card p-6">
                         <p className="mb-1 text-sm text-muted-foreground">
-                            Balance with {owner_name}
+                            Your balance with {owner_name}
                         </p>
-                        <h1 className="mb-1 text-3xl font-bold tabular-nums">
+                        <p className="mb-1 text-3xl font-bold tabular-nums">
                             {formatPhpMoney(account.balance)}
-                        </h1>
+                        </p>
                         {isPositive ? (
-                            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                                <TrendingUp className="size-4" />
-                                {account.name} owes you this amount
-                            </p>
-                        ) : isNegative ? (
                             <p className="flex items-center gap-1.5 text-sm font-medium text-rose-600 dark:text-rose-400">
                                 <TrendingDown className="size-4" />
-                                You owe {account.name} this amount
+                                You owe {owner_name} this amount
+                            </p>
+                        ) : isNegative ? (
+                            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                <TrendingUp className="size-4" />
+                                {owner_name} owes you this amount
                             </p>
                         ) : (
                             <p className="text-sm text-muted-foreground">
