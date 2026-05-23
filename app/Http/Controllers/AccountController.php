@@ -34,11 +34,16 @@ final readonly class AccountController
         $accounts = Account::query()
             ->where('user_id', $user->id)
             ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+            ->get(['id', 'name', 'type', 'balance', 'share_token']);
 
         return Inertia::render('accounts/index', [
-            'accounts' => $accounts,
+            'accounts' => $accounts->map(static fn (Account $a): array => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'type' => $a->type->value,
+                'balance' => (string) $a->balance,
+                'share_token' => $a->type === AccountType::Person ? $a->share_token : null,
+            ])->values()->all(),
         ]);
     }
 

@@ -40,11 +40,10 @@ final readonly class AllocationController
             ->where('user_id', $user->id)
             ->where('is_unallocated', false)
             ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+            ->get();
 
         return Inertia::render('allocations/index', [
-            'allocations' => $allocations,
+            'allocations' => AllocationResource::collection($allocations)->resolve(),
             'defaultUnallocated' => $defaultUnallocated
                 ? (new AllocationResource($defaultUnallocated))->resolve()
                 : null,

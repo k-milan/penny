@@ -1,3 +1,4 @@
+import AppLogoIcon from '@/components/app-logo-icon';
 import { FlashToasts } from '@/components/flash-toasts';
 import { formatDateYmd, formatPhpMoney } from '@/lib/format';
 import { Head, InfiniteScroll, usePage } from '@inertiajs/react';
@@ -48,9 +49,14 @@ export default function AccountShare() {
             <div className="bg-background text-foreground flex min-h-screen flex-col">
                 <header className="border-b">
                     <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-4 py-4">
-                        <span className="text-lg font-semibold tracking-tight">
-                            Penny
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                                <AppLogoIcon className="size-4 stroke-[2.25px] text-white dark:text-black" />
+                            </div>
+                            <span className="text-lg font-semibold tracking-tight">
+                                Penny
+                            </span>
+                        </div>
                         <span className="text-sm text-muted-foreground">
                             Shared by {owner_name}
                         </span>
