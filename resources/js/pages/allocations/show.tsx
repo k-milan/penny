@@ -127,7 +127,7 @@ export default function AllocationShow({
                     }
                 }}
             >
-                <DialogContent className="max-h-[min(90vh,40rem)] max-w-lg overflow-y-auto">
+                <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto">
                     {detailTransaction ? (
                         <>
                             <DialogHeader>

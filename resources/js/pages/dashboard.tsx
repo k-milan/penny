@@ -992,7 +992,7 @@ export default function Dashboard() {
                     },
                     {
                         id: 'payment',
-                        title: 'Payment',
+                        title: 'Credit Card',
                         description: 'Pay down a credit card.',
                         icon: CreditCard,
                         disabled: !canCreateCreditCardTx,
@@ -1031,7 +1031,7 @@ export default function Dashboard() {
                     }
                 }}
             >
-                <DialogContent className="max-h-[min(90vh,40rem)] max-w-lg overflow-y-auto">
+                <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto">
                     {detailTransaction ? (
                         <>
                             <DialogHeader>

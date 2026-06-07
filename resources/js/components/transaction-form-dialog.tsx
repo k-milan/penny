@@ -20,7 +20,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatPhpMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useForm } from '@inertiajs/react';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 export type AccountOption = {
@@ -451,7 +451,16 @@ function buildCardPaymentForSubmit(
     return { accounts, allocations: [] };
 }
 
-export type LoanPersonDirection = 'they_owe' | 'i_owe';
+export type LoanPersonDirection =
+    | 'i_paid_them'
+    | 'they_owe_me'
+    | 'they_paid_me'
+    | 'i_owe_them';
+
+/** True for directions where the person line is recorded as positive. */
+function isLoanPersonPositive(d: LoanPersonDirection): boolean {
+    return d === 'i_paid_them' || d === 'they_owe_me';
+}
 
 function parsePositiveMagnitude(raw: string): number | null {
     const t = raw.trim();
@@ -478,7 +487,7 @@ function loanPersonSignedFromState(
     if (m === null) {
         return null;
     }
-    return direction === 'they_owe' ? m : -m;
+    return isLoanPersonPositive(direction) ? m : -m;
 }
 
 function sumLoanFundingEffective(
@@ -494,7 +503,7 @@ function sumLoanFundingEffective(
         if (m === null) {
             return null;
         }
-        s += direction === 'they_owe' ? -m : m;
+        s += isLoanPersonPositive(direction) ? -m : m;
     }
     return s;
 }
@@ -512,7 +521,7 @@ function sumLoanAllocEffective(
         if (m === null) {
             return null;
         }
-        s += direction === 'they_owe' ? m : -m;
+        s += isLoanPersonPositive(direction) ? m : -m;
     }
     return s;
 }
@@ -538,7 +547,7 @@ function buildLoanForSubmit(
         {
             account_id: personId,
             amount:
-                direction === 'they_owe' ? pMag.toFixed(2) : (-pMag).toFixed(2),
+                isLoanPersonPositive(direction) ? pMag.toFixed(2) : (-pMag).toFixed(2),
         },
     ];
     const funding: LineAccount[] = [];
@@ -550,7 +559,7 @@ function buildLoanForSubmit(
         if (m === null) {
             return null;
         }
-        const signed = direction === 'they_owe' ? -m : m;
+        const signed = isLoanPersonPositive(direction) ? -m : m;
         funding.push({
             account_id: row.account_id,
             amount: signed.toFixed(2),
@@ -565,7 +574,7 @@ function buildLoanForSubmit(
         if (m === null) {
             return null;
         }
-        const signed = direction === 'they_owe' ? m : -m;
+        const signed = isLoanPersonPositive(direction) ? m : -m;
         allocations.push({
             allocation_id: row.allocation_id,
             amount: signed.toFixed(2),
@@ -730,7 +739,7 @@ export function TransactionFormDialog({
     >([]);
     const [loanPersonId, setLoanPersonId] = useState(0);
     const [loanDirection, setLoanDirection] =
-        useState<LoanPersonDirection>('they_owe');
+        useState<LoanPersonDirection>('i_paid_them');
     const [loanPersonAmount, setLoanPersonAmount] = useState('');
 
     /** Only seed from/to when the dialog opens — not on every parent re-render (new array refs would reset the allocation tab). */
@@ -814,18 +823,7 @@ export function TransactionFormDialog({
         } else {
             setCreditSplits([]);
         }
-        const p0 = personAccounts[0];
-        if (p0) {
-            setPurchasePersonSplits([
-                {
-                    key: newCreditSplitKey(),
-                    accountId: p0.id,
-                    amount: '',
-                },
-            ]);
-        } else {
-            setPurchasePersonSplits([]);
-        }
+        setPurchasePersonSplits([]);
         const alloc0 = allocationLineOptions[0];
         if (alloc0) {
             setPurchaseAllocSplits([
@@ -864,11 +862,11 @@ export function TransactionFormDialog({
         const p0 = personAccounts[0];
         if (p0) {
             setLoanPersonId(p0.id);
-            setLoanDirection('they_owe');
+            setLoanDirection('i_paid_them');
             setLoanPersonAmount('');
         } else {
             setLoanPersonId(0);
-            setLoanDirection('they_owe');
+            setLoanDirection('i_paid_them');
             setLoanPersonAmount('');
         }
     }, [open, isCreateLoan, personAccounts]);
@@ -1151,7 +1149,7 @@ export function TransactionFormDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col gap-4 overflow-hidden p-4 sm:max-h-[calc(100vh-64px)] sm:p-6 xl:max-w-3xl">
+            <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[min(calc(100vw-2rem),42rem)] flex-col gap-4 overflow-hidden p-4 sm:max-h-[calc(100vh-64px)] sm:p-6 xl:max-w-[min(calc(100vw-2rem),48rem)]">
                 <div className="shrink-0">
                     <DialogHeader className="text-left">
                         <div className="flex items-start gap-2 pr-8">
@@ -1248,8 +1246,9 @@ export function TransactionFormDialog({
                     className="flex min-h-0 flex-1 flex-col gap-0"
                     onSubmit={submit}
                 >
-                    <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-                        <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+                        <div className="rounded-lg border bg-muted/30 p-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label htmlFor="tx-date">Date</Label>
                                 <Input
@@ -1302,9 +1301,11 @@ export function TransactionFormDialog({
                                 <InputError message={form.errors.note} />
                             </div>
                         </div>
+                        </div>{/* end details card */}
 
                         {isCreateCredit ? (
-                            <div className="space-y-4">
+                            <div className="space-y-3">
+                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                                 {creditCardAccounts.length > 0 && (
                                     <div className="grid max-w-md gap-2">
                                         <Label htmlFor="tx-credit-card">
@@ -1349,19 +1350,21 @@ export function TransactionFormDialog({
                                         className="w-full max-w-md justify-stretch"
                                     >
                                         <ToggleGroupItem
-                                            value="payment"
-                                            className="min-w-0 flex-1 px-2"
-                                        >
-                                            Payment
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem
                                             value="purchase"
                                             className="min-w-0 flex-1 px-2"
                                         >
                                             Purchase
                                         </ToggleGroupItem>
+                                        <ToggleGroupItem
+                                            value="payment"
+                                            className="min-w-0 flex-1 px-2"
+                                        >
+                                            Payment
+                                        </ToggleGroupItem>
                                     </ToggleGroup>
                                 </div>
+                                </div>{/* end credit card config card */}
+                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                                 {creditCardTab === 'payment' ? (
                                     <>
                                         <p className="text-sm text-muted-foreground">
@@ -1371,7 +1374,7 @@ export function TransactionFormDialog({
                                             <strong>negative</strong> (bank,
                                             cash, or person).
                                         </p>
-                                        <ul className="space-y-3">
+                                        <ul className="space-y-1.5">
                                             {creditSplits.map(
                                                 (row, rowIndex) => {
                                                     const sourceChoices =
@@ -1383,11 +1386,11 @@ export function TransactionFormDialog({
                                                     return (
                                                         <li
                                                             key={row.key}
-                                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                            className="flex items-center gap-2"
                                                         >
-                                                            <div className="min-w-0 flex-1 space-y-1">
+                                                            <div className="min-w-0 flex-1">
                                                                 <Label
-                                                                    className="text-xs"
+                                                                    className="sr-only"
                                                                     htmlFor={`cc-acct-${row.key}`}
                                                                 >
                                                                     Paid from
@@ -1435,9 +1438,9 @@ export function TransactionFormDialog({
                                                                     )}
                                                                 </select>
                                                             </div>
-                                                            <div className="w-full max-w-sm min-w-[9rem] space-y-1 sm:max-w-[12rem]">
+                                                            <div className="w-28 shrink-0">
                                                                 <Label
-                                                                    className="text-xs"
+                                                                    className="sr-only"
                                                                     htmlFor={`cc-amt-${row.key}`}
                                                                 >
                                                                     Amount
@@ -1474,7 +1477,7 @@ export function TransactionFormDialog({
                                                                 type="button"
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="self-end"
+                                                                className="shrink-0"
                                                                 onClick={() => {
                                                                     setCreditSplits(
                                                                         (
@@ -1583,199 +1586,10 @@ export function TransactionFormDialog({
                                     </>
                                 ) : (
                                     <>
-                                        <p className="text-sm text-muted-foreground">
-                                            Charge the card: card line{' '}
-                                            <strong>negative</strong>; people
-                                            who will reimburse you{' '}
-                                            <strong>positive</strong>;
-                                            allocations{' '}
-                                            <strong>negative</strong> ( amounts
-                                            you enter for envelopes are stored
-                                            as negatives).
-                                        </p>
                                         <p className="text-sm font-medium">
-                                            People paying you back
+                                            Allocation split
                                         </p>
-                                        <ul className="space-y-3">
-                                            {purchasePersonSplits.map(
-                                                (row, rowIndex) => {
-                                                    const sourceChoices =
-                                                        cardPaymentSourceOptionsForRow(
-                                                            personAccounts,
-                                                            purchasePersonSplits,
-                                                            rowIndex,
-                                                        );
-                                                    return (
-                                                        <li
-                                                            key={row.key}
-                                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
-                                                        >
-                                                            <div className="min-w-0 flex-1 space-y-1">
-                                                                <Label
-                                                                    className="text-xs"
-                                                                    htmlFor={`cpp-${row.key}`}
-                                                                >
-                                                                    Person
-                                                                </Label>
-                                                                <select
-                                                                    id={`cpp-${row.key}`}
-                                                                    className={cn(
-                                                                        selectClass,
-                                                                        invalidClass,
-                                                                    )}
-                                                                    value={
-                                                                        row.accountId
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) => {
-                                                                        const id =
-                                                                            Number(
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                            );
-                                                                        setPurchasePersonSplits(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        s,
-                                                                                    ) =>
-                                                                                        s.key ===
-                                                                                        row.key
-                                                                                            ? {
-                                                                                                  ...s,
-                                                                                                  accountId:
-                                                                                                      id,
-                                                                                              }
-                                                                                            : s,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    {renderGroupedAccountOptions(
-                                                                        sourceChoices,
-                                                                    )}
-                                                                </select>
-                                                            </div>
-                                                            <div className="w-full max-w-sm min-w-[9rem] space-y-1 sm:max-w-[12rem]">
-                                                                <Label
-                                                                    className="text-xs"
-                                                                    htmlFor={`cpa-${row.key}`}
-                                                                >
-                                                                    Amount
-                                                                </Label>
-                                                                <MoneyInput
-                                                                    id={`cpa-${row.key}`}
-                                                                    value={
-                                                                        row.amount
-                                                                    }
-                                                                    onChange={(
-                                                                        v,
-                                                                    ) => {
-                                                                        setPurchasePersonSplits(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        s,
-                                                                                    ) =>
-                                                                                        s.key ===
-                                                                                        row.key
-                                                                                            ? {
-                                                                                                  ...s,
-                                                                                                  amount: v,
-                                                                                              }
-                                                                                            : s,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="self-end"
-                                                                onClick={() => {
-                                                                    setPurchasePersonSplits(
-                                                                        (
-                                                                            prev,
-                                                                        ) =>
-                                                                            prev.filter(
-                                                                                (
-                                                                                    s,
-                                                                                ) =>
-                                                                                    s.key !==
-                                                                                    row.key,
-                                                                            ),
-                                                                    );
-                                                                }}
-                                                                disabled={
-                                                                    purchasePersonSplits.length <=
-                                                                    1
-                                                                }
-                                                                aria-label="Remove person line"
-                                                            >
-                                                                <Trash2 className="size-4 text-destructive" />
-                                                            </Button>
-                                                        </li>
-                                                    );
-                                                },
-                                            )}
-                                        </ul>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const used = new Set(
-                                                        purchasePersonSplits.map(
-                                                            (s) => s.accountId,
-                                                        ),
-                                                    );
-                                                    const next =
-                                                        personAccounts.find(
-                                                            (a) =>
-                                                                !used.has(a.id),
-                                                        );
-                                                    if (next) {
-                                                        setPurchasePersonSplits(
-                                                            (prev) => [
-                                                                ...prev,
-                                                                {
-                                                                    key: newCreditSplitKey(),
-                                                                    accountId:
-                                                                        next.id,
-                                                                    amount: '',
-                                                                },
-                                                            ],
-                                                        );
-                                                    }
-                                                }}
-                                                disabled={
-                                                    !personAccounts.some(
-                                                        (a) =>
-                                                            !purchasePersonSplits.some(
-                                                                (s) =>
-                                                                    s.accountId ===
-                                                                    a.id,
-                                                            ),
-                                                    )
-                                                }
-                                            >
-                                                <Plus className="size-4" />
-                                                Add person
-                                            </Button>
-                                        </div>
-                                        <p className="text-sm font-medium">
-                                            Allocations split
-                                        </p>
-                                        <ul className="space-y-3">
+                                        <ul className="space-y-1.5">
                                             {purchaseAllocSplits.map(
                                                 (row, rowIndex) => {
                                                     const allocRowsForPicker: LineAllocation[] =
@@ -1795,11 +1609,11 @@ export function TransactionFormDialog({
                                                     return (
                                                         <li
                                                             key={row.key}
-                                                            className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                            className="flex items-center gap-2"
                                                         >
-                                                            <div className="min-w-0 flex-1 space-y-1">
+                                                            <div className="min-w-0 flex-1">
                                                                 <Label
-                                                                    className="text-xs"
+                                                                    className="sr-only"
                                                                     htmlFor={`cpal-${row.key}`}
                                                                 >
                                                                     Allocation
@@ -1860,9 +1674,9 @@ export function TransactionFormDialog({
                                                                     )}
                                                                 </select>
                                                             </div>
-                                                            <div className="w-full max-w-sm min-w-[9rem] space-y-1 sm:max-w-[12rem]">
+                                                            <div className="w-28 shrink-0">
                                                                 <Label
-                                                                    className="text-xs"
+                                                                    className="sr-only"
                                                                     htmlFor={`cpaa-${row.key}`}
                                                                 >
                                                                     Amount
@@ -1899,7 +1713,7 @@ export function TransactionFormDialog({
                                                                 type="button"
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="self-end"
+                                                                className="shrink-0"
                                                                 onClick={() => {
                                                                     setPurchaseAllocSplits(
                                                                         (
@@ -1973,13 +1787,129 @@ export function TransactionFormDialog({
                                                 Add allocation
                                             </Button>
                                         </div>
+                                        <p className="text-sm font-medium">
+                                            Split with people
+                                        </p>
+                                        {purchasePersonSplits.length === 0 && (
+                                            <p className="text-sm text-muted-foreground">
+                                                No people splitting this purchase.
+                                            </p>
+                                        )}
+                                        <ul className="space-y-1.5">
+                                            {purchasePersonSplits.map(
+                                                (row, rowIndex) => {
+                                                    const sourceChoices =
+                                                        cardPaymentSourceOptionsForRow(
+                                                            personAccounts,
+                                                            purchasePersonSplits,
+                                                            rowIndex,
+                                                        );
+                                                    return (
+                                                        <li
+                                                            key={row.key}
+                                                            className="flex items-center gap-2"
+                                                        >
+                                                            <div className="min-w-0 flex-1">
+                                                                <Label
+                                                                    className="sr-only"
+                                                                    htmlFor={`cpp-${row.key}`}
+                                                                >
+                                                                    Person
+                                                                </Label>
+                                                                <select
+                                                                    id={`cpp-${row.key}`}
+                                                                    className={cn(
+                                                                        selectClass,
+                                                                        invalidClass,
+                                                                    )}
+                                                                    value={row.accountId}
+                                                                    onChange={(e) => {
+                                                                        const id = Number(e.target.value);
+                                                                        setPurchasePersonSplits((prev) =>
+                                                                            prev.map((s) =>
+                                                                                s.key === row.key
+                                                                                    ? { ...s, accountId: id }
+                                                                                    : s,
+                                                                            ),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    {renderGroupedAccountOptions(sourceChoices)}
+                                                                </select>
+                                                            </div>
+                                                            <div className="w-28 shrink-0">
+                                                                <Label
+                                                                    className="sr-only"
+                                                                    htmlFor={`cpa-${row.key}`}
+                                                                >
+                                                                    Amount
+                                                                </Label>
+                                                                <MoneyInput
+                                                                    id={`cpa-${row.key}`}
+                                                                    value={row.amount}
+                                                                    onChange={(v) => {
+                                                                        setPurchasePersonSplits((prev) =>
+                                                                            prev.map((s) =>
+                                                                                s.key === row.key
+                                                                                    ? { ...s, amount: v }
+                                                                                    : s,
+                                                                            ),
+                                                                        );
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="shrink-0"
+                                                                onClick={() => {
+                                                                    setPurchasePersonSplits((prev) =>
+                                                                        prev.filter((s) => s.key !== row.key),
+                                                                    );
+                                                                }}
+                                                                aria-label="Remove person line"
+                                                            >
+                                                                <Trash2 className="size-4 text-destructive" />
+                                                            </Button>
+                                                        </li>
+                                                    );
+                                                },
+                                            )}
+                                        </ul>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    const used = new Set(purchasePersonSplits.map((s) => s.accountId));
+                                                    const next = personAccounts.find((a) => !used.has(a.id));
+                                                    if (next) {
+                                                        setPurchasePersonSplits((prev) => [
+                                                            ...prev,
+                                                            { key: newCreditSplitKey(), accountId: next.id, amount: '' },
+                                                        ]);
+                                                    }
+                                                }}
+                                                disabled={
+                                                    !personAccounts.some(
+                                                        (a) => !purchasePersonSplits.some((s) => s.accountId === a.id),
+                                                    )
+                                                }
+                                            >
+                                                <Plus className="size-4" />
+                                                Add person
+                                            </Button>
+                                        </div>
                                     </>
                                 )}
                                 <InputError message={form.errors.accounts} />
                                 <InputError message={form.errors.allocations} />
+                                </div>{/* end credit card lines card */}
                             </div>
                         ) : isCreateTransfer && canDoTransfer ? (
-                            <div className="space-y-4">
+                            <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
                                 {canShowAccountTab &&
                                 canShowTransferAllocTab ? (
                                     <div className="grid gap-2">
@@ -2047,8 +1977,8 @@ export function TransactionFormDialog({
 
                                 {transferKind === 'account' &&
                                 canShowAccountTab ? (
-                                    <>
-                                        <div className="grid gap-2 sm:max-w-md">
+                                    <div className="flex items-end gap-2">
+                                        <div className="min-w-0 flex-1 grid gap-2">
                                             <Label htmlFor="tx-from-account">
                                                 From
                                             </Label>
@@ -2087,7 +2017,8 @@ export function TransactionFormDialog({
                                                 )}
                                             </select>
                                         </div>
-                                        <div className="grid gap-2 sm:max-w-md">
+                                        <ArrowRight className="mb-[10px] shrink-0 size-4 text-muted-foreground" />
+                                        <div className="min-w-0 flex-1 grid gap-2">
                                             <Label htmlFor="tx-to-account">
                                                 To
                                             </Label>
@@ -2126,13 +2057,13 @@ export function TransactionFormDialog({
                                                 )}
                                             </select>
                                         </div>
-                                    </>
+                                    </div>
                                 ) : null}
 
                                 {transferKind === 'allocation' &&
                                 canShowTransferAllocTab ? (
-                                    <>
-                                        <div className="grid gap-2 sm:max-w-md">
+                                    <div className="flex items-end gap-2">
+                                        <div className="min-w-0 flex-1 grid gap-2">
                                             <Label htmlFor="tx-from-alloc">
                                                 From
                                             </Label>
@@ -2168,7 +2099,8 @@ export function TransactionFormDialog({
                                                 )}
                                             </select>
                                         </div>
-                                        <div className="grid gap-2 sm:max-w-md">
+                                        <ArrowRight className="mb-[10px] shrink-0 size-4 text-muted-foreground" />
+                                        <div className="min-w-0 flex-1 grid gap-2">
                                             <Label htmlFor="tx-to-alloc">
                                                 To
                                             </Label>
@@ -2207,7 +2139,7 @@ export function TransactionFormDialog({
                                                 )}
                                             </select>
                                         </div>
-                                    </>
+                                    </div>
                                 ) : null}
 
                                 <div className="grid max-w-sm gap-2">
@@ -2249,8 +2181,8 @@ export function TransactionFormDialog({
                                         <p className="text-sm font-medium">
                                             Transfer fee (optional)
                                         </p>
-                                        <div className="flex flex-row flex-wrap gap-x-4 gap-y-3">
-                                            <div className="grid min-w-[10rem] flex-1 gap-2">
+                                        <div className="flex items-end gap-3">
+                                            <div className="min-w-0 flex-1 grid gap-2">
                                                 <Label htmlFor="tx-transfer-fee">
                                                     Fee
                                                 </Label>
@@ -2265,15 +2197,8 @@ export function TransactionFormDialog({
                                                         transferFeeInputInvalid
                                                     }
                                                 />
-                                                <p className="text-xs text-muted-foreground">
-                                                    Taken from the allocation
-                                                    below, or from{' '}
-                                                    <strong>Unallocated</strong>{' '}
-                                                    when “Fee from” is
-                                                    Unallocated.
-                                                </p>
                                             </div>
-                                            <div className="grid min-w-[10rem] flex-1 gap-2">
+                                            <div className="min-w-0 flex-1 grid gap-2">
                                                 <Label htmlFor="tx-transfer-fee-alloc">
                                                     Fee from
                                                 </Label>
@@ -2310,6 +2235,12 @@ export function TransactionFormDialog({
                                                 </select>
                                             </div>
                                         </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Fee is taken from the selected
+                                            allocation, or from{' '}
+                                            <strong>Unallocated</strong> when
+                                            "Fee from" is Unallocated.
+                                        </p>
                                         {transferFeeUnallocatedMissing ? (
                                             <p className="text-sm text-destructive">
                                                 Unallocated allocation is
@@ -2347,18 +2278,15 @@ export function TransactionFormDialog({
                                 </div>
                             </div>
                         ) : isCreateLoan ? (
-                            <div className="space-y-6">
-                                <div className="space-y-3 rounded-lg border border-border p-4">
+                            <div className="space-y-3">
+                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                                     <Label className="text-base">Person</Label>
                                     <p className="text-sm text-muted-foreground">
-                                        One counterparty:{' '}
-                                        <strong>They owe me</strong> or{' '}
-                                        <strong>I owe them</strong>. Enter{' '}
+                                        Pick the direction that matches your
+                                        intent. Enter{' '}
                                         <strong>positive</strong> amounts
-                                        everywhere; funding lines are recorded
-                                        with the opposite sign to the person,
-                                        and allocation lines match the person’s
-                                        sign.
+                                        everywhere; Penny applies the correct
+                                        signs automatically.
                                     </p>
                                     {personAccounts.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">
@@ -2411,18 +2339,26 @@ export function TransactionFormDialog({
                                                         const v =
                                                             e.target.value;
                                                         if (
-                                                            v !== 'they_owe' &&
-                                                            v !== 'i_owe'
+                                                            v !== 'i_paid_them' &&
+                                                            v !== 'they_owe_me' &&
+                                                            v !== 'they_paid_me' &&
+                                                            v !== 'i_owe_them'
                                                         ) {
                                                             return;
                                                         }
                                                         setLoanDirection(v);
                                                     }}
                                                 >
-                                                    <option value="they_owe">
+                                                    <option value="i_paid_them">
+                                                        I paid them
+                                                    </option>
+                                                    <option value="they_owe_me">
                                                         They owe me
                                                     </option>
-                                                    <option value="i_owe">
+                                                    <option value="they_paid_me">
+                                                        They paid me
+                                                    </option>
+                                                    <option value="i_owe_them">
                                                         I owe them
                                                     </option>
                                                 </select>
@@ -2446,7 +2382,7 @@ export function TransactionFormDialog({
                                     )}
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-base">
                                             Funding accounts
@@ -2631,7 +2567,7 @@ export function TransactionFormDialog({
                                     )}
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-base">
                                             Allocation lines
@@ -2816,11 +2752,11 @@ export function TransactionFormDialog({
                                             />
                                         </div>
                                     )}
-                                </div>
+                                </div>{/* end loan allocations card */}
 
                                 <div
                                     className={cn(
-                                        'rounded-md border p-3 text-sm',
+                                        'rounded-lg border p-4 text-sm',
                                         loanBalanceGap !== null &&
                                             Math.abs(loanBalanceGap) < 0.02
                                             ? 'border-green-600/50 bg-green-600/5'
@@ -2899,8 +2835,8 @@ export function TransactionFormDialog({
                         ) : !isCreateTransfer &&
                           !isCreateCredit &&
                           !isCreateLoan ? (
-                            <div className="grid gap-6 lg:grid-cols-2">
-                                <div className="space-y-3">
+                            <div className="grid gap-3 lg:grid-cols-2">
+                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                                     <div className="flex items-center justify-between gap-3">
                                         <Label className="text-base">
                                             Account lines
@@ -3064,9 +3000,9 @@ export function TransactionFormDialog({
                                     <InputError
                                         message={form.errors.accounts}
                                     />
-                                </div>
+                                </div>{/* end accounts card */}
 
-                                <div className="space-y-3">
+                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                                     <div className="flex items-center justify-between gap-3">
                                         <Label className="text-base">
                                             Allocation lines
@@ -3234,7 +3170,7 @@ export function TransactionFormDialog({
                                     <InputError
                                         message={form.errors.allocations}
                                     />
-                                </div>
+                                </div>{/* end allocations card */}
                             </div>
                         ) : null}
                     </div>

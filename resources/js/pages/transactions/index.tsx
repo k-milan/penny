@@ -171,7 +171,7 @@ export default function TransactionsIndex({
                     },
                     {
                         id: 'payment',
-                        title: 'Payment',
+                        title: 'Credit Card',
                         description: 'Pay down a credit card.',
                         icon: CreditCard,
                         disabled: !canCreatePayment,
@@ -196,7 +196,7 @@ export default function TransactionsIndex({
                     }
                 }}
             >
-                <DialogContent className="max-h-[min(90vh,40rem)] max-w-lg overflow-y-auto">
+                <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto">
                     {detailTransaction ? (
                         <>
                             <DialogHeader>

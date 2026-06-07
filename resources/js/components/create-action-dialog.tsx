@@ -35,7 +35,7 @@ export function CreateActionDialog({
 }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-[min(calc(100vw-2rem),42rem)]">
                 <DialogHeader className="text-left">
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>
