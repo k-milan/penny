@@ -59,6 +59,7 @@ final readonly class PublicAccountShareController
 
                                     return [
                                         'description' => $item->description,
+                                        'shares' => (int) $assigned->pivot->shares,
                                         'amount' => bcadd('0.00', (string) $assigned->pivot->amount, 2),
                                     ];
                                 })->filter()->values()->all(),

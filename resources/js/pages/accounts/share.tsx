@@ -12,7 +12,7 @@ type ShareTransaction = {
     note: string | null;
     amount: string | null;
     bill: {
-        items: { description: string; amount: string }[];
+        items: { description: string; shares: number; amount: string }[];
         item_subtotal: string;
         service_charge: string;
         discount: string;
@@ -207,7 +207,12 @@ function TransactionShareRow({
                             key={`${item.description}-${index}`}
                             className="flex justify-between gap-3"
                         >
-                            <span>{item.description}</span>
+                            <span>
+                                {item.description}
+                                {item.shares > 1
+                                    ? ` · ${item.shares} shares`
+                                    : ''}
+                            </span>
                             <span className="tabular-nums">
                                 {formatPhpMoney(item.amount)}
                             </span>

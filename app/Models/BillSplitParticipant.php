@@ -43,7 +43,7 @@ final class BillSplitParticipant extends Model
             BillSplitItem::class,
             'bill_split_item_participant'
         )
-            ->withPivot('amount')
+            ->withPivot('shares', 'amount')
             ->withTimestamps();
     }
 }

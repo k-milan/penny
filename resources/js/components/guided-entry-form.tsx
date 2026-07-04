@@ -25,8 +25,18 @@ import { Check, Plus, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type Assignee =
-    | { type: 'account' | 'allocation'; id: number; label: string }
-    | { type: 'new_person'; name: string; label: string };
+    | {
+          type: 'account' | 'allocation';
+          id: number;
+          label: string;
+          shares?: number;
+      }
+    | {
+          type: 'new_person';
+          name: string;
+          label: string;
+          shares?: number;
+      };
 type Item = {
     key: string;
     description: string;
@@ -208,7 +218,25 @@ export function GuidedEntryForm({
         updateItem(itemIndex, {
             assignees: assigned
                 ? item.assignees.filter((a) => !sameAssignee(a, participant))
-                : [...item.assignees, participant],
+                : [...item.assignees, { ...participant, shares: 1 }],
+        });
+    };
+
+    const changeItemShares = (
+        itemIndex: number,
+        participant: Assignee,
+        delta: number,
+    ) => {
+        const item = form.data.items[itemIndex];
+        updateItem(itemIndex, {
+            assignees: item.assignees.map((assignee) =>
+                sameAssignee(assignee, participant)
+                    ? {
+                          ...assignee,
+                          shares: Math.max(1, (assignee.shares ?? 1) + delta),
+                      }
+                    : assignee,
+            ),
         });
     };
 
@@ -293,7 +321,10 @@ export function GuidedEntryForm({
                     ...item,
                     assignees: item.assignees.map((assignee) =>
                         sameAssignee(assignee, currentOwner)
-                            ? nextOwner
+                            ? {
+                                  ...nextOwner,
+                                  shares: assignee.shares ?? 1,
+                              }
                             : assignee,
                     ),
                 })),
@@ -313,16 +344,22 @@ export function GuidedEntryForm({
 
     const participantSubtotal = (participant: Assignee): number =>
         form.data.items.reduce((sum, item) => {
-            if (
-                item.assignees.length === 0 ||
-                !item.assignees.some((a) => sameAssignee(a, participant))
-            ) {
+            const assignment = item.assignees.find((assignee) =>
+                sameAssignee(assignee, participant),
+            );
+            if (!assignment) {
                 return sum;
             }
+            const totalShares = item.assignees.reduce(
+                (shares, assignee) => shares + (assignee.shares ?? 1),
+                0,
+            );
             return (
                 sum +
-                (amount(item.quantity) * amount(item.unitPrice)) /
-                    item.assignees.length
+                (amount(item.quantity) *
+                    amount(item.unitPrice) *
+                    (assignment.shares ?? 1)) /
+                    totalShares
             );
         }, 0);
 
@@ -340,8 +377,16 @@ export function GuidedEntryForm({
                       unit_price: item.unitPrice,
                       assignees: item.assignees.map((assignee) =>
                           assignee.type === 'new_person'
-                              ? { type: assignee.type, name: assignee.name }
-                              : { type: assignee.type, id: assignee.id },
+                              ? {
+                                    type: assignee.type,
+                                    name: assignee.name,
+                                    shares: assignee.shares ?? 1,
+                                }
+                              : {
+                                    type: assignee.type,
+                                    id: assignee.id,
+                                    shares: assignee.shares ?? 1,
+                                },
                       ),
                   }))
                 : [
@@ -925,16 +970,47 @@ export function GuidedEntryForm({
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {assignedItems.map(
                                                             (item) => {
+                                                                const assignment =
+                                                                    item.assignees.find(
+                                                                        (
+                                                                            assignee,
+                                                                        ) =>
+                                                                            sameAssignee(
+                                                                                assignee,
+                                                                                participant,
+                                                                            ),
+                                                                    );
+                                                                const shares =
+                                                                    assignment?.shares ??
+                                                                    1;
+                                                                const totalShares =
+                                                                    item.assignees.reduce(
+                                                                        (
+                                                                            total,
+                                                                            assignee,
+                                                                        ) =>
+                                                                            total +
+                                                                            (assignee.shares ??
+                                                                                1),
+                                                                        0,
+                                                                    );
                                                                 const share =
                                                                     (amount(
                                                                         item.quantity,
                                                                     ) *
                                                                         amount(
                                                                             item.unitPrice,
-                                                                        )) /
-                                                                    item
-                                                                        .assignees
-                                                                        .length;
+                                                                        ) *
+                                                                        shares) /
+                                                                    totalShares;
+                                                                const itemIndex =
+                                                                    form.data.items.findIndex(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.key ===
+                                                                            item.key,
+                                                                    );
 
                                                                 return (
                                                                     <Badge
@@ -953,6 +1029,53 @@ export function GuidedEntryForm({
                                                                             {formatPhpMoney(
                                                                                 share,
                                                                             )}
+                                                                        </span>
+                                                                        <span className="ml-0.5 flex items-center rounded-sm border bg-background/70">
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label={`Remove one share of ${item.description} from ${participant.label}`}
+                                                                                disabled={
+                                                                                    shares <=
+                                                                                    1
+                                                                                }
+                                                                                className="px-1 disabled:cursor-not-allowed disabled:opacity-30"
+                                                                                onClick={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    event.stopPropagation();
+                                                                                    changeItemShares(
+                                                                                        itemIndex,
+                                                                                        participant,
+                                                                                        -1,
+                                                                                    );
+                                                                                }}
+                                                                            >
+                                                                                −
+                                                                            </button>
+                                                                            <span className="min-w-4 text-center tabular-nums">
+                                                                                {
+                                                                                    shares
+                                                                                }
+
+                                                                                ×
+                                                                            </span>
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label={`Add one share of ${item.description} to ${participant.label}`}
+                                                                                className="px-1"
+                                                                                onClick={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    event.stopPropagation();
+                                                                                    changeItemShares(
+                                                                                        itemIndex,
+                                                                                        participant,
+                                                                                        1,
+                                                                                    );
+                                                                                }}
+                                                                            >
+                                                                                +
+                                                                            </button>
                                                                         </span>
                                                                     </Badge>
                                                                 );

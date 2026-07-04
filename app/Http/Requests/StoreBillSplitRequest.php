@@ -37,6 +37,7 @@ final class StoreBillSplitRequest extends FormRequest
             'items.*.assignees.*.type' => ['required', Rule::in(['account', 'allocation', 'new_person'])],
             'items.*.assignees.*.id' => ['nullable', 'integer'],
             'items.*.assignees.*.name' => ['nullable', 'string', 'max:255'],
+            'items.*.assignees.*.shares' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }
 }

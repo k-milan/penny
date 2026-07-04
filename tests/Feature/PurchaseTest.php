@@ -78,6 +78,42 @@ it('creates an itemized purchase with equal and proportional cent-safe shares', 
         ->and($food->fresh()->balance)->toBe('445.00');
 });
 
+it('splits an item by weighted participant shares', function (): void {
+    $user = User::factory()->create();
+    $bank = purchaseAccount($user, 'Bank', AccountType::Bank, '100.00');
+    $person = purchaseAccount($user, 'Alex', AccountType::Person);
+    $food = purchaseAllocation($user, 'Food');
+
+    $this->actingAs($user)->post(route('bill-splits.store'), [
+        'date' => '2026-07-05',
+        'description' => 'Weighted dinner',
+        'payment_account_id' => $bank->id,
+        'total' => '100.00',
+        'items' => [[
+            'description' => 'Shared platter',
+            'quantity' => 1,
+            'unit_price' => '100.00',
+            'assignees' => [
+                ['type' => 'account', 'id' => $person->id, 'shares' => 2],
+                ['type' => 'allocation', 'id' => $food->id, 'shares' => 1],
+            ],
+        ]],
+    ])->assertRedirect();
+
+    $this->assertDatabaseHas('transaction_accounts', [
+        'account_id' => $person->id,
+        'amount' => '66.67',
+    ]);
+    $this->assertDatabaseHas('transaction_allocations', [
+        'allocation_id' => $food->id,
+        'amount' => '-33.33',
+    ]);
+    $this->assertDatabaseHas('bill_split_item_participant', [
+        'shares' => 2,
+        'amount' => '66.67',
+    ]);
+});
+
 it('creates one ad hoc person across multiple items atomically', function (): void {
     $user = User::factory()->create();
     $bank = purchaseAccount($user, 'Cash', AccountType::Cash, '100.00');

@@ -38,7 +38,7 @@ final readonly class CreateBillSplit
 
             /** @var array<string, array{type: string, id: int, item_cents: int, service_cents: int}> $participants */
             $participants = [];
-            /** @var list<array{description: string, amount_cents: int, shares: array<string, int>}> $calculatedItems */
+            /** @var list<array{description: string, amount_cents: int, shares: array<string, int>, share_counts: array<string, int>}> $calculatedItems */
             $calculatedItems = [];
             /** @var array<string, int> $newPeople */
             $newPeople = [];
@@ -46,6 +46,7 @@ final readonly class CreateBillSplit
             foreach ($items as $itemIndex => $item) {
                 $itemAmountCents = self::cents($item['unit_price']) * (int) $item['quantity'];
                 $keys = [];
+                $shareCounts = [];
                 foreach ($item['assignees'] as $assigneeIndex => $assignee) {
                     $resolved = $this->resolveAssignee(
                         $user,
@@ -60,6 +61,7 @@ final readonly class CreateBillSplit
                         ]);
                     }
                     $keys[] = $key;
+                    $shareCounts[$key] = (int) ($assignee['shares'] ?? 1);
                     $participants[$key] ??= [
                         ...$resolved,
                         'item_cents' => 0,
@@ -67,11 +69,11 @@ final readonly class CreateBillSplit
                     ];
                 }
 
-                $shares = self::splitEvenly($itemAmountCents, count($keys));
+                $shares = self::splitWeighted($itemAmountCents, $shareCounts);
                 $itemShares = [];
-                foreach ($keys as $i => $key) {
-                    $participants[$key]['item_cents'] += $shares[$i];
-                    $itemShares[$key] = $shares[$i];
+                foreach ($keys as $key) {
+                    $participants[$key]['item_cents'] += $shares[$key];
+                    $itemShares[$key] = $shares[$key];
                 }
                 $calculatedItems[] = [
                     'description' => mb_trim((string) $item['description']),
@@ -79,6 +81,7 @@ final readonly class CreateBillSplit
                     'unit_price_cents' => self::cents($item['unit_price']),
                     'amount_cents' => $itemAmountCents,
                     'shares' => $itemShares,
+                    'share_counts' => $shareCounts,
                 ];
             }
 
@@ -149,6 +152,7 @@ final readonly class CreateBillSplit
                 ]);
                 foreach ($item['shares'] as $key => $cents) {
                     $itemModel->participants()->attach($participantModels[$key]->id, [
+                        'shares' => $item['share_counts'][$key],
                         'amount' => self::money($cents),
                     ]);
                 }
@@ -158,16 +162,31 @@ final readonly class CreateBillSplit
         });
     }
 
-    /** @return list<int> */
-    private static function splitEvenly(int $cents, int $count): array
+    /** @param array<string, int> $weights @return array<string, int> */
+    private static function splitWeighted(int $cents, array $weights): array
     {
-        $base = intdiv($cents, $count);
-        $remainder = $cents % $count;
+        $totalWeight = array_sum($weights);
+        $result = [];
+        $used = 0;
+        $remainders = [];
 
-        return array_map(
-            static fn (int $i): int => $base + ($i < $remainder ? 1 : 0),
-            range(0, $count - 1)
-        );
+        foreach ($weights as $key => $weight) {
+            $product = $cents * $weight;
+            $result[$key] = intdiv($product, $totalWeight);
+            $used += $result[$key];
+            $remainders[$key] = $product % $totalWeight;
+        }
+
+        arsort($remainders, SORT_NUMERIC);
+        foreach (array_keys($remainders) as $key) {
+            if ($used >= $cents) {
+                break;
+            }
+            $result[$key]++;
+            $used++;
+        }
+
+        return $result;
     }
 
     /** @param array<string, int> $weights @return array<string, int> */
