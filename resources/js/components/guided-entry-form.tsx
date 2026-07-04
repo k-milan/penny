@@ -71,7 +71,21 @@ export function GuidedEntryForm({
     presentation?: 'dialog' | 'page';
 }) {
     const splitBill = mode === 'bill-split';
-    const [participants, setParticipants] = useState<Assignee[]>([]);
+    const defaultOwnerAllocation =
+        allocations.find((allocation) => allocation.is_unallocated) ??
+        allocations[0];
+    const [participants, setParticipants] = useState<Assignee[]>(() =>
+        splitBill
+            ? [
+                  {
+                      type: 'allocation',
+                      id: defaultOwnerAllocation?.id ?? 0,
+                      label:
+                          defaultOwnerAllocation?.name ?? 'Select allocation',
+                  },
+              ]
+            : [],
+    );
     const [pendingParticipant, setPendingParticipant] = useState<
         string | number | null
     >(null);
@@ -234,6 +248,10 @@ export function GuidedEntryForm({
     };
 
     const removeParticipant = (participant: Assignee) => {
+        if (participant.type === 'allocation') {
+            return;
+        }
+
         setParticipants((current) =>
             current.filter((a) => !sameAssignee(a, participant)),
         );
@@ -245,6 +263,52 @@ export function GuidedEntryForm({
                 ),
             })),
         );
+    };
+
+    const changeOwnerAllocation = (value: number | string | null) => {
+        const allocation = allocations.find(
+            (option) => option.id === Number(value),
+        );
+        if (!allocation) {
+            return;
+        }
+
+        const currentOwner = participants.find(
+            (participant) => participant.type === 'allocation',
+        );
+        const nextOwner: Assignee = {
+            type: 'allocation',
+            id: allocation.id,
+            label: allocation.name,
+        };
+
+        setParticipants((current) =>
+            current.map((participant) =>
+                participant.type === 'allocation' ? nextOwner : participant,
+            ),
+        );
+        if (currentOwner) {
+            setItems(
+                form.data.items.map((item) => ({
+                    ...item,
+                    assignees: item.assignees.map((assignee) =>
+                        sameAssignee(assignee, currentOwner)
+                            ? nextOwner
+                            : assignee,
+                    ),
+                })),
+            );
+        }
+        if (
+            currentOwner &&
+            assignmentFocus?.type === 'person' &&
+            assignmentFocus.key === assigneeKey(currentOwner)
+        ) {
+            setAssignmentFocus({
+                type: 'person',
+                key: assigneeKey(nextOwner),
+            });
+        }
     };
 
     const participantSubtotal = (participant: Assignee): number =>
@@ -315,7 +379,11 @@ export function GuidedEntryForm({
                       item.description.trim() !== '' &&
                       amount(item.quantity) >= 1 &&
                       amount(item.unitPrice) > 0 &&
-                      item.assignees.length > 0,
+                      item.assignees.length > 0 &&
+                      item.assignees.every(
+                          (assignee) =>
+                              assignee.type !== 'allocation' || assignee.id > 0,
+                      ),
               ));
 
     const formContent = (
@@ -787,7 +855,10 @@ export function GuidedEntryForm({
                                                                     )) ? (
                                                                 <Check className="mr-1 inline size-4 text-emerald-500" />
                                                             ) : null}
-                                                            {participant.label}
+                                                            {participant.type ===
+                                                            'allocation'
+                                                                ? 'Me'
+                                                                : participant.label}
                                                         </h4>
                                                         <p className="text-xs text-muted-foreground tabular-nums">
                                                             Items{' '}
@@ -806,21 +877,50 @@ export function GuidedEntryForm({
                                                             </strong>
                                                         </p>
                                                     </div>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        aria-label={`Remove ${participant.label}`}
-                                                        onClick={(event) => {
-                                                            event.stopPropagation();
-                                                            removeParticipant(
-                                                                participant,
-                                                            );
-                                                        }}
-                                                    >
-                                                        <X className="size-4" />
-                                                    </Button>
+                                                    {participant.type !==
+                                                    'allocation' ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            aria-label={`Remove ${participant.label}`}
+                                                            onClick={(
+                                                                event,
+                                                            ) => {
+                                                                event.stopPropagation();
+                                                                removeParticipant(
+                                                                    participant,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <X className="size-4" />
+                                                        </Button>
+                                                    ) : null}
                                                 </div>
+                                                {participant.type ===
+                                                'allocation' ? (
+                                                    <div
+                                                        className="mb-2"
+                                                        onClick={(event) =>
+                                                            event.stopPropagation()
+                                                        }
+                                                    >
+                                                        <SearchableCombobox
+                                                            ariaLabel="My allocation"
+                                                            value={
+                                                                participant.id ||
+                                                                null
+                                                            }
+                                                            onChange={
+                                                                changeOwnerAllocation
+                                                            }
+                                                            options={
+                                                                allocations
+                                                            }
+                                                            placeholder="Choose my allocation…"
+                                                        />
+                                                    </div>
+                                                ) : null}
                                                 {assignedItems.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {assignedItems.map(

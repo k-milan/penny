@@ -118,6 +118,7 @@ export default function AccountShare() {
                                             <TransactionShareRow
                                                 key={t.id}
                                                 transaction={t}
+                                                ownerName={owner_name}
                                             />
                                         ))}
                                         {loadingNext ? (
@@ -138,8 +139,10 @@ export default function AccountShare() {
 
 function TransactionShareRow({
     transaction: t,
+    ownerName,
 }: {
     transaction: ShareTransaction;
+    ownerName: string;
 }) {
     const [expanded, setExpanded] = useState(false);
     const amount = t.amount !== null ? Number.parseFloat(t.amount) : null;
@@ -168,19 +171,27 @@ function TransactionShareRow({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                     {amount !== null ? (
-                        <span
-                            className={[
-                                'shrink-0 font-semibold tabular-nums',
-                                isPositive
-                                    ? 'text-emerald-600 dark:text-emerald-400'
+                        <div className="text-right">
+                            <p
+                                className={[
+                                    'shrink-0 font-semibold tabular-nums',
+                                    isPositive
+                                        ? 'text-rose-600 dark:text-rose-400'
+                                        : isNegative
+                                          ? 'text-emerald-600 dark:text-emerald-400'
+                                          : '',
+                                ].join(' ')}
+                            >
+                                {formatPhpMoney(Math.abs(amount))}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                                {isPositive
+                                    ? `You owe ${ownerName}`
                                     : isNegative
-                                      ? 'text-rose-600 dark:text-rose-400'
-                                      : '',
-                            ].join(' ')}
-                        >
-                            {isPositive ? '+' : ''}
-                            {formatPhpMoney(t.amount ?? '0')}
-                        </span>
+                                      ? `${ownerName} owes you`
+                                      : 'All settled up'}
+                            </p>
+                        </div>
                     ) : null}
                     {t.bill ? (
                         <ChevronDown
