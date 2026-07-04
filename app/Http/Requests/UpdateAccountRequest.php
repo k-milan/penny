@@ -18,6 +18,7 @@ final class UpdateAccountRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'max:255'],
             'type' => ['sometimes', new Enum(AccountType::class)],
+            'is_pinned' => ['sometimes', 'boolean'],
         ];
     }
 }

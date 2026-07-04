@@ -50,6 +50,7 @@ final class UpdateAllocationRequest extends FormRequest
             'type' => ['sometimes', new Enum(AllocationType::class)],
             'due_date' => ['nullable', 'date'],
             'goal_amount' => ['nullable', 'numeric'],
+            'is_pinned' => ['sometimes', 'boolean'],
         ];
     }
 

@@ -2,7 +2,8 @@ import AppLogoIcon from '@/components/app-logo-icon';
 import { FlashToasts } from '@/components/flash-toasts';
 import { formatDateYmd, formatPhpMoney } from '@/lib/format';
 import { Head, InfiniteScroll, usePage } from '@inertiajs/react';
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import { ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 
 type ShareTransaction = {
     id: number;
@@ -10,6 +11,13 @@ type ShareTransaction = {
     description: string;
     note: string | null;
     amount: string | null;
+    bill: {
+        items: { description: string; amount: string }[];
+        item_subtotal: string;
+        service_charge: string;
+        discount: string;
+        total: string;
+    } | null;
 };
 
 type PaginatedTransactions = {
@@ -32,11 +40,8 @@ type AccountShareProps = {
 };
 
 export default function AccountShare() {
-    const {
-        account,
-        owner_name,
-        transactions,
-    } = usePage<AccountShareProps>().props;
+    const { account, owner_name, transactions } =
+        usePage<AccountShareProps>().props;
 
     const balance = Number.parseFloat(account.balance);
     const isPositive = balance > 0;
@@ -46,7 +51,7 @@ export default function AccountShare() {
         <>
             <FlashToasts />
             <Head title={`Your balance with ${owner_name}`} />
-            <div className="bg-background text-foreground flex min-h-screen flex-col">
+            <div className="flex min-h-screen flex-col bg-background text-foreground">
                 <header className="border-b">
                     <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-4 py-4">
                         <div className="flex items-center gap-2">
@@ -136,37 +141,82 @@ function TransactionShareRow({
 }: {
     transaction: ShareTransaction;
 }) {
+    const [expanded, setExpanded] = useState(false);
     const amount = t.amount !== null ? Number.parseFloat(t.amount) : null;
     const isPositive = amount !== null && amount > 0;
     const isNegative = amount !== null && amount < 0;
 
     return (
-        <div className="flex items-start justify-between gap-4 px-4 py-3">
-            <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{t.description}</p>
-                {t.note ? (
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {t.note}
+        <div className="px-4 py-3">
+            <button
+                type="button"
+                disabled={!t.bill}
+                className="flex w-full items-start justify-between gap-4 text-left disabled:cursor-default"
+                aria-expanded={t.bill ? expanded : undefined}
+                onClick={() => t.bill && setExpanded((value) => !value)}
+            >
+                <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{t.description}</p>
+                    {t.note ? (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {t.note}
+                        </p>
+                    ) : null}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatDateYmd(t.date)}
                     </p>
-                ) : null}
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatDateYmd(t.date)}
-                </p>
-            </div>
-            {amount !== null ? (
-                <span
-                    className={[
-                        'shrink-0 tabular-nums font-semibold',
-                        isPositive
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : isNegative
-                              ? 'text-rose-600 dark:text-rose-400'
-                              : '',
-                    ].join(' ')}
-                >
-                    {isPositive ? '+' : ''}
-                    {formatPhpMoney(t.amount ?? '0')}
-                </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                    {amount !== null ? (
+                        <span
+                            className={[
+                                'shrink-0 font-semibold tabular-nums',
+                                isPositive
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : isNegative
+                                      ? 'text-rose-600 dark:text-rose-400'
+                                      : '',
+                            ].join(' ')}
+                        >
+                            {isPositive ? '+' : ''}
+                            {formatPhpMoney(t.amount ?? '0')}
+                        </span>
+                    ) : null}
+                    {t.bill ? (
+                        <ChevronDown
+                            className={`size-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
+                        />
+                    ) : null}
+                </div>
+            </button>
+            {expanded && t.bill ? (
+                <div className="mt-3 space-y-2 border-t pt-3 text-sm">
+                    {t.bill.items.map((item, index) => (
+                        <div
+                            key={`${item.description}-${index}`}
+                            className="flex justify-between gap-3"
+                        >
+                            <span>{item.description}</span>
+                            <span className="tabular-nums">
+                                {formatPhpMoney(item.amount)}
+                            </span>
+                        </div>
+                    ))}
+                    <div className="space-y-1 border-t pt-2 text-muted-foreground">
+                        <div className="flex justify-between">
+                            <span>Items</span>
+                            <span>{formatPhpMoney(t.bill.item_subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Service charge</span>
+                            <span>{formatPhpMoney(t.bill.service_charge)}</span>
+                        </div>
+                        <div className="flex justify-between font-semibold text-foreground">
+                            <span>Total you owe</span>
+                            <span>{formatPhpMoney(t.bill.total)}</span>
+                        </div>
+                    </div>
+                </div>
             ) : null}
         </div>
     );

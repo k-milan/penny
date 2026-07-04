@@ -49,7 +49,6 @@ export default function AccountShow({
     account,
     accounts: accountsProp,
     allocations: allocationsProp,
-    unallocated_allocation_id,
 }: AccountShowProps) {
     const accounts = useMemo(
         () => (Array.isArray(accountsProp) ? accountsProp : []),
@@ -116,8 +115,10 @@ export default function AccountShow({
                         <p className="text-sm text-muted-foreground">
                             {formatTypeLabel(account.type)}
                         </p>
-                        <h1 className="text-2xl font-semibold">{account.name}</h1>
-                        <p className="mt-0.5 tabular-nums text-sm text-muted-foreground">
+                        <h1 className="text-2xl font-semibold">
+                            {account.name}
+                        </h1>
+                        <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
                             {formatPhpMoney(account.balance)}
                         </p>
                     </div>
@@ -132,11 +133,7 @@ export default function AccountShow({
                                 Share
                             </Button>
                         ) : null}
-                        <Button
-                            asChild
-                            variant="outline"
-                            size="sm"
-                        >
+                        <Button asChild variant="outline" size="sm">
                             <Link
                                 href={AccountController.edit({
                                     account: account.id,

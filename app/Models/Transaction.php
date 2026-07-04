@@ -9,6 +9,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property-read int $id
@@ -64,5 +65,10 @@ final class Transaction extends Model
     public function transactionAllocations(): HasMany
     {
         return $this->hasMany(TransactionAllocation::class);
+    }
+
+    public function billSplit(): HasOne
+    {
+        return $this->hasOne(BillSplit::class);
     }
 }

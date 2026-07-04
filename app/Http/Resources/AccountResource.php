@@ -22,6 +22,7 @@ final class AccountResource extends JsonResource
             'name' => $this->name,
             'type' => $this->type,
             'balance' => (string) $this->balance,
+            'is_pinned' => (bool) $this->is_pinned,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

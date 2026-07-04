@@ -36,15 +36,38 @@ final readonly class PublicAccountShareController
                         )
                         ->with([
                             'transactionAccounts' => static fn ($q) => $q->where('account_id', $account->id),
+                            'billSplit.participants' => static fn ($q) => $q->where('account_id', $account->id),
+                            'billSplit.items.participants' => static fn ($q) => $q->where('account_id', $account->id),
                         ])
                         ->orderByDesc('date')
                         ->orderByDesc('created_at')
                         ->orderByDesc('id')
                         ->paginate(30, ['*'], 'transactions');
 
-                    return $paginator->through(static function (Transaction $t): array {
+                    return $paginator->through(static function (Transaction $t) use ($account): array {
                         /** @var \App\Models\TransactionAccount|null $line */
                         $line = $t->transactionAccounts->first();
+                        $participant = $t->billSplit?->participants->firstWhere('account_id', $account->id);
+                        $bill = null;
+                        if ($participant !== null && $t->billSplit !== null) {
+                            $bill = [
+                                'items' => $t->billSplit->items->map(static function ($item) use ($participant): ?array {
+                                    $assigned = $item->participants->firstWhere('id', $participant->id);
+                                    if ($assigned === null) {
+                                        return null;
+                                    }
+
+                                    return [
+                                        'description' => $item->description,
+                                        'amount' => bcadd('0.00', (string) $assigned->pivot->amount, 2),
+                                    ];
+                                })->filter()->values()->all(),
+                                'item_subtotal' => (string) $participant->item_subtotal,
+                                'service_charge' => (string) $participant->service_charge,
+                                'discount' => (string) $participant->discount,
+                                'total' => (string) $participant->total,
+                            ];
+                        }
 
                         return [
                             'id' => $t->id,
@@ -52,6 +75,7 @@ final readonly class PublicAccountShareController
                             'description' => $t->description,
                             'note' => $t->note,
                             'amount' => $line !== null ? (string) $line->amount : null,
+                            'bill' => $bill,
                         ];
                     });
                 }

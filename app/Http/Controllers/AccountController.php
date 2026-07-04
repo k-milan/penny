@@ -33,8 +33,9 @@ final readonly class AccountController
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
+            ->orderByDesc('is_pinned')
             ->orderBy('name')
-            ->get(['id', 'name', 'type', 'balance', 'share_token']);
+            ->get(['id', 'name', 'type', 'balance', 'share_token', 'is_pinned']);
 
         return Inertia::render('accounts/index', [
             'accounts' => $accounts->map(static fn (Account $a): array => [
@@ -43,6 +44,7 @@ final readonly class AccountController
                 'type' => $a->type->value,
                 'balance' => (string) $a->balance,
                 'share_token' => $a->type === AccountType::Person ? $a->share_token : null,
+                'is_pinned' => (bool) $a->is_pinned,
             ])->values()->all(),
         ]);
     }

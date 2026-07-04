@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read string $name
  * @property-read AccountType $type
  * @property-read string $balance
+ * @property-read bool $is_pinned
  * @property-read string|null $share_token
  * @property-read CarbonInterface $created_at
  * @property-read CarbonInterface $updated_at
@@ -38,6 +39,7 @@ final class Account extends Model
             'name' => 'string',
             'type' => AccountType::class,
             'balance' => 'decimal:2',
+            'is_pinned' => 'boolean',
             'share_token' => 'string',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',

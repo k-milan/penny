@@ -11,7 +11,7 @@ import AppLayout from '@/layouts/app-layout';
 import { formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Plus, Share2, Trash2 } from 'lucide-react';
+import { Pencil, Pin, Plus, Share2, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 
 type AccountRow = {
@@ -20,6 +20,7 @@ type AccountRow = {
     type: string;
     balance: string;
     share_token: string | null;
+    is_pinned: boolean;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -56,7 +57,11 @@ function groupAccountsByType(rows: AccountRow[]): {
     }
     return out.map((g) => ({
         ...g,
-        items: [...g.items].sort((a, b) => a.name.localeCompare(b.name)),
+        items: [...g.items].sort(
+            (a, b) =>
+                Number(b.is_pinned) - Number(a.is_pinned) ||
+                a.name.localeCompare(b.name),
+        ),
     }));
 }
 
@@ -65,10 +70,7 @@ export default function AccountsIndex({
 }: {
     accounts: AccountRow[];
 }) {
-    const grouped = useMemo(
-        () => groupAccountsByType(accounts),
-        [accounts],
-    );
+    const grouped = useMemo(() => groupAccountsByType(accounts), [accounts]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -118,7 +120,7 @@ export default function AccountsIndex({
                                                         <p className="min-w-0 truncate text-sm font-medium">
                                                             {row.name}
                                                         </p>
-                                                        <p className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                                                        <p className="shrink-0 text-sm text-muted-foreground tabular-nums">
                                                             {formatPhpMoney(
                                                                 row.balance,
                                                             )}
@@ -126,6 +128,42 @@ export default function AccountsIndex({
                                                     </Link>
 
                                                     <div className="flex shrink-0 items-center">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-8 text-muted-foreground"
+                                                            aria-label={`${row.is_pinned ? 'Unpin' : 'Pin'} ${row.name}`}
+                                                            aria-pressed={
+                                                                row.is_pinned
+                                                            }
+                                                            onClick={() =>
+                                                                router.patch(
+                                                                    AccountController.update.url(
+                                                                        {
+                                                                            account:
+                                                                                row.id,
+                                                                        },
+                                                                    ),
+                                                                    {
+                                                                        is_pinned:
+                                                                            !row.is_pinned,
+                                                                    },
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                )
+                                                            }
+                                                        >
+                                                            <Pin
+                                                                className="size-3.5"
+                                                                fill={
+                                                                    row.is_pinned
+                                                                        ? 'currentColor'
+                                                                        : 'none'
+                                                                }
+                                                            />
+                                                        </Button>
                                                         <Tooltip>
                                                             <TooltipTrigger
                                                                 asChild
@@ -144,11 +182,15 @@ export default function AccountsIndex({
                                                                 </span>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
-                                                                Create transaction with this account, TBD
+                                                                Create
+                                                                transaction with
+                                                                this account,
+                                                                TBD
                                                             </TooltipContent>
                                                         </Tooltip>
 
-                                                        {row.type === 'person' &&
+                                                        {row.type ===
+                                                            'person' &&
                                                         row.share_token ? (
                                                             <Button
                                                                 type="button"

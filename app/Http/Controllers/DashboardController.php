@@ -28,12 +28,13 @@ final readonly class DashboardController
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
+            ->orderByDesc('is_pinned')
             ->orderBy('name', 'asc')
             ->get();
 
         $allocations = Allocation::query()
             ->where('user_id', $user->id)
-            ->where('is_unallocated', false)
+            ->orderByDesc('is_pinned')
             ->orderBy('name', 'asc')
             ->get();
 
@@ -50,7 +51,11 @@ final readonly class DashboardController
                 ? (int) $unallocatedAllocationId
                 : null,
             'stats' => Inertia::defer(
-                fn (): array => $this->resolveDashboardStats($user, $accounts, $allocations),
+                fn (): array => $this->resolveDashboardStats(
+                    $user,
+                    $accounts,
+                    $allocations->where('is_unallocated', false)->values()
+                ),
                 'dashboard',
             ),
             'recentTransactions' => Inertia::scroll(

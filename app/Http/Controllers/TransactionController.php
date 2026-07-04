@@ -30,12 +30,13 @@ final readonly class TransactionController
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
+            ->orderByDesc('is_pinned')
             ->orderBy('name', 'asc')
             ->get();
 
         $allocations = Allocation::query()
             ->where('user_id', $user->id)
-            ->where('is_unallocated', false)
+            ->orderByDesc('is_pinned')
             ->orderBy('name', 'asc')
             ->get();
 
@@ -88,7 +89,7 @@ final readonly class TransactionController
         ]);
 
         return redirect()
-            ->back(302, [], route('dashboard'))
+            ->route('dashboard')
             ->with('success', 'Transaction recorded.');
     }
 

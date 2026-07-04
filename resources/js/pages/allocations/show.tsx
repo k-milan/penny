@@ -47,7 +47,6 @@ export default function AllocationShow({
     allocation,
     accounts: accountsProp,
     allocations: allocationsProp,
-    unallocated_allocation_id,
 }: AllocationShowProps) {
     const accounts = useMemo(
         () => (Array.isArray(accountsProp) ? accountsProp : []),
@@ -87,11 +86,16 @@ export default function AllocationShow({
                         <h1 className="text-2xl font-semibold">
                             {allocation.name}
                         </h1>
-                        <p className="mt-0.5 tabular-nums text-sm text-muted-foreground">
+                        <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
                             {formatPhpMoney(allocation.balance)}
                         </p>
                     </div>
-                    <Button asChild variant="outline" size="sm" className="shrink-0">
+                    <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                    >
                         <Link
                             href={AllocationController.edit({
                                 allocation: allocation.id,

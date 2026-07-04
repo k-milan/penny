@@ -51,12 +51,15 @@ final readonly class IncomeFromTemplateController
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
+            ->orderByDesc('is_pinned')
             ->orderBy('name', 'asc')
-            ->get(['id', 'name', 'type'])
+            ->get(['id', 'name', 'type', 'balance', 'is_pinned'])
             ->map(static fn (Account $a): array => [
                 'id' => $a->id,
                 'name' => $a->name,
                 'type' => $a->type->value,
+                'balance' => (string) $a->balance,
+                'is_pinned' => (bool) $a->is_pinned,
             ])
             ->values()
             ->all();
@@ -64,12 +67,15 @@ final readonly class IncomeFromTemplateController
         $allocations = Allocation::query()
             ->where('user_id', $user->id)
             ->where('is_unallocated', false)
+            ->orderByDesc('is_pinned')
             ->orderBy('name', 'asc')
-            ->get(['id', 'name', 'type'])
+            ->get(['id', 'name', 'type', 'balance', 'is_pinned'])
             ->map(static fn (Allocation $a): array => [
                 'id' => $a->id,
                 'name' => $a->name,
                 'type' => $a->type->value,
+                'balance' => (string) $a->balance,
+                'is_pinned' => (bool) $a->is_pinned,
             ])
             ->values()
             ->all();

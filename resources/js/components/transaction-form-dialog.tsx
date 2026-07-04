@@ -1,11 +1,11 @@
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
 import InputError from '@/components/input-error';
 import { MoneyInput } from '@/components/money-input';
-import { Button } from '@/components/ui/button';
 import {
-    renderGroupedAccountOptions,
-    renderGroupedAllocationOptions,
-} from '@/lib/grouped-options';
+    ProjectedBalance,
+    SearchableCombobox,
+} from '@/components/searchable-combobox';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -18,6 +18,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatPhpMoney } from '@/lib/format';
+import {
+    renderGroupedAccountOptions,
+    renderGroupedAllocationOptions,
+} from '@/lib/grouped-options';
 import { cn } from '@/lib/utils';
 import { useForm } from '@inertiajs/react';
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react';
@@ -28,6 +32,7 @@ export type AccountOption = {
     name: string;
     type: string;
     balance: string;
+    is_pinned?: boolean;
 };
 
 export type AllocationOption = {
@@ -35,6 +40,7 @@ export type AllocationOption = {
     name: string;
     type: string;
     balance: string;
+    is_pinned?: boolean;
     is_unallocated?: boolean;
     due_date?: string | null;
     goal_amount?: string | null;
@@ -546,8 +552,9 @@ function buildLoanForSubmit(
     const personLines: LineAccount[] = [
         {
             account_id: personId,
-            amount:
-                isLoanPersonPositive(direction) ? pMag.toFixed(2) : (-pMag).toFixed(2),
+            amount: isLoanPersonPositive(direction)
+                ? pMag.toFixed(2)
+                : (-pMag).toFixed(2),
         },
     ];
     const funding: LineAccount[] = [];
@@ -1248,668 +1255,758 @@ export function TransactionFormDialog({
                 >
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
                         <div className="rounded-lg border bg-muted/30 p-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="grid gap-2">
-                                <Label htmlFor="tx-date">Date</Label>
-                                <Input
-                                    id="tx-date"
-                                    name="date"
-                                    type="date"
-                                    value={form.data.date}
-                                    onChange={(e) =>
-                                        form.setData('date', e.target.value)
-                                    }
-                                    required
-                                    aria-invalid={!!err('date')}
-                                />
-                                <InputError message={form.errors.date} />
-                            </div>
-                            <div className="grid gap-2 sm:col-span-2">
-                                <Label htmlFor="tx-desc">Description</Label>
-                                <Input
-                                    id="tx-desc"
-                                    name="description"
-                                    value={form.data.description}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'description',
-                                            e.target.value,
-                                        )
-                                    }
-                                    required
-                                    aria-invalid={!!err('description')}
-                                />
-                                <InputError message={form.errors.description} />
-                            </div>
-                            <div className="grid gap-2 sm:col-span-2">
-                                <Label htmlFor="tx-note">Note (optional)</Label>
-                                <textarea
-                                    id="tx-note"
-                                    name="note"
-                                    rows={2}
-                                    className={cn(
-                                        selectClass,
-                                        invalidClass,
-                                        'min-h-[4rem] py-2',
-                                    )}
-                                    value={form.data.note}
-                                    onChange={(e) =>
-                                        form.setData('note', e.target.value)
-                                    }
-                                    aria-invalid={!!err('note')}
-                                />
-                                <InputError message={form.errors.note} />
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="tx-date">Date</Label>
+                                    <Input
+                                        id="tx-date"
+                                        name="date"
+                                        type="date"
+                                        value={form.data.date}
+                                        onChange={(e) =>
+                                            form.setData('date', e.target.value)
+                                        }
+                                        required
+                                        aria-invalid={!!err('date')}
+                                    />
+                                    <InputError message={form.errors.date} />
+                                </div>
+                                <div className="grid gap-2 sm:col-span-2">
+                                    <Label htmlFor="tx-desc">Description</Label>
+                                    <Input
+                                        id="tx-desc"
+                                        name="description"
+                                        value={form.data.description}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'description',
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                        aria-invalid={!!err('description')}
+                                    />
+                                    <InputError
+                                        message={form.errors.description}
+                                    />
+                                </div>
+                                <div className="grid gap-2 sm:col-span-2">
+                                    <Label htmlFor="tx-note">
+                                        Note (optional)
+                                    </Label>
+                                    <textarea
+                                        id="tx-note"
+                                        name="note"
+                                        rows={2}
+                                        className={cn(
+                                            selectClass,
+                                            invalidClass,
+                                            'min-h-[4rem] py-2',
+                                        )}
+                                        value={form.data.note}
+                                        onChange={(e) =>
+                                            form.setData('note', e.target.value)
+                                        }
+                                        aria-invalid={!!err('note')}
+                                    />
+                                    <InputError message={form.errors.note} />
+                                </div>
                             </div>
                         </div>
-                        </div>{/* end details card */}
+                        {/* end details card */}
 
                         {isCreateCredit ? (
                             <div className="space-y-3">
-                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                                {creditCardAccounts.length > 0 && (
-                                    <div className="grid max-w-md gap-2">
-                                        <Label htmlFor="tx-credit-card">
-                                            Credit card
-                                        </Label>
-                                        <select
-                                            id="tx-credit-card"
-                                            className={cn(
-                                                selectClass,
-                                                invalidClass,
-                                            )}
-                                            value={creditCardId}
-                                            onChange={(e) =>
-                                                setCreditCardId(
-                                                    Number(e.target.value),
-                                                )
-                                            }
-                                        >
-                                            {renderGroupedAccountOptions(
-                                                creditCardAccounts,
-                                            )}
-                                        </select>
-                                    </div>
-                                )}
-                                <div className="grid gap-2">
-                                    <span className="text-sm font-medium">
-                                        Type
-                                    </span>
-                                    <ToggleGroup
-                                        type="single"
-                                        value={creditCardTab}
-                                        onValueChange={(v) => {
-                                            if (
-                                                v !== 'payment' &&
-                                                v !== 'purchase'
-                                            ) {
-                                                return;
-                                            }
-                                            setCreditCardTab(v);
-                                        }}
-                                        variant="outline"
-                                        className="w-full max-w-md justify-stretch"
-                                    >
-                                        <ToggleGroupItem
-                                            value="purchase"
-                                            className="min-w-0 flex-1 px-2"
-                                        >
-                                            Purchase
-                                        </ToggleGroupItem>
-                                        <ToggleGroupItem
-                                            value="payment"
-                                            className="min-w-0 flex-1 px-2"
-                                        >
-                                            Payment
-                                        </ToggleGroupItem>
-                                    </ToggleGroup>
-                                </div>
-                                </div>{/* end credit card config card */}
-                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                                {creditCardTab === 'payment' ? (
-                                    <>
-                                        <p className="text-sm text-muted-foreground">
-                                            Pay down the card: the card line is
-                                            recorded <strong>positive</strong>;
-                                            each funding account is{' '}
-                                            <strong>negative</strong> (bank,
-                                            cash, or person).
-                                        </p>
-                                        <ul className="space-y-1.5">
-                                            {creditSplits.map(
-                                                (row, rowIndex) => {
-                                                    const sourceChoices =
-                                                        cardPaymentSourceOptionsForRow(
-                                                            cardPaymentSourceAccounts,
-                                                            creditSplits,
-                                                            rowIndex,
-                                                        );
-                                                    return (
-                                                        <li
-                                                            key={row.key}
-                                                            className="flex items-center gap-2"
-                                                        >
-                                                            <div className="min-w-0 flex-1">
-                                                                <Label
-                                                                    className="sr-only"
-                                                                    htmlFor={`cc-acct-${row.key}`}
-                                                                >
-                                                                    Paid from
-                                                                </Label>
-                                                                <select
-                                                                    id={`cc-acct-${row.key}`}
-                                                                    className={cn(
-                                                                        selectClass,
-                                                                        invalidClass,
-                                                                    )}
-                                                                    value={
-                                                                        row.accountId
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) => {
-                                                                        const id =
-                                                                            Number(
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                            );
-                                                                        setCreditSplits(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        s,
-                                                                                    ) =>
-                                                                                        s.key ===
-                                                                                        row.key
-                                                                                            ? {
-                                                                                                  ...s,
-                                                                                                  accountId:
-                                                                                                      id,
-                                                                                              }
-                                                                                            : s,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    {renderGroupedAccountOptions(
-                                                                        sourceChoices,
-                                                                    )}
-                                                                </select>
-                                                            </div>
-                                                            <div className="w-28 shrink-0">
-                                                                <Label
-                                                                    className="sr-only"
-                                                                    htmlFor={`cc-amt-${row.key}`}
-                                                                >
-                                                                    Amount
-                                                                </Label>
-                                                                <MoneyInput
-                                                                    id={`cc-amt-${row.key}`}
-                                                                    value={
-                                                                        row.amount
-                                                                    }
-                                                                    onChange={(
-                                                                        v,
-                                                                    ) => {
-                                                                        setCreditSplits(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        s,
-                                                                                    ) =>
-                                                                                        s.key ===
-                                                                                        row.key
-                                                                                            ? {
-                                                                                                  ...s,
-                                                                                                  amount: v,
-                                                                                              }
-                                                                                            : s,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="shrink-0"
-                                                                onClick={() => {
-                                                                    setCreditSplits(
-                                                                        (
-                                                                            prev,
-                                                                        ) =>
-                                                                            prev.filter(
-                                                                                (
-                                                                                    s,
-                                                                                ) =>
-                                                                                    s.key !==
-                                                                                    row.key,
-                                                                            ),
-                                                                    );
-                                                                }}
-                                                                disabled={
-                                                                    creditSplits.length <=
-                                                                    1
-                                                                }
-                                                                aria-label="Remove split"
-                                                            >
-                                                                <Trash2 className="size-4 text-destructive" />
-                                                            </Button>
-                                                        </li>
-                                                    );
-                                                },
-                                            )}
-                                        </ul>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const used = new Set(
-                                                        creditSplits.map(
-                                                            (s) => s.accountId,
-                                                        ),
-                                                    );
-                                                    const next =
-                                                        cardPaymentSourceAccounts.find(
-                                                            (a) =>
-                                                                !used.has(a.id),
-                                                        );
-                                                    if (next) {
-                                                        setCreditSplits(
-                                                            (prev) => [
-                                                                ...prev,
-                                                                {
-                                                                    key: newCreditSplitKey(),
-                                                                    accountId:
-                                                                        next.id,
-                                                                    amount: '',
-                                                                },
-                                                            ],
-                                                        );
-                                                    }
-                                                }}
-                                                disabled={
-                                                    cardPaymentSourceAccounts.filter(
-                                                        (a) =>
-                                                            !creditSplits.some(
-                                                                (s) =>
-                                                                    s.accountId ===
-                                                                    a.id,
-                                                            ),
-                                                    ).length === 0
-                                                }
-                                            >
-                                                <Plus className="size-4" />
-                                                Add account
-                                            </Button>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                            Payment total:{' '}
-                                            <span className="font-medium text-foreground tabular-nums">
-                                                {formatPhpMoney(
-                                                    creditSplits.reduce(
-                                                        (acc, s) => {
-                                                            const t =
-                                                                s.amount.trim();
-                                                            if (
-                                                                t === '' ||
-                                                                t === '-'
-                                                            ) {
-                                                                return acc;
-                                                            }
-                                                            const n =
-                                                                Number.parseFloat(
-                                                                    t,
-                                                                );
-                                                            return (
-                                                                acc +
-                                                                (Number.isFinite(
-                                                                    n,
-                                                                ) && n > 0
-                                                                    ? n
-                                                                    : 0)
-                                                            );
-                                                        },
-                                                        0,
-                                                    ),
-                                                )}{' '}
-                                            </span>
-                                            (applied to the selected card)
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-sm font-medium">
-                                            Allocation split
-                                        </p>
-                                        <ul className="space-y-1.5">
-                                            {purchaseAllocSplits.map(
-                                                (row, rowIndex) => {
-                                                    const allocRowsForPicker: LineAllocation[] =
-                                                        purchaseAllocSplits.map(
-                                                            (s) => ({
-                                                                allocation_id:
-                                                                    s.allocationId,
-                                                                amount: s.amount,
-                                                            }),
-                                                        );
-                                                    const allocChoices =
-                                                        allocationOptionsForRow(
-                                                            allocationLineOptions,
-                                                            allocRowsForPicker,
-                                                            rowIndex,
-                                                        );
-                                                    return (
-                                                        <li
-                                                            key={row.key}
-                                                            className="flex items-center gap-2"
-                                                        >
-                                                            <div className="min-w-0 flex-1">
-                                                                <Label
-                                                                    className="sr-only"
-                                                                    htmlFor={`cpal-${row.key}`}
-                                                                >
-                                                                    Allocation
-                                                                </Label>
-                                                                <select
-                                                                    id={`cpal-${row.key}`}
-                                                                    className={cn(
-                                                                        selectClass,
-                                                                        invalidClass,
-                                                                    )}
-                                                                    value={
-                                                                        row.allocationId
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) => {
-                                                                        const id =
-                                                                            Number(
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                            );
-                                                                        setPurchaseAllocSplits(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        s,
-                                                                                    ) =>
-                                                                                        s.key ===
-                                                                                        row.key
-                                                                                            ? {
-                                                                                                  ...s,
-                                                                                                  allocationId:
-                                                                                                      id,
-                                                                                              }
-                                                                                            : s,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    {allocChoices.map(
-                                                                        (a) => (
-                                                                            <option
-                                                                                key={
-                                                                                    a.id
-                                                                                }
-                                                                                value={
-                                                                                    a.id
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    a.name
-                                                                                }
-                                                                            </option>
-                                                                        ),
-                                                                    )}
-                                                                </select>
-                                                            </div>
-                                                            <div className="w-28 shrink-0">
-                                                                <Label
-                                                                    className="sr-only"
-                                                                    htmlFor={`cpaa-${row.key}`}
-                                                                >
-                                                                    Amount
-                                                                </Label>
-                                                                <MoneyInput
-                                                                    id={`cpaa-${row.key}`}
-                                                                    value={
-                                                                        row.amount
-                                                                    }
-                                                                    onChange={(
-                                                                        v,
-                                                                    ) => {
-                                                                        setPurchaseAllocSplits(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        s,
-                                                                                    ) =>
-                                                                                        s.key ===
-                                                                                        row.key
-                                                                                            ? {
-                                                                                                  ...s,
-                                                                                                  amount: v,
-                                                                                              }
-                                                                                            : s,
-                                                                                ),
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="shrink-0"
-                                                                onClick={() => {
-                                                                    setPurchaseAllocSplits(
-                                                                        (
-                                                                            prev,
-                                                                        ) =>
-                                                                            prev.filter(
-                                                                                (
-                                                                                    s,
-                                                                                ) =>
-                                                                                    s.key !==
-                                                                                    row.key,
-                                                                            ),
-                                                                    );
-                                                                }}
-                                                                disabled={
-                                                                    purchaseAllocSplits.length <=
-                                                                    1
-                                                                }
-                                                                aria-label="Remove allocation line"
-                                                            >
-                                                                <Trash2 className="size-4 text-destructive" />
-                                                            </Button>
-                                                        </li>
-                                                    );
-                                                },
-                                            )}
-                                        </ul>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const used = new Set(
-                                                        purchaseAllocSplits.map(
-                                                            (s) =>
-                                                                s.allocationId,
-                                                        ),
-                                                    );
-                                                    const next =
-                                                        allocationLineOptions.find(
-                                                            (a) =>
-                                                                !used.has(a.id),
-                                                        );
-                                                    if (next) {
-                                                        setPurchaseAllocSplits(
-                                                            (prev) => [
-                                                                ...prev,
-                                                                {
-                                                                    key: newCreditSplitKey(),
-                                                                    allocationId:
-                                                                        next.id,
-                                                                    amount: '',
-                                                                },
-                                                            ],
-                                                        );
-                                                    }
-                                                }}
-                                                disabled={
-                                                    allocationLineOptions.filter(
-                                                        (a) =>
-                                                            !purchaseAllocSplits.some(
-                                                                (s) =>
-                                                                    s.allocationId ===
-                                                                    a.id,
-                                                            ),
-                                                    ).length === 0
-                                                }
-                                            >
-                                                <Plus className="size-4" />
-                                                Add allocation
-                                            </Button>
-                                        </div>
-                                        <p className="text-sm font-medium">
-                                            Split with people
-                                        </p>
-                                        {purchasePersonSplits.length === 0 && (
-                                            <p className="text-sm text-muted-foreground">
-                                                No people splitting this purchase.
-                                            </p>
-                                        )}
-                                        <ul className="space-y-1.5">
-                                            {purchasePersonSplits.map(
-                                                (row, rowIndex) => {
-                                                    const sourceChoices =
-                                                        cardPaymentSourceOptionsForRow(
-                                                            personAccounts,
-                                                            purchasePersonSplits,
-                                                            rowIndex,
-                                                        );
-                                                    return (
-                                                        <li
-                                                            key={row.key}
-                                                            className="flex items-center gap-2"
-                                                        >
-                                                            <div className="min-w-0 flex-1">
-                                                                <Label
-                                                                    className="sr-only"
-                                                                    htmlFor={`cpp-${row.key}`}
-                                                                >
-                                                                    Person
-                                                                </Label>
-                                                                <select
-                                                                    id={`cpp-${row.key}`}
-                                                                    className={cn(
-                                                                        selectClass,
-                                                                        invalidClass,
-                                                                    )}
-                                                                    value={row.accountId}
-                                                                    onChange={(e) => {
-                                                                        const id = Number(e.target.value);
-                                                                        setPurchasePersonSplits((prev) =>
-                                                                            prev.map((s) =>
-                                                                                s.key === row.key
-                                                                                    ? { ...s, accountId: id }
-                                                                                    : s,
-                                                                            ),
-                                                                        );
-                                                                    }}
-                                                                >
-                                                                    {renderGroupedAccountOptions(sourceChoices)}
-                                                                </select>
-                                                            </div>
-                                                            <div className="w-28 shrink-0">
-                                                                <Label
-                                                                    className="sr-only"
-                                                                    htmlFor={`cpa-${row.key}`}
-                                                                >
-                                                                    Amount
-                                                                </Label>
-                                                                <MoneyInput
-                                                                    id={`cpa-${row.key}`}
-                                                                    value={row.amount}
-                                                                    onChange={(v) => {
-                                                                        setPurchasePersonSplits((prev) =>
-                                                                            prev.map((s) =>
-                                                                                s.key === row.key
-                                                                                    ? { ...s, amount: v }
-                                                                                    : s,
-                                                                            ),
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="shrink-0"
-                                                                onClick={() => {
-                                                                    setPurchasePersonSplits((prev) =>
-                                                                        prev.filter((s) => s.key !== row.key),
-                                                                    );
-                                                                }}
-                                                                aria-label="Remove person line"
-                                                            >
-                                                                <Trash2 className="size-4 text-destructive" />
-                                                            </Button>
-                                                        </li>
-                                                    );
-                                                },
-                                            )}
-                                        </ul>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const used = new Set(purchasePersonSplits.map((s) => s.accountId));
-                                                    const next = personAccounts.find((a) => !used.has(a.id));
-                                                    if (next) {
-                                                        setPurchasePersonSplits((prev) => [
-                                                            ...prev,
-                                                            { key: newCreditSplitKey(), accountId: next.id, amount: '' },
-                                                        ]);
-                                                    }
-                                                }}
-                                                disabled={
-                                                    !personAccounts.some(
-                                                        (a) => !purchasePersonSplits.some((s) => s.accountId === a.id),
+                                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                                    {creditCardAccounts.length > 0 && (
+                                        <div className="grid max-w-md gap-2">
+                                            <Label htmlFor="tx-credit-card">
+                                                Credit card
+                                            </Label>
+                                            <select
+                                                id="tx-credit-card"
+                                                className={cn(
+                                                    selectClass,
+                                                    invalidClass,
+                                                )}
+                                                value={creditCardId}
+                                                onChange={(e) =>
+                                                    setCreditCardId(
+                                                        Number(e.target.value),
                                                     )
                                                 }
                                             >
-                                                <Plus className="size-4" />
-                                                Add person
-                                            </Button>
+                                                {renderGroupedAccountOptions(
+                                                    creditCardAccounts,
+                                                )}
+                                            </select>
                                         </div>
-                                    </>
-                                )}
-                                <InputError message={form.errors.accounts} />
-                                <InputError message={form.errors.allocations} />
-                                </div>{/* end credit card lines card */}
+                                    )}
+                                    <div className="grid gap-2">
+                                        <span className="text-sm font-medium">
+                                            Type
+                                        </span>
+                                        <ToggleGroup
+                                            type="single"
+                                            value={creditCardTab}
+                                            onValueChange={(v) => {
+                                                if (
+                                                    v !== 'payment' &&
+                                                    v !== 'purchase'
+                                                ) {
+                                                    return;
+                                                }
+                                                setCreditCardTab(v);
+                                            }}
+                                            variant="outline"
+                                            className="w-full max-w-md justify-stretch"
+                                        >
+                                            <ToggleGroupItem
+                                                value="purchase"
+                                                className="min-w-0 flex-1 px-2"
+                                            >
+                                                Purchase
+                                            </ToggleGroupItem>
+                                            <ToggleGroupItem
+                                                value="payment"
+                                                className="min-w-0 flex-1 px-2"
+                                            >
+                                                Payment
+                                            </ToggleGroupItem>
+                                        </ToggleGroup>
+                                    </div>
+                                </div>
+                                {/* end credit card config card */}
+                                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                                    {creditCardTab === 'payment' ? (
+                                        <>
+                                            <p className="text-sm text-muted-foreground">
+                                                Pay down the card: the card line
+                                                is recorded{' '}
+                                                <strong>positive</strong>; each
+                                                funding account is{' '}
+                                                <strong>negative</strong> (bank,
+                                                cash, or person).
+                                            </p>
+                                            <ul className="space-y-1.5">
+                                                {creditSplits.map(
+                                                    (row, rowIndex) => {
+                                                        const sourceChoices =
+                                                            cardPaymentSourceOptionsForRow(
+                                                                cardPaymentSourceAccounts,
+                                                                creditSplits,
+                                                                rowIndex,
+                                                            );
+                                                        return (
+                                                            <li
+                                                                key={row.key}
+                                                                className="flex items-center gap-2"
+                                                            >
+                                                                <div className="min-w-0 flex-1">
+                                                                    <Label
+                                                                        className="sr-only"
+                                                                        htmlFor={`cc-acct-${row.key}`}
+                                                                    >
+                                                                        Paid
+                                                                        from
+                                                                    </Label>
+                                                                    <select
+                                                                        id={`cc-acct-${row.key}`}
+                                                                        className={cn(
+                                                                            selectClass,
+                                                                            invalidClass,
+                                                                        )}
+                                                                        value={
+                                                                            row.accountId
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) => {
+                                                                            const id =
+                                                                                Number(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                );
+                                                                            setCreditSplits(
+                                                                                (
+                                                                                    prev,
+                                                                                ) =>
+                                                                                    prev.map(
+                                                                                        (
+                                                                                            s,
+                                                                                        ) =>
+                                                                                            s.key ===
+                                                                                            row.key
+                                                                                                ? {
+                                                                                                      ...s,
+                                                                                                      accountId:
+                                                                                                          id,
+                                                                                                  }
+                                                                                                : s,
+                                                                                    ),
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        {renderGroupedAccountOptions(
+                                                                            sourceChoices,
+                                                                        )}
+                                                                    </select>
+                                                                </div>
+                                                                <div className="w-28 shrink-0">
+                                                                    <Label
+                                                                        className="sr-only"
+                                                                        htmlFor={`cc-amt-${row.key}`}
+                                                                    >
+                                                                        Amount
+                                                                    </Label>
+                                                                    <MoneyInput
+                                                                        id={`cc-amt-${row.key}`}
+                                                                        value={
+                                                                            row.amount
+                                                                        }
+                                                                        onChange={(
+                                                                            v,
+                                                                        ) => {
+                                                                            setCreditSplits(
+                                                                                (
+                                                                                    prev,
+                                                                                ) =>
+                                                                                    prev.map(
+                                                                                        (
+                                                                                            s,
+                                                                                        ) =>
+                                                                                            s.key ===
+                                                                                            row.key
+                                                                                                ? {
+                                                                                                      ...s,
+                                                                                                      amount: v,
+                                                                                                  }
+                                                                                                : s,
+                                                                                    ),
+                                                                            );
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="shrink-0"
+                                                                    onClick={() => {
+                                                                        setCreditSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.filter(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key !==
+                                                                                        row.key,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                    disabled={
+                                                                        creditSplits.length <=
+                                                                        1
+                                                                    }
+                                                                    aria-label="Remove split"
+                                                                >
+                                                                    <Trash2 className="size-4 text-destructive" />
+                                                                </Button>
+                                                            </li>
+                                                        );
+                                                    },
+                                                )}
+                                            </ul>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const used = new Set(
+                                                            creditSplits.map(
+                                                                (s) =>
+                                                                    s.accountId,
+                                                            ),
+                                                        );
+                                                        const next =
+                                                            cardPaymentSourceAccounts.find(
+                                                                (a) =>
+                                                                    !used.has(
+                                                                        a.id,
+                                                                    ),
+                                                            );
+                                                        if (next) {
+                                                            setCreditSplits(
+                                                                (prev) => [
+                                                                    ...prev,
+                                                                    {
+                                                                        key: newCreditSplitKey(),
+                                                                        accountId:
+                                                                            next.id,
+                                                                        amount: '',
+                                                                    },
+                                                                ],
+                                                            );
+                                                        }
+                                                    }}
+                                                    disabled={
+                                                        cardPaymentSourceAccounts.filter(
+                                                            (a) =>
+                                                                !creditSplits.some(
+                                                                    (s) =>
+                                                                        s.accountId ===
+                                                                        a.id,
+                                                                ),
+                                                        ).length === 0
+                                                    }
+                                                >
+                                                    <Plus className="size-4" />
+                                                    Add account
+                                                </Button>
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                                Payment total:{' '}
+                                                <span className="font-medium text-foreground tabular-nums">
+                                                    {formatPhpMoney(
+                                                        creditSplits.reduce(
+                                                            (acc, s) => {
+                                                                const t =
+                                                                    s.amount.trim();
+                                                                if (
+                                                                    t === '' ||
+                                                                    t === '-'
+                                                                ) {
+                                                                    return acc;
+                                                                }
+                                                                const n =
+                                                                    Number.parseFloat(
+                                                                        t,
+                                                                    );
+                                                                return (
+                                                                    acc +
+                                                                    (Number.isFinite(
+                                                                        n,
+                                                                    ) && n > 0
+                                                                        ? n
+                                                                        : 0)
+                                                                );
+                                                            },
+                                                            0,
+                                                        ),
+                                                    )}{' '}
+                                                </span>
+                                                (applied to the selected card)
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-sm font-medium">
+                                                Allocation split
+                                            </p>
+                                            <ul className="space-y-1.5">
+                                                {purchaseAllocSplits.map(
+                                                    (row, rowIndex) => {
+                                                        const allocRowsForPicker: LineAllocation[] =
+                                                            purchaseAllocSplits.map(
+                                                                (s) => ({
+                                                                    allocation_id:
+                                                                        s.allocationId,
+                                                                    amount: s.amount,
+                                                                }),
+                                                            );
+                                                        const allocChoices =
+                                                            allocationOptionsForRow(
+                                                                allocationLineOptions,
+                                                                allocRowsForPicker,
+                                                                rowIndex,
+                                                            );
+                                                        return (
+                                                            <li
+                                                                key={row.key}
+                                                                className="flex items-center gap-2"
+                                                            >
+                                                                <div className="min-w-0 flex-1">
+                                                                    <Label
+                                                                        className="sr-only"
+                                                                        htmlFor={`cpal-${row.key}`}
+                                                                    >
+                                                                        Allocation
+                                                                    </Label>
+                                                                    <select
+                                                                        id={`cpal-${row.key}`}
+                                                                        className={cn(
+                                                                            selectClass,
+                                                                            invalidClass,
+                                                                        )}
+                                                                        value={
+                                                                            row.allocationId
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) => {
+                                                                            const id =
+                                                                                Number(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                );
+                                                                            setPurchaseAllocSplits(
+                                                                                (
+                                                                                    prev,
+                                                                                ) =>
+                                                                                    prev.map(
+                                                                                        (
+                                                                                            s,
+                                                                                        ) =>
+                                                                                            s.key ===
+                                                                                            row.key
+                                                                                                ? {
+                                                                                                      ...s,
+                                                                                                      allocationId:
+                                                                                                          id,
+                                                                                                  }
+                                                                                                : s,
+                                                                                    ),
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        {allocChoices.map(
+                                                                            (
+                                                                                a,
+                                                                            ) => (
+                                                                                <option
+                                                                                    key={
+                                                                                        a.id
+                                                                                    }
+                                                                                    value={
+                                                                                        a.id
+                                                                                    }
+                                                                                >
+                                                                                    {
+                                                                                        a.name
+                                                                                    }
+                                                                                </option>
+                                                                            ),
+                                                                        )}
+                                                                    </select>
+                                                                </div>
+                                                                <div className="w-28 shrink-0">
+                                                                    <Label
+                                                                        className="sr-only"
+                                                                        htmlFor={`cpaa-${row.key}`}
+                                                                    >
+                                                                        Amount
+                                                                    </Label>
+                                                                    <MoneyInput
+                                                                        id={`cpaa-${row.key}`}
+                                                                        value={
+                                                                            row.amount
+                                                                        }
+                                                                        onChange={(
+                                                                            v,
+                                                                        ) => {
+                                                                            setPurchaseAllocSplits(
+                                                                                (
+                                                                                    prev,
+                                                                                ) =>
+                                                                                    prev.map(
+                                                                                        (
+                                                                                            s,
+                                                                                        ) =>
+                                                                                            s.key ===
+                                                                                            row.key
+                                                                                                ? {
+                                                                                                      ...s,
+                                                                                                      amount: v,
+                                                                                                  }
+                                                                                                : s,
+                                                                                    ),
+                                                                            );
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="shrink-0"
+                                                                    onClick={() => {
+                                                                        setPurchaseAllocSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.filter(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key !==
+                                                                                        row.key,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                    disabled={
+                                                                        purchaseAllocSplits.length <=
+                                                                        1
+                                                                    }
+                                                                    aria-label="Remove allocation line"
+                                                                >
+                                                                    <Trash2 className="size-4 text-destructive" />
+                                                                </Button>
+                                                            </li>
+                                                        );
+                                                    },
+                                                )}
+                                            </ul>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const used = new Set(
+                                                            purchaseAllocSplits.map(
+                                                                (s) =>
+                                                                    s.allocationId,
+                                                            ),
+                                                        );
+                                                        const next =
+                                                            allocationLineOptions.find(
+                                                                (a) =>
+                                                                    !used.has(
+                                                                        a.id,
+                                                                    ),
+                                                            );
+                                                        if (next) {
+                                                            setPurchaseAllocSplits(
+                                                                (prev) => [
+                                                                    ...prev,
+                                                                    {
+                                                                        key: newCreditSplitKey(),
+                                                                        allocationId:
+                                                                            next.id,
+                                                                        amount: '',
+                                                                    },
+                                                                ],
+                                                            );
+                                                        }
+                                                    }}
+                                                    disabled={
+                                                        allocationLineOptions.filter(
+                                                            (a) =>
+                                                                !purchaseAllocSplits.some(
+                                                                    (s) =>
+                                                                        s.allocationId ===
+                                                                        a.id,
+                                                                ),
+                                                        ).length === 0
+                                                    }
+                                                >
+                                                    <Plus className="size-4" />
+                                                    Add allocation
+                                                </Button>
+                                            </div>
+                                            <p className="text-sm font-medium">
+                                                Split with people
+                                            </p>
+                                            {purchasePersonSplits.length ===
+                                                0 && (
+                                                <p className="text-sm text-muted-foreground">
+                                                    No people splitting this
+                                                    purchase.
+                                                </p>
+                                            )}
+                                            <ul className="space-y-1.5">
+                                                {purchasePersonSplits.map(
+                                                    (row, rowIndex) => {
+                                                        const sourceChoices =
+                                                            cardPaymentSourceOptionsForRow(
+                                                                personAccounts,
+                                                                purchasePersonSplits,
+                                                                rowIndex,
+                                                            );
+                                                        return (
+                                                            <li
+                                                                key={row.key}
+                                                                className="flex items-center gap-2"
+                                                            >
+                                                                <div className="min-w-0 flex-1">
+                                                                    <Label
+                                                                        className="sr-only"
+                                                                        htmlFor={`cpp-${row.key}`}
+                                                                    >
+                                                                        Person
+                                                                    </Label>
+                                                                    <select
+                                                                        id={`cpp-${row.key}`}
+                                                                        className={cn(
+                                                                            selectClass,
+                                                                            invalidClass,
+                                                                        )}
+                                                                        value={
+                                                                            row.accountId
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) => {
+                                                                            const id =
+                                                                                Number(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                );
+                                                                            setPurchasePersonSplits(
+                                                                                (
+                                                                                    prev,
+                                                                                ) =>
+                                                                                    prev.map(
+                                                                                        (
+                                                                                            s,
+                                                                                        ) =>
+                                                                                            s.key ===
+                                                                                            row.key
+                                                                                                ? {
+                                                                                                      ...s,
+                                                                                                      accountId:
+                                                                                                          id,
+                                                                                                  }
+                                                                                                : s,
+                                                                                    ),
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        {renderGroupedAccountOptions(
+                                                                            sourceChoices,
+                                                                        )}
+                                                                    </select>
+                                                                </div>
+                                                                <div className="w-28 shrink-0">
+                                                                    <Label
+                                                                        className="sr-only"
+                                                                        htmlFor={`cpa-${row.key}`}
+                                                                    >
+                                                                        Amount
+                                                                    </Label>
+                                                                    <MoneyInput
+                                                                        id={`cpa-${row.key}`}
+                                                                        value={
+                                                                            row.amount
+                                                                        }
+                                                                        onChange={(
+                                                                            v,
+                                                                        ) => {
+                                                                            setPurchasePersonSplits(
+                                                                                (
+                                                                                    prev,
+                                                                                ) =>
+                                                                                    prev.map(
+                                                                                        (
+                                                                                            s,
+                                                                                        ) =>
+                                                                                            s.key ===
+                                                                                            row.key
+                                                                                                ? {
+                                                                                                      ...s,
+                                                                                                      amount: v,
+                                                                                                  }
+                                                                                                : s,
+                                                                                    ),
+                                                                            );
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="shrink-0"
+                                                                    onClick={() => {
+                                                                        setPurchasePersonSplits(
+                                                                            (
+                                                                                prev,
+                                                                            ) =>
+                                                                                prev.filter(
+                                                                                    (
+                                                                                        s,
+                                                                                    ) =>
+                                                                                        s.key !==
+                                                                                        row.key,
+                                                                                ),
+                                                                        );
+                                                                    }}
+                                                                    aria-label="Remove person line"
+                                                                >
+                                                                    <Trash2 className="size-4 text-destructive" />
+                                                                </Button>
+                                                            </li>
+                                                        );
+                                                    },
+                                                )}
+                                            </ul>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        const used = new Set(
+                                                            purchasePersonSplits.map(
+                                                                (s) =>
+                                                                    s.accountId,
+                                                            ),
+                                                        );
+                                                        const next =
+                                                            personAccounts.find(
+                                                                (a) =>
+                                                                    !used.has(
+                                                                        a.id,
+                                                                    ),
+                                                            );
+                                                        if (next) {
+                                                            setPurchasePersonSplits(
+                                                                (prev) => [
+                                                                    ...prev,
+                                                                    {
+                                                                        key: newCreditSplitKey(),
+                                                                        accountId:
+                                                                            next.id,
+                                                                        amount: '',
+                                                                    },
+                                                                ],
+                                                            );
+                                                        }
+                                                    }}
+                                                    disabled={
+                                                        !personAccounts.some(
+                                                            (a) =>
+                                                                !purchasePersonSplits.some(
+                                                                    (s) =>
+                                                                        s.accountId ===
+                                                                        a.id,
+                                                                ),
+                                                        )
+                                                    }
+                                                >
+                                                    <Plus className="size-4" />
+                                                    Add person
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
+                                    <InputError
+                                        message={form.errors.accounts}
+                                    />
+                                    <InputError
+                                        message={form.errors.allocations}
+                                    />
+                                </div>
+                                {/* end credit card lines card */}
                             </div>
                         ) : isCreateTransfer && canDoTransfer ? (
-                            <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                            <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
                                 {canShowAccountTab &&
                                 canShowTransferAllocTab ? (
                                     <div className="grid gap-2">
@@ -1978,7 +2075,7 @@ export function TransactionFormDialog({
                                 {transferKind === 'account' &&
                                 canShowAccountTab ? (
                                     <div className="flex items-end gap-2">
-                                        <div className="min-w-0 flex-1 grid gap-2">
+                                        <div className="grid min-w-0 flex-1 gap-2">
                                             <Label htmlFor="tx-from-account">
                                                 From
                                             </Label>
@@ -2017,8 +2114,8 @@ export function TransactionFormDialog({
                                                 )}
                                             </select>
                                         </div>
-                                        <ArrowRight className="mb-[10px] shrink-0 size-4 text-muted-foreground" />
-                                        <div className="min-w-0 flex-1 grid gap-2">
+                                        <ArrowRight className="mb-[10px] size-4 shrink-0 text-muted-foreground" />
+                                        <div className="grid min-w-0 flex-1 gap-2">
                                             <Label htmlFor="tx-to-account">
                                                 To
                                             </Label>
@@ -2063,7 +2160,7 @@ export function TransactionFormDialog({
                                 {transferKind === 'allocation' &&
                                 canShowTransferAllocTab ? (
                                     <div className="flex items-end gap-2">
-                                        <div className="min-w-0 flex-1 grid gap-2">
+                                        <div className="grid min-w-0 flex-1 gap-2">
                                             <Label htmlFor="tx-from-alloc">
                                                 From
                                             </Label>
@@ -2099,8 +2196,8 @@ export function TransactionFormDialog({
                                                 )}
                                             </select>
                                         </div>
-                                        <ArrowRight className="mb-[10px] shrink-0 size-4 text-muted-foreground" />
-                                        <div className="min-w-0 flex-1 grid gap-2">
+                                        <ArrowRight className="mb-[10px] size-4 shrink-0 text-muted-foreground" />
+                                        <div className="grid min-w-0 flex-1 gap-2">
                                             <Label htmlFor="tx-to-alloc">
                                                 To
                                             </Label>
@@ -2182,7 +2279,7 @@ export function TransactionFormDialog({
                                             Transfer fee (optional)
                                         </p>
                                         <div className="flex items-end gap-3">
-                                            <div className="min-w-0 flex-1 grid gap-2">
+                                            <div className="grid min-w-0 flex-1 gap-2">
                                                 <Label htmlFor="tx-transfer-fee">
                                                     Fee
                                                 </Label>
@@ -2198,7 +2295,7 @@ export function TransactionFormDialog({
                                                     }
                                                 />
                                             </div>
-                                            <div className="min-w-0 flex-1 grid gap-2">
+                                            <div className="grid min-w-0 flex-1 gap-2">
                                                 <Label htmlFor="tx-transfer-fee-alloc">
                                                     Fee from
                                                 </Label>
@@ -2279,14 +2376,13 @@ export function TransactionFormDialog({
                             </div>
                         ) : isCreateLoan ? (
                             <div className="space-y-3">
-                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                                     <Label className="text-base">Person</Label>
                                     <p className="text-sm text-muted-foreground">
                                         Pick the direction that matches your
-                                        intent. Enter{' '}
-                                        <strong>positive</strong> amounts
-                                        everywhere; Penny applies the correct
-                                        signs automatically.
+                                        intent. Enter <strong>positive</strong>{' '}
+                                        amounts everywhere; Penny applies the
+                                        correct signs automatically.
                                     </p>
                                     {personAccounts.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">
@@ -2339,9 +2435,12 @@ export function TransactionFormDialog({
                                                         const v =
                                                             e.target.value;
                                                         if (
-                                                            v !== 'i_paid_them' &&
-                                                            v !== 'they_owe_me' &&
-                                                            v !== 'they_paid_me' &&
+                                                            v !==
+                                                                'i_paid_them' &&
+                                                            v !==
+                                                                'they_owe_me' &&
+                                                            v !==
+                                                                'they_paid_me' &&
                                                             v !== 'i_owe_them'
                                                         ) {
                                                             return;
@@ -2382,7 +2481,7 @@ export function TransactionFormDialog({
                                     )}
                                 </div>
 
-                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-base">
                                             Funding accounts
@@ -2567,7 +2666,7 @@ export function TransactionFormDialog({
                                     )}
                                 </div>
 
-                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-base">
                                             Allocation lines
@@ -2752,7 +2851,8 @@ export function TransactionFormDialog({
                                             />
                                         </div>
                                     )}
-                                </div>{/* end loan allocations card */}
+                                </div>
+                                {/* end loan allocations card */}
 
                                 <div
                                     className={cn(
@@ -2836,7 +2936,7 @@ export function TransactionFormDialog({
                           !isCreateCredit &&
                           !isCreateLoan ? (
                             <div className="grid gap-3 lg:grid-cols-2">
-                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <Label className="text-base">
                                             Account lines
@@ -2897,20 +2997,20 @@ export function TransactionFormDialog({
                                                         >
                                                             Account
                                                         </Label>
-                                                        <select
-                                                            id={`acc-${i}`}
-                                                            name={accIdKey}
-                                                            className={cn(
-                                                                selectClass,
-                                                                invalidClass,
-                                                            )}
+                                                        <SearchableCombobox
+                                                            ariaLabel="Account"
                                                             value={
                                                                 row.account_id
                                                             }
-                                                            aria-invalid={
-                                                                !!accIdErr
-                                                            }
-                                                            onChange={(e) => {
+                                                            options={accountOptionsForRow(
+                                                                accountList,
+                                                                form.data
+                                                                    .accounts,
+                                                                i,
+                                                            )}
+                                                            onChange={(
+                                                                value,
+                                                            ) => {
                                                                 const next = [
                                                                     ...form.data
                                                                         .accounts,
@@ -2919,9 +3019,7 @@ export function TransactionFormDialog({
                                                                     ...next[i],
                                                                     account_id:
                                                                         Number(
-                                                                            e
-                                                                                .target
-                                                                                .value,
+                                                                            value,
                                                                         ),
                                                                 };
                                                                 form.setData(
@@ -2929,16 +3027,41 @@ export function TransactionFormDialog({
                                                                     next,
                                                                 );
                                                             }}
-                                                        >
-                                                            {renderGroupedAccountOptions(
-                                                                accountOptionsForRow(
-                                                                    accountList,
-                                                                    form.data
-                                                                        .accounts,
-                                                                    i,
-                                                                ),
-                                                            )}
-                                                        </select>
+                                                        />
+                                                        <ProjectedBalance
+                                                            balance={
+                                                                accountList.find(
+                                                                    (a) =>
+                                                                        a.id ===
+                                                                        row.account_id,
+                                                                )?.balance
+                                                            }
+                                                            delta={
+                                                                Number.isFinite(
+                                                                    Number.parseFloat(
+                                                                        row.amount,
+                                                                    ),
+                                                                )
+                                                                    ? Number.parseFloat(
+                                                                          row.amount,
+                                                                      ) -
+                                                                      (mode ===
+                                                                      'edit'
+                                                                          ? Number.parseFloat(
+                                                                                transaction?.accounts.find(
+                                                                                    (
+                                                                                        line,
+                                                                                    ) =>
+                                                                                        line.account_id ===
+                                                                                        row.account_id,
+                                                                                )
+                                                                                    ?.amount ??
+                                                                                    '0',
+                                                                            )
+                                                                          : 0)
+                                                                    : null
+                                                            }
+                                                        />
                                                         <InputError
                                                             message={accIdErr}
                                                         />
@@ -3000,9 +3123,10 @@ export function TransactionFormDialog({
                                     <InputError
                                         message={form.errors.accounts}
                                     />
-                                </div>{/* end accounts card */}
+                                </div>
+                                {/* end accounts card */}
 
-                                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                                <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <Label className="text-base">
                                             Allocation lines
@@ -3065,20 +3189,20 @@ export function TransactionFormDialog({
                                                         >
                                                             Allocation
                                                         </Label>
-                                                        <select
-                                                            id={`alloc-${i}`}
-                                                            name={allocIdKey}
-                                                            className={cn(
-                                                                selectClass,
-                                                                invalidClass,
-                                                            )}
+                                                        <SearchableCombobox
+                                                            ariaLabel="Allocation"
                                                             value={
                                                                 row.allocation_id
                                                             }
-                                                            aria-invalid={
-                                                                !!allocIdErr
-                                                            }
-                                                            onChange={(e) => {
+                                                            options={allocationOptionsForRow(
+                                                                allocationLineOptions,
+                                                                form.data
+                                                                    .allocations,
+                                                                i,
+                                                            )}
+                                                            onChange={(
+                                                                value,
+                                                            ) => {
                                                                 const next = [
                                                                     ...form.data
                                                                         .allocations,
@@ -3087,9 +3211,7 @@ export function TransactionFormDialog({
                                                                     ...next[i],
                                                                     allocation_id:
                                                                         Number(
-                                                                            e
-                                                                                .target
-                                                                                .value,
+                                                                            value,
                                                                         ),
                                                                 };
                                                                 form.setData(
@@ -3097,16 +3219,41 @@ export function TransactionFormDialog({
                                                                     next,
                                                                 );
                                                             }}
-                                                        >
-                                                            {renderGroupedAllocationOptions(
-                                                                allocationOptionsForRow(
-                                                                    allocationLineOptions,
-                                                                    form.data
-                                                                        .allocations,
-                                                                    i,
-                                                                ),
-                                                            )}
-                                                        </select>
+                                                        />
+                                                        <ProjectedBalance
+                                                            balance={
+                                                                allocationLineOptions.find(
+                                                                    (a) =>
+                                                                        a.id ===
+                                                                        row.allocation_id,
+                                                                )?.balance
+                                                            }
+                                                            delta={
+                                                                Number.isFinite(
+                                                                    Number.parseFloat(
+                                                                        row.amount,
+                                                                    ),
+                                                                )
+                                                                    ? Number.parseFloat(
+                                                                          row.amount,
+                                                                      ) -
+                                                                      (mode ===
+                                                                      'edit'
+                                                                          ? Number.parseFloat(
+                                                                                transaction?.allocations.find(
+                                                                                    (
+                                                                                        line,
+                                                                                    ) =>
+                                                                                        line.allocation_id ===
+                                                                                        row.allocation_id,
+                                                                                )
+                                                                                    ?.amount ??
+                                                                                    '0',
+                                                                            )
+                                                                          : 0)
+                                                                    : null
+                                                            }
+                                                        />
                                                         <InputError
                                                             message={allocIdErr}
                                                         />
@@ -3170,12 +3317,13 @@ export function TransactionFormDialog({
                                     <InputError
                                         message={form.errors.allocations}
                                     />
-                                </div>{/* end allocations card */}
+                                </div>
+                                {/* end allocations card */}
                             </div>
                         ) : null}
                     </div>
 
-                    <div className="shrink-0 space-y-3 border-t border-border pt-4 mt-4">
+                    <div className="mt-4 shrink-0 space-y-3 border-t border-border pt-4">
                         {!isCreateTransfer &&
                         !isCreateCredit &&
                         !isCreateLoan ? (
@@ -3184,7 +3332,7 @@ export function TransactionFormDialog({
                                     <span className="text-muted-foreground">
                                         Accounts total
                                     </span>
-                                    <span className="tabular-nums font-medium">
+                                    <span className="font-medium tabular-nums">
                                         {formatPhpMoney(accountLinesTotal)}
                                     </span>
                                 </div>
@@ -3192,7 +3340,7 @@ export function TransactionFormDialog({
                                     <span className="text-muted-foreground">
                                         Allocations total
                                     </span>
-                                    <span className="tabular-nums font-medium">
+                                    <span className="font-medium tabular-nums">
                                         {formatPhpMoney(allocationLinesTotal)}
                                     </span>
                                 </div>

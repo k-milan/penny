@@ -28,6 +28,7 @@ final readonly class AccountController
         /** @var LengthAwarePaginator<int, Account> $accounts */
         $accounts = Account::query()
             ->where('user_id', $user->id)
+            ->orderByDesc('is_pinned')
             ->orderBy('name')
             ->paginate($request->integer('per_page', 15));
 

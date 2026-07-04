@@ -29,6 +29,7 @@ final readonly class AllocationController
         $allocations = Allocation::query()
             ->where('user_id', $user->id)
             ->where('is_unallocated', false)
+            ->orderByDesc('is_pinned')
             ->orderBy('name')
             ->paginate($request->integer('per_page', 15));
 

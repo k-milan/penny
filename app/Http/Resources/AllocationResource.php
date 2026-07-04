@@ -25,6 +25,7 @@ final class AllocationResource extends JsonResource
             'goal_amount' => $this->goal_amount === null ? null : (string) $this->goal_amount,
             'balance' => (string) $this->balance,
             'is_unallocated' => $this->is_unallocated,
+            'is_pinned' => (bool) $this->is_pinned,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

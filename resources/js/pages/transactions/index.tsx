@@ -1,6 +1,7 @@
 import IncomeFromTemplateController from '@/actions/App/Http/Controllers/IncomeFromTemplateController';
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
 import { CreateActionDialog } from '@/components/create-action-dialog';
+import { GuidedEntryForm } from '@/components/guided-entry-form';
 import {
     formatTransactionGroupDate,
     formatTransactionTime,
@@ -33,6 +34,7 @@ import {
     Landmark,
     Plus,
     Receipt,
+    ReceiptText,
     Wallet,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -65,6 +67,7 @@ export default function TransactionsIndex({
     );
 
     const [createOpen, setCreateOpen] = useState(false);
+    const [purchaseOpen, setPurchaseOpen] = useState(false);
     const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
     const [createPreset, setCreatePreset] =
         useState<CreateDialogPreset>('default');
@@ -146,17 +149,31 @@ export default function TransactionsIndex({
                 description="Choose how you want to record this activity."
                 items={[
                     {
-                        id: 'transaction',
-                        title: 'Transaction',
-                        description: 'A normal account/allocation entry.',
+                        id: 'purchase',
+                        title: 'Purchase',
+                        description: 'Record spending.',
                         icon: Receipt,
-                        disabled: !canAddTransaction,
-                        onSelect: () => openCreatePreset('default'),
+                        disabled:
+                            !accounts.some((a) => a.type !== 'person') ||
+                            allocations.length === 0,
+                        onSelect: () => setPurchaseOpen(true),
+                    },
+                    {
+                        id: 'bill-split',
+                        title: 'Split a bill',
+                        description:
+                            'Itemize a receipt and assign each person’s share.',
+                        icon: ReceiptText,
+                        disabled:
+                            !accounts.some((a) => a.type !== 'person') ||
+                            allocations.length === 0,
+                        href: '/bill-splits/create',
                     },
                     {
                         id: 'income',
                         title: 'Income',
-                        description: 'Start from an income template.',
+                        description:
+                            'Record income, with an optional template.',
                         icon: Wallet,
                         href: IncomeFromTemplateController.create().url,
                     },
@@ -254,6 +271,13 @@ export default function TransactionsIndex({
                     setCreateOpen(false);
                     setCreateChoiceOpen(true);
                 }}
+            />
+
+            <GuidedEntryForm
+                open={purchaseOpen}
+                onOpenChange={setPurchaseOpen}
+                accounts={accounts}
+                allocations={allocations}
             />
 
             <TransactionFormDialog

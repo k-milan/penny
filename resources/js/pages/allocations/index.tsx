@@ -10,7 +10,7 @@ import AppLayout from '@/layouts/app-layout';
 import { formatDateYmd, formatPhpMoney, formatTypeLabel } from '@/lib/format';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Pin, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 
 type DefaultUnallocated = {
@@ -30,6 +30,7 @@ type AllocationRow = {
     due_date: string | null;
     goal_amount: string | null;
     balance: string;
+    is_pinned: boolean;
 };
 
 const TYPE_SAVINGS = 'savings';
@@ -103,7 +104,11 @@ function groupAllocationsByType(rows: AllocationRow[]): {
     }
     return out.map((g) => ({
         ...g,
-        items: [...g.items].sort((a, b) => a.name.localeCompare(b.name)),
+        items: [...g.items].sort(
+            (a, b) =>
+                Number(b.is_pinned) - Number(a.is_pinned) ||
+                a.name.localeCompare(b.name),
+        ),
     }));
 }
 
@@ -193,147 +198,205 @@ export default function AllocationsIndex({
                                                 <li key={row.id}>
                                                     <div className="px-3 py-2 transition-colors hover:bg-muted/50">
                                                         <div className="flex items-center gap-1">
-                                                        <Link
-                                                            href={AllocationController.show(
-                                                                {
-                                                                    allocation:
-                                                                        row.id,
-                                                                },
-                                                            )}
-                                                            className="min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                                                        >
-                                                            <div className="flex items-center justify-between gap-3">
-                                                                <div className="min-w-0">
-                                                                    <p className="truncate text-sm font-medium">
-                                                                        {
-                                                                            row.name
-                                                                        }
-                                                                    </p>
-                                                                    {!isSavings &&
-                                                                    row.due_date ? (
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Due{' '}
-                                                                            {formatDateYmd(
-                                                                                row.due_date,
-                                                                            )}
+                                                            <Link
+                                                                href={AllocationController.show(
+                                                                    {
+                                                                        allocation:
+                                                                            row.id,
+                                                                    },
+                                                                )}
+                                                                className="min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                                            >
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm font-medium">
+                                                                            {
+                                                                                row.name
+                                                                            }
                                                                         </p>
-                                                                    ) : null}
-                                                                </div>
-                                                                <div className="shrink-0 text-right text-sm tabular-nums">
-                                                                    {isSavings ? (
-                                                                        <p>
-                                                                            <span className="font-medium text-foreground">
+                                                                        {!isSavings &&
+                                                                        row.due_date ? (
+                                                                            <p className="text-xs text-muted-foreground">
+                                                                                Due{' '}
+                                                                                {formatDateYmd(
+                                                                                    row.due_date,
+                                                                                )}
+                                                                            </p>
+                                                                        ) : null}
+                                                                    </div>
+                                                                    <div className="shrink-0 text-right text-sm tabular-nums">
+                                                                        {isSavings ? (
+                                                                            <p>
+                                                                                <span className="font-medium text-foreground">
+                                                                                    {formatPhpMoney(
+                                                                                        row.balance,
+                                                                                    )}
+                                                                                </span>
+                                                                                <span className="text-muted-foreground">
+                                                                                    {' '}
+                                                                                    /{' '}
+                                                                                </span>
+                                                                                <span className="text-muted-foreground">
+                                                                                    {hasSavingsGoal &&
+                                                                                    row.goal_amount
+                                                                                        ? formatPhpMoney(
+                                                                                              row.goal_amount,
+                                                                                          )
+                                                                                        : '—'}
+                                                                                </span>
+                                                                            </p>
+                                                                        ) : (
+                                                                            <p className="text-muted-foreground">
                                                                                 {formatPhpMoney(
                                                                                     row.balance,
                                                                                 )}
-                                                                            </span>
-                                                                            <span className="text-muted-foreground">
-                                                                                {' '}
-                                                                                /{' '}
-                                                                            </span>
-                                                                            <span className="text-muted-foreground">
-                                                                                {hasSavingsGoal &&
-                                                                                row.goal_amount
-                                                                                    ? formatPhpMoney(
-                                                                                          row.goal_amount,
-                                                                                      )
-                                                                                    : '—'}
-                                                                            </span>
-                                                                        </p>
-                                                                    ) : (
-                                                                        <p className="text-muted-foreground">
-                                                                            {formatPhpMoney(
-                                                                                row.balance,
-                                                                            )}
-                                                                        </p>
-                                                                    )}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </Link>
+                                                            </Link>
 
-                                                        <div className="flex shrink-0 items-center">
-                                                            <Tooltip>
-                                                                <TooltipTrigger
+                                                            <div className="flex shrink-0 items-center">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="size-8 text-muted-foreground"
+                                                                    aria-label={`${row.is_pinned ? 'Unpin' : 'Pin'} ${row.name}`}
+                                                                    aria-pressed={
+                                                                        row.is_pinned
+                                                                    }
+                                                                    onClick={() =>
+                                                                        router.patch(
+                                                                            AllocationController.update.url(
+                                                                                {
+                                                                                    allocation:
+                                                                                        row.id,
+                                                                                },
+                                                                            ),
+                                                                            {
+                                                                                is_pinned:
+                                                                                    !row.is_pinned,
+                                                                            },
+                                                                            {
+                                                                                preserveScroll: true,
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Pin
+                                                                        className="size-3.5"
+                                                                        fill={
+                                                                            row.is_pinned
+                                                                                ? 'currentColor'
+                                                                                : 'none'
+                                                                        }
+                                                                    />
+                                                                </Button>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger
+                                                                        asChild
+                                                                    >
+                                                                        <span>
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="size-8 text-muted-foreground"
+                                                                                disabled
+                                                                                aria-label="Create transaction"
+                                                                            >
+                                                                                <Plus className="size-3.5" />
+                                                                            </Button>
+                                                                        </span>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        Create
+                                                                        transaction
+                                                                        with
+                                                                        this
+                                                                        allocation,
+                                                                        TBD
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="size-8 text-muted-foreground"
+                                                                    aria-label={`Edit ${row.name}`}
                                                                     asChild
                                                                 >
-                                                                    <span>
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="size-8 text-muted-foreground"
-                                                                            disabled
-                                                                            aria-label="Create transaction"
-                                                                        >
-                                                                            <Plus className="size-3.5" />
-                                                                        </Button>
-                                                                    </span>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    Create transaction with this allocation, TBD
-                                                                </TooltipContent>
-                                                            </Tooltip>
-
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-8 text-muted-foreground"
-                                                                aria-label={`Edit ${row.name}`}
-                                                                asChild
-                                                            >
-                                                                <Link
-                                                                    href={AllocationController.edit(
-                                                                        {
-                                                                            allocation:
-                                                                                row.id,
-                                                                        },
-                                                                    )}
-                                                                >
-                                                                    <Pencil className="size-3.5" />
-                                                                </Link>
-                                                            </Button>
-
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-8 text-muted-foreground hover:text-destructive"
-                                                                aria-label={`Delete ${row.name}`}
-                                                                onClick={() => {
-                                                                    if (
-                                                                        !confirm(
-                                                                            'Delete this allocation? This is only allowed when it has no transaction lines.',
-                                                                        )
-                                                                    ) {
-                                                                        return;
-                                                                    }
-                                                                    router.delete(
-                                                                        AllocationController.destroy.url(
+                                                                    <Link
+                                                                        href={AllocationController.edit(
                                                                             {
                                                                                 allocation:
                                                                                     row.id,
                                                                             },
-                                                                        ),
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <Trash2 className="size-3.5" />
-                                                            </Button>
+                                                                        )}
+                                                                    >
+                                                                        <Pencil className="size-3.5" />
+                                                                    </Link>
+                                                                </Button>
+
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="size-8 text-muted-foreground hover:text-destructive"
+                                                                    aria-label={`Delete ${row.name}`}
+                                                                    onClick={() => {
+                                                                        if (
+                                                                            !confirm(
+                                                                                'Delete this allocation? This is only allowed when it has no transaction lines.',
+                                                                            )
+                                                                        ) {
+                                                                            return;
+                                                                        }
+                                                                        router.delete(
+                                                                            AllocationController.destroy.url(
+                                                                                {
+                                                                                    allocation:
+                                                                                        row.id,
+                                                                                },
+                                                                            ),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="size-3.5" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
-                                                        </div>{/* end top row */}
+                                                        {/* end top row */}
                                                         {isSavings ? (
                                                             <div
                                                                 className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted"
                                                                 role="progressbar"
-                                                                aria-valuenow={hasSavingsGoal ? Math.round(savingsPct) : 0}
-                                                                aria-valuemin={0}
-                                                                aria-valuemax={100}
-                                                                aria-label={hasSavingsGoal ? `Savings progress for ${row.name}` : `No savings goal set for ${row.name}`}
+                                                                aria-valuenow={
+                                                                    hasSavingsGoal
+                                                                        ? Math.round(
+                                                                              savingsPct,
+                                                                          )
+                                                                        : 0
+                                                                }
+                                                                aria-valuemin={
+                                                                    0
+                                                                }
+                                                                aria-valuemax={
+                                                                    100
+                                                                }
+                                                                aria-label={
+                                                                    hasSavingsGoal
+                                                                        ? `Savings progress for ${row.name}`
+                                                                        : `No savings goal set for ${row.name}`
+                                                                }
                                                             >
                                                                 <div
                                                                     className="h-full rounded-full bg-primary transition-[width]"
-                                                                    style={{ width: `${savingsPct}%` }}
+                                                                    style={{
+                                                                        width: `${savingsPct}%`,
+                                                                    }}
                                                                 />
                                                             </div>
                                                         ) : null}
