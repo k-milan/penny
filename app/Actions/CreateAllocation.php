@@ -7,6 +7,7 @@ namespace App\Actions;
 use App\Enums\AllocationType;
 use App\Models\Allocation;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 final readonly class CreateAllocation
@@ -21,8 +22,9 @@ final readonly class CreateAllocation
     /**
      * @param  array{
      *     name: string,
-     *     type?: AllocationType|null,
+     *     type?: AllocationType|string|null,
      *     due_date?: \Carbon\CarbonInterface|string|null,
+     *     due_day?: int|null,
      *     goal_amount?: string|null,
      *     initial_balance?: string|null,
      * }  $attributes
@@ -35,11 +37,14 @@ final readonly class CreateAllocation
                 ? bcadd('0.00', (string) $initial, 2)
                 : '0.00';
 
+            $type = self::typeFromAttributes($attributes);
+
             $allocation = Allocation::query()->create([
                 'user_id' => $user->id,
                 'name' => $attributes['name'],
-                'type' => $attributes['type'] ?? AllocationType::Normal,
+                'type' => $type,
                 'due_date' => $attributes['due_date'] ?? null,
+                'due_day' => self::dueDayFromAttributes($attributes, $type),
                 'goal_amount' => $attributes['goal_amount'] ?? null,
                 'balance' => $balance,
                 'is_unallocated' => false,
@@ -55,5 +60,38 @@ final readonly class CreateAllocation
 
             return $allocation;
         });
+    }
+
+    /**
+     * @param  array{type?: AllocationType|string|null, due_date?: \Carbon\CarbonInterface|string|null, due_day?: int|null}  $attributes
+     */
+    private static function dueDayFromAttributes(array $attributes, AllocationType $type): ?int
+    {
+        if ($type !== AllocationType::Bill) {
+            return null;
+        }
+
+        if (isset($attributes['due_day']) && is_int($attributes['due_day'])) {
+            return $attributes['due_day'];
+        }
+
+        $dueDate = $attributes['due_date'] ?? null;
+        if ($dueDate === null || $dueDate === '') {
+            return null;
+        }
+
+        return CarbonImmutable::parse((string) $dueDate)->day;
+    }
+
+    /**
+     * @param  array{type?: AllocationType|string|null}  $attributes
+     */
+    private static function typeFromAttributes(array $attributes): AllocationType
+    {
+        $type = $attributes['type'] ?? AllocationType::Normal;
+
+        return $type instanceof AllocationType
+            ? $type
+            : (AllocationType::tryFrom((string) $type) ?? AllocationType::Normal);
     }
 }

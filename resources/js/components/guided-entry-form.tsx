@@ -44,6 +44,11 @@ type Item = {
     unitPrice: string;
     assignees: Assignee[];
 };
+type PurchaseAllocationLine = {
+    key: string;
+    allocation_id: number;
+    amount: string;
+};
 type AssignmentFocus = {
     type: 'item' | 'person';
     key: string;
@@ -59,6 +64,13 @@ const newItem = (): Item => ({
     quantity: '1',
     unitPrice: '',
     assignees: [],
+});
+const newPurchaseAllocationLine = (
+    allocation_id = 0,
+): PurchaseAllocationLine => ({
+    key: key(),
+    allocation_id,
+    amount: '',
 });
 const amount = (value: string): number => {
     const parsed = Number.parseFloat(value);
@@ -110,6 +122,7 @@ export function GuidedEntryForm({
         total: '',
         service_charge: '',
         allocation_id: 0,
+        allocations: [newPurchaseAllocationLine()],
         items: [] as Item[],
     });
     const paymentAccounts = accounts.filter((a) => a.type !== 'person');
@@ -130,6 +143,18 @@ export function GuidedEntryForm({
     const total = splitBill
         ? Math.round((subtotal + service) * 100) / 100
         : amount(form.data.total);
+    const purchaseAllocationTotal = useMemo(
+        () =>
+            Math.round(
+                form.data.allocations.reduce(
+                    (sum, line) => sum + amount(line.amount),
+                    0,
+                ) * 100,
+            ) / 100,
+        [form.data.allocations],
+    );
+    const purchaseAllocationDifference =
+        Math.round((total - purchaseAllocationTotal) * 100) / 100;
     const difference = Math.round((total - subtotal - service) * 100) / 100;
     const assigneeOptions = [
         ...people.map((person) => ({
@@ -142,6 +167,8 @@ export function GuidedEntryForm({
     ];
 
     const setItems = (items: Item[]) => form.setData('items', items);
+    const setPurchaseAllocations = (allocations: PurchaseAllocationLine[]) =>
+        form.setData('allocations', allocations);
     const updateItem = (index: number, patch: Partial<Item>) =>
         setItems(
             form.data.items.map((item, i) =>
@@ -370,6 +397,15 @@ export function GuidedEntryForm({
             note: data.note.trim() || null,
             service_charge: splitBill ? data.service_charge : '0',
             total: splitBill ? total.toFixed(2) : data.total,
+            allocation_id: splitBill
+                ? data.allocation_id
+                : (data.allocations[0]?.allocation_id ?? 0),
+            allocations: splitBill
+                ? []
+                : data.allocations.map((line) => ({
+                      allocation_id: line.allocation_id,
+                      amount: line.amount,
+                  })),
             items: splitBill
                 ? data.items.map((item) => ({
                       description: item.description,
@@ -396,7 +432,7 @@ export function GuidedEntryForm({
                           assignees: [
                               {
                                   type: 'allocation',
-                                  id: data.allocation_id,
+                                  id: data.allocations[0]?.allocation_id ?? 0,
                               },
                           ],
                       },
@@ -416,7 +452,14 @@ export function GuidedEntryForm({
         form.data.payment_account_id > 0 &&
         total > 0 &&
         (!splitBill
-            ? form.data.allocation_id > 0
+            ? form.data.allocations.length > 0 &&
+              purchaseAllocationDifference === 0 &&
+              form.data.allocations.every(
+                  (line) => line.allocation_id > 0 && amount(line.amount) > 0,
+              ) &&
+              new Set(
+                  form.data.allocations.map((line) => line.allocation_id),
+              ).size === form.data.allocations.length
             : difference === 0 &&
               form.data.items.length > 0 &&
               form.data.items.every(
@@ -497,25 +540,160 @@ export function GuidedEntryForm({
                 />
             </div>
             {!splitBill ? (
-                <div>
-                    <Label>Your allocation</Label>
-                    <SearchableCombobox
-                        ariaLabel="Purchase allocation"
-                        value={form.data.allocation_id || null}
-                        onChange={(value) =>
-                            form.setData('allocation_id', Number(value))
-                        }
-                        options={allocations}
-                        placeholder="Search allocations…"
-                    />
-                    <ProjectedBalance
-                        balance={
-                            allocations.find(
-                                (a) => a.id === form.data.allocation_id,
-                            )?.balance
-                        }
-                        delta={total > 0 ? -total : null}
-                    />
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <Label>Allocation split</Label>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                const used = new Set(
+                                    form.data.allocations
+                                        .map((line) => line.allocation_id)
+                                        .filter((id) => id > 0),
+                                );
+                                const next = allocations.find(
+                                    (allocation) => !used.has(allocation.id),
+                                );
+                                setPurchaseAllocations([
+                                    ...form.data.allocations,
+                                    newPurchaseAllocationLine(next?.id ?? 0),
+                                ]);
+                            }}
+                            disabled={
+                                !allocations.some(
+                                    (allocation) =>
+                                        !form.data.allocations.some(
+                                            (line) =>
+                                                line.allocation_id ===
+                                                allocation.id,
+                                        ),
+                                )
+                            }
+                        >
+                            <Plus className="size-4" />
+                            Add
+                        </Button>
+                    </div>
+                    <ul className="space-y-3">
+                        {form.data.allocations.map((line, index) => {
+                            const otherIds = new Set(
+                                form.data.allocations
+                                    .map((current, currentIndex) =>
+                                        currentIndex === index
+                                            ? null
+                                            : current.allocation_id,
+                                    )
+                                    .filter(
+                                        (id): id is number =>
+                                            id !== null && id > 0,
+                                    ),
+                            );
+                            const options = allocations.filter(
+                                (allocation) =>
+                                    allocation.id === line.allocation_id ||
+                                    !otherIds.has(allocation.id),
+                            );
+                            const allocation = allocations.find(
+                                (option) => option.id === line.allocation_id,
+                            );
+
+                            return (
+                                <li
+                                    key={line.key}
+                                    className="flex items-start gap-2"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <Label className="sr-only">
+                                            Allocation
+                                        </Label>
+                                        <SearchableCombobox
+                                            ariaLabel="Purchase allocation"
+                                            value={
+                                                line.allocation_id > 0
+                                                    ? line.allocation_id
+                                                    : null
+                                            }
+                                            onChange={(value) => {
+                                                const next = [
+                                                    ...form.data.allocations,
+                                                ];
+                                                next[index] = {
+                                                    ...line,
+                                                    allocation_id: Number(
+                                                        value ?? 0,
+                                                    ),
+                                                };
+                                                setPurchaseAllocations(next);
+                                            }}
+                                            options={options}
+                                            placeholder="Search allocations…"
+                                        />
+                                        <ProjectedBalance
+                                            balance={allocation?.balance}
+                                            delta={
+                                                amount(line.amount) > 0
+                                                    ? -amount(line.amount)
+                                                    : null
+                                            }
+                                        />
+                                    </div>
+                                    <div className="w-32 shrink-0">
+                                        <Label className="sr-only">
+                                            Amount
+                                        </Label>
+                                        <MoneyInput
+                                            aria-label="Allocation amount"
+                                            value={line.amount}
+                                            onChange={(value) => {
+                                                const next = [
+                                                    ...form.data.allocations,
+                                                ];
+                                                next[index] = {
+                                                    ...line,
+                                                    amount: value,
+                                                };
+                                                setPurchaseAllocations(next);
+                                            }}
+                                        />
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="shrink-0"
+                                        onClick={() => {
+                                            const next =
+                                                form.data.allocations.filter(
+                                                    (_, currentIndex) =>
+                                                        currentIndex !== index,
+                                                );
+                                            setPurchaseAllocations(
+                                                next.length > 0
+                                                    ? next
+                                                    : [
+                                                          newPurchaseAllocationLine(),
+                                                      ],
+                                            );
+                                        }}
+                                        disabled={
+                                            form.data.allocations.length <= 1
+                                        }
+                                        aria-label="Remove allocation line"
+                                    >
+                                        <Trash2 className="size-4 text-destructive" />
+                                    </Button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                        Split {formatPhpMoney(purchaseAllocationTotal)}
+                        {purchaseAllocationDifference === 0
+                            ? ''
+                            : ` · Remaining ${formatPhpMoney(purchaseAllocationDifference)}`}
+                    </p>
                 </div>
             ) : (
                 <>

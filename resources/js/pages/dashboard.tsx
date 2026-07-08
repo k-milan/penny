@@ -53,11 +53,13 @@ import {
     Activity,
     ArrowLeftRight,
     Building2,
+    CalendarClock,
     CreditCard,
     Landmark,
     MoreVertical,
     Pencil,
     PiggyBank,
+    Pin,
     Plus,
     Receipt,
     ReceiptText,
@@ -148,6 +150,45 @@ function shortCalendarLabel(dateYmd: string): string {
     if (!dt) {
         return dateYmd;
     }
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+    }).format(dt);
+}
+
+function daysUntilYmd(dateYmd: string, today: Date): number | null {
+    const dt = parseLocalYmd(dateYmd);
+    if (!dt) {
+        return null;
+    }
+
+    const start = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+    );
+    const target = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+
+    return Math.round((target.getTime() - start.getTime()) / 86_400_000);
+}
+
+function dueLabel(daysUntil: number): string {
+    if (daysUntil === 0) {
+        return 'Due today';
+    }
+    if (daysUntil === 1) {
+        return 'Due tomorrow';
+    }
+
+    return `Due in ${daysUntil} days`;
+}
+
+function shortDateLabel(dateYmd: string): string {
+    const dt = parseLocalYmd(dateYmd);
+    if (!dt) {
+        return dateYmd;
+    }
+
     return new Intl.DateTimeFormat('en-US', {
         month: 'short',
         day: 'numeric',
@@ -610,6 +651,26 @@ export default function Dashboard() {
         () => (Array.isArray(allocationsProp) ? allocationsProp : []),
         [allocationsProp],
     );
+    const sortedAccounts = useMemo(
+        () =>
+            [...accounts].sort(
+                (a, b) =>
+                    Number(Boolean(b.is_pinned)) -
+                        Number(Boolean(a.is_pinned)) ||
+                    a.name.localeCompare(b.name),
+            ),
+        [accounts],
+    );
+    const sortedAllocations = useMemo(
+        () =>
+            [...allocations].sort(
+                (a, b) =>
+                    Number(Boolean(b.is_pinned)) -
+                        Number(Boolean(a.is_pinned)) ||
+                    a.name.localeCompare(b.name),
+            ),
+        [allocations],
+    );
 
     const [createOpen, setCreateOpen] = useState(false);
     const [purchaseOpen, setPurchaseOpen] = useState(false);
@@ -648,6 +709,38 @@ export default function Dashboard() {
     const unallocatedNum = Number.parseFloat(unallocated);
     const showUnallocated =
         Number.isFinite(unallocatedNum) && unallocatedNum !== 0;
+    const billsDueSoon = useMemo(() => {
+        const today = new Date();
+
+        return allocations
+            .filter(
+                (allocation) =>
+                    allocation.type === 'bill' &&
+                    typeof allocation.due_date === 'string',
+            )
+            .map((allocation) => {
+                const daysUntil = daysUntilYmd(allocation.due_date ?? '', today);
+
+                return daysUntil === null
+                    ? null
+                    : {
+                          ...allocation,
+                          daysUntil,
+                      };
+            })
+            .filter(
+                (
+                    allocation,
+                ): allocation is AllocationOption & { daysUntil: number } =>
+                    allocation !== null &&
+                    allocation.daysUntil >= 0 &&
+                    allocation.daysUntil <= 7,
+            )
+            .sort(
+                (a, b) =>
+                    a.daysUntil - b.daysUntil || a.name.localeCompare(b.name),
+            );
+    }, [allocations]);
 
     const openCreatePreset = (preset: CreateDialogPreset) => {
         setCreatePreset(preset);
@@ -677,6 +770,73 @@ export default function Dashboard() {
                         </Button>
                     </div>
                 </div>
+
+                <Card className="gap-3 border-primary/15 bg-primary/[0.025] py-4 shadow-sm dark:border-primary/20 dark:bg-primary/[0.06]">
+                    <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 px-4 pt-0 pb-2">
+                        <div className="min-w-0">
+                            <CardTitle className="flex items-center gap-2 text-sm leading-snug">
+                                <CalendarClock className="size-4 text-muted-foreground" />
+                                Bills due soon
+                            </CardTitle>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 shrink-0 text-xs"
+                            asChild
+                        >
+                            <Link href={AllocationController.index()}>
+                                Manage
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="px-4 pt-0 pb-3">
+                        {billsDueSoon.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                                No bills due in the next 7 days.
+                            </p>
+                        ) : (
+                            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                {billsDueSoon.map((bill) => (
+                                    <li key={bill.id}>
+                                        <Link
+                                            href={AllocationController.show({
+                                                allocation: bill.id,
+                                            })}
+                                            className="flex min-h-16 items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                        >
+                                            <span className="min-w-0">
+                                                <span className="block truncate text-sm font-medium">
+                                                    {bill.name}
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {dueLabel(bill.daysUntil)} ·{' '}
+                                                    {shortDateLabel(
+                                                        bill.due_date ?? '',
+                                                    )}
+                                                </span>
+                                            </span>
+                                            <span className="shrink-0 text-right">
+                                                {bill.goal_amount ? (
+                                                    <span className="block text-sm font-medium tabular-nums">
+                                                        {formatPhpMoney(
+                                                            bill.goal_amount,
+                                                        )}
+                                                    </span>
+                                                ) : null}
+                                                <span className="block text-xs text-muted-foreground tabular-nums">
+                                                    {formatPhpMoney(
+                                                        bill.balance,
+                                                    )}
+                                                </span>
+                                            </span>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <div className="grid gap-4 lg:grid-cols-2">
                     <Card className="gap-3 border-primary/15 bg-primary/[0.025] py-4 shadow-sm dark:border-primary/20 dark:bg-primary/[0.06]">
@@ -711,7 +871,7 @@ export default function Dashboard() {
                                 </p>
                             ) : (
                                 <ul className="max-h-44 divide-y divide-border overflow-y-auto">
-                                    {accounts.map((a) => (
+                                    {sortedAccounts.map((a) => (
                                         <li key={a.id}>
                                             <div className="flex items-center gap-1 px-1 py-1.5 transition-colors first:pt-0 hover:bg-muted/50">
                                                 <Link
@@ -722,8 +882,17 @@ export default function Dashboard() {
                                                     )}
                                                     className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                                                 >
-                                                    <span className="truncate text-sm font-medium">
-                                                        {a.name}
+                                                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+                                                        {a.is_pinned ? (
+                                                            <Pin
+                                                                className="size-3.5 shrink-0 text-muted-foreground"
+                                                                fill="currentColor"
+                                                                aria-label="Pinned"
+                                                            />
+                                                        ) : null}
+                                                        <span className="truncate">
+                                                            {a.name}
+                                                        </span>
                                                     </span>
                                                     <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                                                         {formatPhpMoney(
@@ -843,7 +1012,7 @@ export default function Dashboard() {
                                 </p>
                             ) : (
                                 <ul className="max-h-44 divide-y divide-border overflow-y-auto">
-                                    {allocations.map((a) => (
+                                    {sortedAllocations.map((a) => (
                                         <li key={a.id}>
                                             <div className="flex items-center gap-1 px-1 py-1.5 transition-colors first:pt-0 hover:bg-muted/50">
                                                 <Link
@@ -854,8 +1023,17 @@ export default function Dashboard() {
                                                     )}
                                                     className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                                                 >
-                                                    <span className="truncate text-sm font-medium">
-                                                        {a.name}
+                                                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+                                                        {a.is_pinned ? (
+                                                            <Pin
+                                                                className="size-3.5 shrink-0 text-muted-foreground"
+                                                                fill="currentColor"
+                                                                aria-label="Pinned"
+                                                            />
+                                                        ) : null}
+                                                        <span className="truncate">
+                                                            {a.name}
+                                                        </span>
                                                     </span>
                                                     <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
                                                         {formatPhpMoney(

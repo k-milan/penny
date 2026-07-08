@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\AdvanceBillDueDatesForUser;
 use App\Actions\CreateAllocation;
 use App\Actions\DeleteAllocation;
 use App\Actions\UpdateAllocation;
@@ -26,10 +27,12 @@ use Inertia\Response;
 
 final readonly class AllocationController
 {
-    public function index(Request $request): Response
+    public function index(Request $request, AdvanceBillDueDatesForUser $advanceBillDueDates): Response
     {
         $user = $request->user();
         assert($user instanceof User);
+
+        $advanceBillDueDates->handle($user);
 
         $defaultUnallocated = Allocation::query()
             ->where('user_id', $user->id)

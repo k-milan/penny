@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read string $name
  * @property-read AllocationType $type
  * @property-read CarbonInterface|null $due_date
+ * @property-read int|null $due_day
  * @property-read string|null $goal_amount
  * @property-read string $balance
  * @property-read bool $is_unallocated
@@ -41,6 +42,7 @@ final class Allocation extends Model
             'name' => 'string',
             'type' => AllocationType::class,
             'due_date' => 'date',
+            'due_day' => 'integer',
             'goal_amount' => 'decimal:2',
             'balance' => 'decimal:2',
             'is_unallocated' => 'bool',

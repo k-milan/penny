@@ -17,6 +17,17 @@ final readonly class PurchaseController
         assert($user instanceof User);
         $data = $request->validated();
         $amount = number_format((float) $data['total'], 2, '.', '');
+        $allocationRows = array_map(
+            static fn (array $row): array => [
+                'allocation_id' => (int) $row['allocation_id'],
+                'amount' => '-'.number_format((float) $row['amount'], 2, '.', ''),
+            ],
+            $data['allocations'] ?? [[
+                'allocation_id' => $data['allocation_id'],
+                'amount' => $data['total'],
+            ]],
+        );
+
         $action->handle($user, [
             'date' => $data['date'],
             'description' => $data['description'],
@@ -25,10 +36,7 @@ final readonly class PurchaseController
                 'account_id' => $data['payment_account_id'],
                 'amount' => '-'.$amount,
             ]],
-            'allocations' => [[
-                'allocation_id' => $data['allocation_id'],
-                'amount' => '-'.$amount,
-            ]],
+            'allocations' => $allocationRows,
         ]);
 
         return redirect()->back(302, [], route('dashboard'))->with('success', 'Purchase recorded.');

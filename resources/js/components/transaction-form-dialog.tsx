@@ -43,6 +43,7 @@ export type AllocationOption = {
     is_pinned?: boolean;
     is_unallocated?: boolean;
     due_date?: string | null;
+    due_day?: number | null;
     goal_amount?: string | null;
 };
 
@@ -480,6 +481,10 @@ function parsePositiveMagnitude(raw: string): number | null {
     return n;
 }
 
+function positiveMagnitudeOrZero(raw: string): number {
+    return parsePositiveMagnitude(raw) ?? 0;
+}
+
 /** Signed person line from one person + direction + positive UI amount. */
 function loanPersonSignedFromState(
     personId: number,
@@ -736,7 +741,7 @@ export function TransactionFormDialog({
     const [creditCardId, setCreditCardId] = useState(0);
     type CreditCardTab = 'payment' | 'purchase';
     const [creditCardTab, setCreditCardTab] =
-        useState<CreditCardTab>('payment');
+        useState<CreditCardTab>('purchase');
     const [creditSplits, setCreditSplits] = useState<CardPaymentSplitRow[]>([]);
     const [purchasePersonSplits, setPurchasePersonSplits] = useState<
         CardPaymentSplitRow[]
@@ -815,7 +820,7 @@ export function TransactionFormDialog({
         if (!justOpened) {
             return;
         }
-        setCreditCardTab('payment');
+        setCreditCardTab('purchase');
         const firstCard = creditCardAccounts[0];
         setCreditCardId(firstCard?.id ?? 0);
         const firstSource = cardPaymentSourceAccounts[0];
@@ -954,6 +959,27 @@ export function TransactionFormDialog({
             personAccountIdSet,
         ],
     );
+    const creditPaymentTotal = useMemo(
+        () =>
+            creditSplits.reduce(
+                (sum, row) => sum + positiveMagnitudeOrZero(row.amount),
+                0,
+            ),
+        [creditSplits],
+    );
+    const creditPurchaseTotal = useMemo(
+        () =>
+            purchasePersonSplits.reduce(
+                (sum, row) => sum + positiveMagnitudeOrZero(row.amount),
+                0,
+            ) +
+            purchaseAllocSplits.reduce(
+                (sum, row) => sum + positiveMagnitudeOrZero(row.amount),
+                0,
+            ),
+        [purchasePersonSplits, purchaseAllocSplits],
+    );
+    const creditCard = creditCardAccounts.find((a) => a.id === creditCardId);
     const canSubmitCredit =
         isCreateCredit &&
         creditCardAccounts.length > 0 &&
@@ -1320,26 +1346,26 @@ export function TransactionFormDialog({
                                 <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
                                     {creditCardAccounts.length > 0 && (
                                         <div className="grid max-w-md gap-2">
-                                            <Label htmlFor="tx-credit-card">
-                                                Credit card
-                                            </Label>
-                                            <select
-                                                id="tx-credit-card"
-                                                className={cn(
-                                                    selectClass,
-                                                    invalidClass,
-                                                )}
-                                                value={creditCardId}
-                                                onChange={(e) =>
+                                            <Label>Credit card</Label>
+                                            <SearchableCombobox
+                                                ariaLabel="Credit card"
+                                                value={creditCardId || null}
+                                                onChange={(value) =>
                                                     setCreditCardId(
-                                                        Number(e.target.value),
+                                                        Number(value ?? 0),
                                                     )
                                                 }
-                                            >
-                                                {renderGroupedAccountOptions(
-                                                    creditCardAccounts,
-                                                )}
-                                            </select>
+                                                options={creditCardAccounts}
+                                                placeholder="Select credit card"
+                                            />
+                                            <ProjectedBalance
+                                                balance={creditCard?.balance}
+                                                delta={
+                                                    creditCardTab === 'payment'
+                                                        ? creditPaymentTotal
+                                                        : -creditPurchaseTotal
+                                                }
+                                            />
                                         </div>
                                     )}
                                     <div className="grid gap-2">
@@ -1397,37 +1423,33 @@ export function TransactionFormDialog({
                                                                 creditSplits,
                                                                 rowIndex,
                                                             );
+                                                        const sourceAccount =
+                                                            sourceChoices.find(
+                                                                (a) =>
+                                                                    a.id ===
+                                                                    row.accountId,
+                                                            );
                                                         return (
                                                             <li
                                                                 key={row.key}
-                                                                className="flex items-center gap-2"
+                                                                className="flex items-start gap-2"
                                                             >
                                                                 <div className="min-w-0 flex-1">
                                                                     <Label
                                                                         className="sr-only"
-                                                                        htmlFor={`cc-acct-${row.key}`}
                                                                     >
                                                                         Paid
                                                                         from
                                                                     </Label>
-                                                                    <select
-                                                                        id={`cc-acct-${row.key}`}
-                                                                        className={cn(
-                                                                            selectClass,
-                                                                            invalidClass,
-                                                                        )}
+                                                                    <SearchableCombobox
+                                                                        ariaLabel="Paid from"
                                                                         value={
-                                                                            row.accountId
+                                                                            row.accountId ||
+                                                                            null
                                                                         }
                                                                         onChange={(
-                                                                            e,
+                                                                            value,
                                                                         ) => {
-                                                                            const id =
-                                                                                Number(
-                                                                                    e
-                                                                                        .target
-                                                                                        .value,
-                                                                                );
                                                                             setCreditSplits(
                                                                                 (
                                                                                     prev,
@@ -1441,17 +1463,30 @@ export function TransactionFormDialog({
                                                                                                 ? {
                                                                                                       ...s,
                                                                                                       accountId:
-                                                                                                          id,
+                                                                                                          Number(
+                                                                                                              value ??
+                                                                                                                  0,
+                                                                                                          ),
                                                                                                   }
                                                                                                 : s,
                                                                                     ),
                                                                             );
                                                                         }}
-                                                                    >
-                                                                        {renderGroupedAccountOptions(
-                                                                            sourceChoices,
-                                                                        )}
-                                                                    </select>
+                                                                        options={
+                                                                            sourceChoices
+                                                                        }
+                                                                        placeholder="Select account"
+                                                                    />
+                                                                    <ProjectedBalance
+                                                                        balance={
+                                                                            sourceAccount?.balance
+                                                                        }
+                                                                        delta={
+                                                                            -positiveMagnitudeOrZero(
+                                                                                row.amount,
+                                                                            )
+                                                                        }
+                                                                    />
                                                                 </div>
                                                                 <div className="w-28 shrink-0">
                                                                     <Label
@@ -1624,36 +1659,32 @@ export function TransactionFormDialog({
                                                                 allocRowsForPicker,
                                                                 rowIndex,
                                                             );
+                                                        const allocation =
+                                                            allocChoices.find(
+                                                                (a) =>
+                                                                    a.id ===
+                                                                    row.allocationId,
+                                                            );
                                                         return (
                                                             <li
                                                                 key={row.key}
-                                                                className="flex items-center gap-2"
+                                                                className="flex items-start gap-2"
                                                             >
                                                                 <div className="min-w-0 flex-1">
                                                                     <Label
                                                                         className="sr-only"
-                                                                        htmlFor={`cpal-${row.key}`}
                                                                     >
                                                                         Allocation
                                                                     </Label>
-                                                                    <select
-                                                                        id={`cpal-${row.key}`}
-                                                                        className={cn(
-                                                                            selectClass,
-                                                                            invalidClass,
-                                                                        )}
+                                                                    <SearchableCombobox
+                                                                        ariaLabel="Allocation"
                                                                         value={
-                                                                            row.allocationId
+                                                                            row.allocationId ||
+                                                                            null
                                                                         }
                                                                         onChange={(
-                                                                            e,
+                                                                            value,
                                                                         ) => {
-                                                                            const id =
-                                                                                Number(
-                                                                                    e
-                                                                                        .target
-                                                                                        .value,
-                                                                                );
                                                                             setPurchaseAllocSplits(
                                                                                 (
                                                                                     prev,
@@ -1667,32 +1698,30 @@ export function TransactionFormDialog({
                                                                                                 ? {
                                                                                                       ...s,
                                                                                                       allocationId:
-                                                                                                          id,
+                                                                                                          Number(
+                                                                                                              value ??
+                                                                                                                  0,
+                                                                                                          ),
                                                                                                   }
                                                                                                 : s,
                                                                                     ),
                                                                             );
                                                                         }}
-                                                                    >
-                                                                        {allocChoices.map(
-                                                                            (
-                                                                                a,
-                                                                            ) => (
-                                                                                <option
-                                                                                    key={
-                                                                                        a.id
-                                                                                    }
-                                                                                    value={
-                                                                                        a.id
-                                                                                    }
-                                                                                >
-                                                                                    {
-                                                                                        a.name
-                                                                                    }
-                                                                                </option>
-                                                                            ),
-                                                                        )}
-                                                                    </select>
+                                                                        options={
+                                                                            allocChoices
+                                                                        }
+                                                                        placeholder="Select allocation"
+                                                                    />
+                                                                    <ProjectedBalance
+                                                                        balance={
+                                                                            allocation?.balance
+                                                                        }
+                                                                        delta={
+                                                                            -positiveMagnitudeOrZero(
+                                                                                row.amount,
+                                                                            )
+                                                                        }
+                                                                    />
                                                                 </div>
                                                                 <div className="w-28 shrink-0">
                                                                     <Label
@@ -1828,36 +1857,32 @@ export function TransactionFormDialog({
                                                                 purchasePersonSplits,
                                                                 rowIndex,
                                                             );
+                                                        const personAccount =
+                                                            sourceChoices.find(
+                                                                (a) =>
+                                                                    a.id ===
+                                                                    row.accountId,
+                                                            );
                                                         return (
                                                             <li
                                                                 key={row.key}
-                                                                className="flex items-center gap-2"
+                                                                className="flex items-start gap-2"
                                                             >
                                                                 <div className="min-w-0 flex-1">
                                                                     <Label
                                                                         className="sr-only"
-                                                                        htmlFor={`cpp-${row.key}`}
                                                                     >
                                                                         Person
                                                                     </Label>
-                                                                    <select
-                                                                        id={`cpp-${row.key}`}
-                                                                        className={cn(
-                                                                            selectClass,
-                                                                            invalidClass,
-                                                                        )}
+                                                                    <SearchableCombobox
+                                                                        ariaLabel="Person"
                                                                         value={
-                                                                            row.accountId
+                                                                            row.accountId ||
+                                                                            null
                                                                         }
                                                                         onChange={(
-                                                                            e,
+                                                                            value,
                                                                         ) => {
-                                                                            const id =
-                                                                                Number(
-                                                                                    e
-                                                                                        .target
-                                                                                        .value,
-                                                                                );
                                                                             setPurchasePersonSplits(
                                                                                 (
                                                                                     prev,
@@ -1871,17 +1896,28 @@ export function TransactionFormDialog({
                                                                                                 ? {
                                                                                                       ...s,
                                                                                                       accountId:
-                                                                                                          id,
+                                                                                                          Number(
+                                                                                                              value ??
+                                                                                                                  0,
+                                                                                                          ),
                                                                                                   }
                                                                                                 : s,
                                                                                     ),
                                                                             );
                                                                         }}
-                                                                    >
-                                                                        {renderGroupedAccountOptions(
-                                                                            sourceChoices,
+                                                                        options={
+                                                                            sourceChoices
+                                                                        }
+                                                                        placeholder="Select person"
+                                                                    />
+                                                                    <ProjectedBalance
+                                                                        balance={
+                                                                            personAccount?.balance
+                                                                        }
+                                                                        delta={positiveMagnitudeOrZero(
+                                                                            row.amount,
                                                                         )}
-                                                                    </select>
+                                                                    />
                                                                 </div>
                                                                 <div className="w-28 shrink-0">
                                                                     <Label

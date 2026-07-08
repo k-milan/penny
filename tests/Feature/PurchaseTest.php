@@ -224,6 +224,40 @@ it('records a simple purchase without creating a bill split', function (): void 
         ->and($food->fresh()->balance)->toBe('25.00');
 });
 
+it('records a simple purchase split across allocations', function (): void {
+    $user = User::factory()->create();
+    $bank = purchaseAccount($user, 'Bank', AccountType::Bank, '100.00');
+    $food = purchaseAllocation($user, 'Food', '50.00');
+    $supplies = purchaseAllocation($user, 'Supplies', '30.00');
+
+    $this->actingAs($user)->post(route('purchases.store'), [
+        'date' => '2026-07-02',
+        'description' => 'Groceries and soap',
+        'payment_account_id' => $bank->id,
+        'total' => '25.00',
+        'allocations' => [
+            ['allocation_id' => $food->id, 'amount' => '18.50'],
+            ['allocation_id' => $supplies->id, 'amount' => '6.50'],
+        ],
+    ])->assertRedirect();
+
+    $this->assertDatabaseHas('transaction_accounts', [
+        'account_id' => $bank->id,
+        'amount' => '-25.00',
+    ]);
+    $this->assertDatabaseHas('transaction_allocations', [
+        'allocation_id' => $food->id,
+        'amount' => '-18.50',
+    ]);
+    $this->assertDatabaseHas('transaction_allocations', [
+        'allocation_id' => $supplies->id,
+        'amount' => '-6.50',
+    ]);
+    expect($bank->fresh()->balance)->toBe('75.00')
+        ->and($food->fresh()->balance)->toBe('31.50')
+        ->and($supplies->fresh()->balance)->toBe('23.50');
+});
+
 it('renders bill splitting as its own page', function (): void {
     $user = User::factory()->create();
     purchaseAccount($user, 'Bank', AccountType::Bank);

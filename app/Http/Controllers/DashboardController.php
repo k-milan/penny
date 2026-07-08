@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\AdvanceBillDueDatesForUser;
 use App\Http\Resources\AccountResource;
 use App\Http\Resources\AllocationResource;
 use App\Http\Resources\TransactionResource;
@@ -21,10 +22,12 @@ use Inertia\Response;
 
 final readonly class DashboardController
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, AdvanceBillDueDatesForUser $advanceBillDueDates): Response
     {
         $user = $request->user();
         assert($user instanceof User);
+
+        $advanceBillDueDates->handle($user);
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
