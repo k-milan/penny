@@ -6,6 +6,7 @@ import {
     SearchableCombobox,
 } from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
+import type { TransactionCreateKind } from '@/components/transaction-create-result-dialog';
 import {
     Dialog,
     DialogContent,
@@ -639,6 +640,9 @@ export function TransactionFormDialog({
     createPreset = 'default',
     unallocatedAllocationId: unallocatedAllocationIdProp = null,
     onBackToCreateChoice,
+    onCreateSuccess,
+    onCreateFailure,
+    initialCreditCardTab = 'purchase',
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -650,6 +654,9 @@ export function TransactionFormDialog({
     /** System “Unallocated” allocation id (for transfer fees when none chosen). */
     unallocatedAllocationId?: number | null;
     onBackToCreateChoice?: () => void;
+    onCreateSuccess?: (kind: TransactionCreateKind) => void;
+    onCreateFailure?: (kind: TransactionCreateKind) => void;
+    initialCreditCardTab?: 'payment' | 'purchase';
 }) {
     const accountList = useMemo(
         () => (Array.isArray(accountsProp) ? accountsProp : []),
@@ -820,7 +827,7 @@ export function TransactionFormDialog({
         if (!justOpened) {
             return;
         }
-        setCreditCardTab('purchase');
+        setCreditCardTab(initialCreditCardTab);
         const firstCard = creditCardAccounts[0];
         setCreditCardId(firstCard?.id ?? 0);
         const firstSource = cardPaymentSourceAccounts[0];
@@ -851,6 +858,7 @@ export function TransactionFormDialog({
     }, [
         open,
         isCreateCredit,
+        initialCreditCardTab,
         creditCardAccounts,
         cardPaymentSourceAccounts,
         personAccounts,
@@ -1042,6 +1050,15 @@ export function TransactionFormDialog({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        const createKind: TransactionCreateKind = isCreateTransfer
+            ? 'transfer'
+            : isCreateCredit
+              ? creditCardTab === 'payment'
+                  ? 'credit_card_payment'
+                  : 'credit_card_purchase'
+              : isCreateLoan
+                ? 'loan'
+                : 'transaction';
         if (isCreateCredit) {
             if (!canSubmitCredit) {
                 return;
@@ -1147,7 +1164,14 @@ export function TransactionFormDialog({
             form.post(TransactionController.store.url(), {
                 preserveScroll: true,
                 preserveState: true,
-                onSuccess: () => onOpenChange(false),
+                onSuccess: () => {
+                    onOpenChange(false);
+                    onCreateSuccess?.(createKind);
+                },
+                onError: () => {
+                    onOpenChange(false);
+                    onCreateFailure?.(createKind);
+                },
             });
             return;
         }

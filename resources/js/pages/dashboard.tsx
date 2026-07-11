@@ -15,6 +15,10 @@ import {
     type AllocationOption,
     type CreateDialogPreset,
 } from '@/components/transaction-form-dialog';
+import {
+    TransactionCreateResultDialog,
+    type TransactionCreateKind,
+} from '@/components/transaction-create-result-dialog';
 import { TransactionScrollList } from '@/components/transaction-scroll-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -676,7 +680,15 @@ export default function Dashboard() {
     const [purchaseOpen, setPurchaseOpen] = useState(false);
     const [createPreset, setCreatePreset] =
         useState<CreateDialogPreset>('default');
+    const [initialCreditCardTab, setInitialCreditCardTab] = useState<
+        'payment' | 'purchase'
+    >('purchase');
     const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
+    const [createResult, setCreateResult] = useState<{
+        open: boolean;
+        status: 'success' | 'failure';
+        kind: TransactionCreateKind;
+    }>({ open: false, status: 'success', kind: 'transaction' });
     const [editOpen, setEditOpen] = useState(false);
     const [editing, setEditing] = useState<TransactionRow | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -743,8 +755,45 @@ export default function Dashboard() {
     }, [allocations]);
 
     const openCreatePreset = (preset: CreateDialogPreset) => {
+        setInitialCreditCardTab('purchase');
         setCreatePreset(preset);
         setCreateOpen(true);
+    };
+
+    const openCreateKind = (kind: TransactionCreateKind) => {
+        setCreateResult((current) => ({ ...current, open: false }));
+        setCreateChoiceOpen(false);
+        if (kind === 'purchase') {
+            setPurchaseOpen(true);
+            return;
+        }
+        if (
+            kind === 'credit_card_payment' ||
+            kind === 'credit_card_purchase'
+        ) {
+            setInitialCreditCardTab(
+                kind === 'credit_card_payment' ? 'payment' : 'purchase',
+            );
+            setCreatePreset('credit_card');
+            setCreateOpen(true);
+            return;
+        }
+        if (kind === 'transfer' || kind === 'loan') {
+            setInitialCreditCardTab('purchase');
+            setCreatePreset(kind);
+            setCreateOpen(true);
+            return;
+        }
+        setInitialCreditCardTab('purchase');
+        setCreatePreset('default');
+        setCreateOpen(true);
+    };
+
+    const showCreateResult = (
+        status: 'success' | 'failure',
+        kind: TransactionCreateKind,
+    ) => {
+        setCreateResult({ open: true, status, kind });
     };
 
     return (
@@ -1275,10 +1324,13 @@ export default function Dashboard() {
                 }}
                 mode="create"
                 createPreset={createPreset}
+                initialCreditCardTab={initialCreditCardTab}
                 transaction={null}
                 accounts={accounts}
                 allocations={allocations}
                 unallocatedAllocationId={unallocatedAllocationIdProp}
+                onCreateSuccess={(kind) => showCreateResult('success', kind)}
+                onCreateFailure={(kind) => showCreateResult('failure', kind)}
                 onBackToCreateChoice={() => {
                     setCreateOpen(false);
                     setCreateChoiceOpen(true);
@@ -1290,6 +1342,28 @@ export default function Dashboard() {
                 onOpenChange={setPurchaseOpen}
                 accounts={accounts}
                 allocations={allocations}
+                onCreateSuccess={(kind) => showCreateResult('success', kind)}
+                onCreateFailure={(kind) => showCreateResult('failure', kind)}
+            />
+
+            <TransactionCreateResultDialog
+                open={createResult.open}
+                onOpenChange={(open) =>
+                    setCreateResult((current) => ({ ...current, open }))
+                }
+                status={createResult.status}
+                kind={createResult.kind}
+                onCreateSame={() => openCreateKind(createResult.kind)}
+                onCreateTransaction={() => {
+                    setCreateResult((current) => ({
+                        ...current,
+                        open: false,
+                    }));
+                    setCreateChoiceOpen(true);
+                }}
+                onDone={() =>
+                    setCreateResult((current) => ({ ...current, open: false }))
+                }
             />
 
             <TransactionFormDialog

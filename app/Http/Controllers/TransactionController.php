@@ -89,7 +89,7 @@ final readonly class TransactionController
         ]);
 
         return redirect()
-            ->route('dashboard')
+            ->back(302, [], route('dashboard'))
             ->with('success', 'Transaction recorded.');
     }
 

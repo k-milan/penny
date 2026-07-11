@@ -7,6 +7,7 @@ import {
     type AccountOption,
     type AllocationOption,
 } from '@/components/transaction-form-dialog';
+import type { TransactionCreateKind } from '@/components/transaction-create-result-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,8 +22,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatPhpMoney } from '@/lib/format';
 import { useForm } from '@inertiajs/react';
-import { Check, Plus, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { CalendarDays, Check, Plus, Trash2, X } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 
 type Assignee =
     | {
@@ -76,6 +77,122 @@ const amount = (value: string): number => {
     const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) ? parsed : 0;
 };
+const toLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+};
+const dateDaysAgo = (daysAgo: number): Date => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - daysAgo);
+
+    return date;
+};
+const formatDateChoice = (date: Date): string =>
+    date
+        .toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+        })
+        .toUpperCase();
+
+function RollingDateSelector({
+    id,
+    value,
+    onChange,
+}: {
+    id: string;
+    value: string;
+    onChange: (value: string) => void;
+}) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [showCustomDateInput, setShowCustomDateInput] = useState(false);
+    const dateChoices = useMemo(
+        () =>
+            [5, 4, 3, 2, 1, 0].map((daysAgo) => {
+                const date = dateDaysAgo(daysAgo);
+
+                return {
+                    value: toLocalDateString(date),
+                    label: formatDateChoice(date),
+                };
+            }),
+        [],
+    );
+    const selectedRollingDate = dateChoices.some(
+        (choice) => choice.value === value,
+    );
+    const dateInputClassName =
+        'border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm';
+
+    const openDateInput = () => {
+        setShowCustomDateInput(true);
+        window.setTimeout(() => {
+            inputRef.current?.showPicker?.();
+            inputRef.current?.focus();
+        }, 0);
+    };
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+                <Label htmlFor={id}>Date</Label>
+                <Button
+                    type="button"
+                    variant={selectedRollingDate ? 'outline' : 'secondary'}
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={openDateInput}
+                >
+                    <CalendarDays className="size-4" aria-hidden />
+                    Pick date
+                </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+                {dateChoices.map((choice) => (
+                    <Button
+                        key={choice.value}
+                        type="button"
+                        variant={
+                            value === choice.value ? 'default' : 'outline'
+                        }
+                        size="sm"
+                        className="min-w-0 px-2 text-xs tabular-nums"
+                        onClick={() => {
+                            onChange(choice.value);
+                            setShowCustomDateInput(false);
+                        }}
+                    >
+                        {choice.label}
+                    </Button>
+                ))}
+            </div>
+            {showCustomDateInput || !selectedRollingDate ? (
+                <input
+                    ref={inputRef}
+                    id={id}
+                    type="date"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className={dateInputClassName}
+                />
+            ) : (
+                <input
+                    ref={inputRef}
+                    id={id}
+                    type="date"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="sr-only"
+                    tabIndex={-1}
+                />
+            )}
+        </div>
+    );
+}
 
 export function GuidedEntryForm({
     open,
@@ -84,6 +201,8 @@ export function GuidedEntryForm({
     allocations,
     mode = 'purchase',
     presentation = 'dialog',
+    onCreateSuccess,
+    onCreateFailure,
 }: {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -91,6 +210,8 @@ export function GuidedEntryForm({
     allocations: AllocationOption[];
     mode?: 'purchase' | 'bill-split';
     presentation?: 'dialog' | 'page';
+    onCreateSuccess?: (kind: TransactionCreateKind) => void;
+    onCreateFailure?: (kind: TransactionCreateKind) => void;
 }) {
     const splitBill = mode === 'bill-split';
     const defaultOwnerAllocation =
@@ -115,7 +236,7 @@ export function GuidedEntryForm({
     const [assignmentFocus, setAssignmentFocus] =
         useState<AssignmentFocus>(null);
     const form = useForm({
-        date: new Date().toISOString().slice(0, 10),
+        date: toLocalDateString(new Date()),
         description: '',
         note: '',
         payment_account_id: 0,
@@ -443,6 +564,11 @@ export function GuidedEntryForm({
             onSuccess: () => {
                 form.reset();
                 onOpenChange?.(false);
+                onCreateSuccess?.(splitBill ? 'bill_split' : 'purchase');
+            },
+            onError: () => {
+                onOpenChange?.(false);
+                onCreateFailure?.(splitBill ? 'bill_split' : 'purchase');
             },
         });
     };
@@ -502,16 +628,14 @@ export function GuidedEntryForm({
                 </DialogHeader>
             ) : null}
             <div className={splitBill ? 'hidden' : 'grid gap-4 sm:grid-cols-2'}>
-                <div className="space-y-1.5">
-                    <Label htmlFor="purchase-date">Date</Label>
-                    <Input
+                <div className="sm:col-span-2">
+                    <RollingDateSelector
                         id="purchase-date"
-                        type="date"
                         value={form.data.date}
-                        onChange={(e) => form.setData('date', e.target.value)}
+                        onChange={(value) => form.setData('date', value)}
                     />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:col-span-2">
                     <Label htmlFor="purchase-description">Description</Label>
                     <Input
                         id="purchase-description"
@@ -523,21 +647,36 @@ export function GuidedEntryForm({
                     />
                 </div>
             </div>
-            <div className={splitBill ? 'hidden' : ''}>
-                <Label>Paid from</Label>
-                <SearchableCombobox
-                    ariaLabel="Payment account"
-                    value={form.data.payment_account_id || null}
-                    onChange={(value) =>
-                        form.setData('payment_account_id', Number(value))
-                    }
-                    options={paymentAccounts}
-                    placeholder="Search accounts…"
-                />
-                <ProjectedBalance
-                    balance={payment?.balance}
-                    delta={total > 0 ? -total : null}
-                />
+            <div
+                className={
+                    splitBill
+                        ? 'hidden'
+                        : 'grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]'
+                }
+            >
+                <div>
+                    <Label>Paid from</Label>
+                    <SearchableCombobox
+                        ariaLabel="Payment account"
+                        value={form.data.payment_account_id || null}
+                        onChange={(value) =>
+                            form.setData('payment_account_id', Number(value))
+                        }
+                        options={paymentAccounts}
+                        placeholder="Search accounts…"
+                    />
+                    <ProjectedBalance
+                        balance={payment?.balance}
+                        delta={total > 0 ? -total : null}
+                    />
+                </div>
+                <div>
+                    <Label>Amount</Label>
+                    <MoneyInput
+                        value={form.data.total}
+                        onChange={(value) => form.setData('total', value)}
+                    />
+                </div>
             </div>
             {!splitBill ? (
                 <div className="space-y-3">
@@ -899,21 +1038,16 @@ export function GuidedEntryForm({
                                     Transaction details
                                 </h3>
                                 <div className="grid gap-3 sm:grid-cols-2">
-                                    <div>
-                                        <Label htmlFor="bill-date">Date</Label>
-                                        <Input
+                                    <div className="sm:col-span-2">
+                                        <RollingDateSelector
                                             id="bill-date"
-                                            type="date"
                                             value={form.data.date}
-                                            onChange={(e) =>
-                                                form.setData(
-                                                    'date',
-                                                    e.target.value,
-                                                )
+                                            onChange={(value) =>
+                                                form.setData('date', value)
                                             }
                                         />
                                     </div>
-                                    <div>
+                                    <div className="sm:col-span-2">
                                         <Label htmlFor="bill-description">
                                             Description
                                         </Label>
@@ -1270,15 +1404,6 @@ export function GuidedEntryForm({
                     </div>
                 </>
             )}
-            {!splitBill ? (
-                <div>
-                    <Label>Amount</Label>
-                    <MoneyInput
-                        value={form.data.total}
-                        onChange={(value) => form.setData('total', value)}
-                    />
-                </div>
-            ) : null}
             <div className={splitBill ? 'hidden' : ''}>
                 <Label htmlFor="purchase-note">Note</Label>
                 <Input

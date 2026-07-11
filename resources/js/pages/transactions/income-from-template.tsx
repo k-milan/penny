@@ -557,7 +557,7 @@ export default function IncomeFromTemplatePage({
                                         {form.data.accounts.map((row, i) => (
                                             <li
                                                 key={row.key}
-                                                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                className="flex flex-col items-start gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap"
                                             >
                                                 <div className="min-w-0 flex-1 space-y-1">
                                                     <Label
@@ -644,7 +644,7 @@ export default function IncomeFromTemplatePage({
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="shrink-0 text-muted-foreground"
+                                                    className="shrink-0 text-muted-foreground sm:mt-6"
                                                     onClick={() => {
                                                         const next =
                                                             form.data.accounts.filter(
@@ -722,7 +722,7 @@ export default function IncomeFromTemplatePage({
                                         {form.data.allocations.map((row, i) => (
                                             <li
                                                 key={row.key}
-                                                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end"
+                                                className="flex flex-col items-start gap-2 rounded-md border border-border p-3 sm:flex-row sm:flex-wrap"
                                             >
                                                 <div className="min-w-0 flex-1 space-y-1">
                                                     <Label
@@ -809,7 +809,7 @@ export default function IncomeFromTemplatePage({
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="shrink-0 text-muted-foreground"
+                                                    className="shrink-0 text-muted-foreground sm:mt-6"
                                                     onClick={() => {
                                                         const next =
                                                             form.data.allocations.filter(
