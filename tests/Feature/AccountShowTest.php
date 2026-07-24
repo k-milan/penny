@@ -113,3 +113,45 @@ it('only shows transactions for the current account on the show page', function 
         ->get(route('accounts.show', $account, absolute: false))
         ->assertOk();
 });
+
+it('paginates account transactions for infinite scrolling', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $account = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Checking',
+        'type' => AccountType::Bank,
+        'balance' => '0.00',
+    ]);
+
+    foreach (range(1, 21) as $number) {
+        $transaction = Transaction::query()->create([
+            'user_id' => $user->id,
+            'date' => '2025-01-01',
+            'description' => "Transaction {$number}",
+            'note' => null,
+        ]);
+        TransactionAccount::query()->create([
+            'transaction_id' => $transaction->id,
+            'account_id' => $account->id,
+            'amount' => '1.00',
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('accounts.show', $account, absolute: false))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions.data', 20)
+            ->where('transactions.current_page', 1)
+            ->where('transactions.last_page', 2)
+        );
+
+    $this->actingAs($user)
+        ->get(route('accounts.show', ['account' => $account, 'transactions' => 2], absolute: false))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions.data', 1)
+            ->where('transactions.current_page', 2)
+            ->where('transactions.last_page', 2)
+        );
+});

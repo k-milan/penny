@@ -18,9 +18,12 @@ import {
     ensureTransactionRow,
     type DashboardTransactionRow,
 } from '@/lib/transaction-row';
-import { InfiniteScroll, usePage } from '@inertiajs/react';
+import {
+    InfiniteScroll,
+    usePage,
+} from '@inertiajs/react';
 import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { type ComponentRef, useMemo, useRef } from 'react';
 
 type TransactionRow = DashboardTransactionRow;
 
@@ -66,6 +69,7 @@ export function TransactionScrollList({
     setDeleteOpen: (open: boolean) => void;
 }) {
     const paginated = usePage<PageWithScroll>().props[dataKey];
+    const infiniteScrollRef = useRef<ComponentRef<typeof InfiniteScroll>>(null);
 
     const transactionRows: TransactionRow[] = useMemo(
         () =>
@@ -114,11 +118,24 @@ export function TransactionScrollList({
                 scrollClassName ??
                 'max-h-[min(50vh,28rem)] overflow-y-auto rounded-md border'
             }
+            onScroll={(event) => {
+                const container = event.currentTarget;
+                const remainingScroll =
+                    container.scrollHeight -
+                    container.scrollTop -
+                    container.clientHeight;
+
+                if (remainingScroll <= 64) {
+                    infiniteScrollRef.current?.fetchNext();
+                }
+            }}
         >
             <InfiniteScroll
+                ref={infiniteScrollRef}
                 as="div"
                 className="divide-y divide-border"
                 data={dataKey}
+                manual
                 onlyNext
             >
                 {({ loadingNext }) => (
