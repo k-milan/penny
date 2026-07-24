@@ -141,3 +141,46 @@ it('only shows transactions for the current allocation on the show page', functi
         ->get(route('allocations.show', $allocation, absolute: false))
         ->assertOk();
 });
+
+it('paginates allocation transactions for infinite scrolling', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $allocation = Allocation::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Groceries',
+        'type' => AllocationType::Normal,
+        'balance' => '0.00',
+        'is_unallocated' => false,
+    ]);
+
+    foreach (range(1, 21) as $number) {
+        $transaction = Transaction::query()->create([
+            'user_id' => $user->id,
+            'date' => '2025-01-01',
+            'description' => "Transaction {$number}",
+            'note' => null,
+        ]);
+        TransactionAllocation::query()->create([
+            'transaction_id' => $transaction->id,
+            'allocation_id' => $allocation->id,
+            'amount' => '1.00',
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('allocations.show', $allocation, absolute: false))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions.data', 20)
+            ->where('transactions.current_page', 1)
+            ->where('transactions.last_page', 2)
+        );
+
+    $this->actingAs($user)
+        ->get(route('allocations.show', ['allocation' => $allocation, 'transactions' => 2], absolute: false))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions.data', 1)
+            ->where('transactions.current_page', 2)
+            ->where('transactions.last_page', 2)
+        );
+});
