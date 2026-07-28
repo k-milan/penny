@@ -5,8 +5,9 @@ import {
     ProjectedBalance,
     SearchableCombobox,
 } from '@/components/searchable-combobox';
-import { Button } from '@/components/ui/button';
 import type { TransactionCreateKind } from '@/components/transaction-create-result-dialog';
+import { TransactionDateSelector } from '@/components/transaction-date-selector';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -1307,17 +1308,13 @@ export function TransactionFormDialog({
                         <div className="rounded-lg border bg-muted/30 p-4">
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="tx-date">Date</Label>
-                                    <Input
+                                    <TransactionDateSelector
                                         id="tx-date"
-                                        name="date"
-                                        type="date"
                                         value={form.data.date}
-                                        onChange={(e) =>
-                                            form.setData('date', e.target.value)
+                                        onChange={(value) =>
+                                            form.setData('date', value)
                                         }
-                                        required
-                                        aria-invalid={!!err('date')}
+                                        invalid={!!err('date')}
                                     />
                                     <InputError message={form.errors.date} />
                                 </div>

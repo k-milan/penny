@@ -7,6 +7,7 @@ import {
     ProjectedBalance,
     SearchableCombobox,
 } from '@/components/searchable-combobox';
+import { TransactionDateSelector } from '@/components/transaction-date-selector';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -444,16 +445,12 @@ export default function IncomeFromTemplatePage({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="date">Date</Label>
-                                <Input
+                                <TransactionDateSelector
                                     id="date"
-                                    type="date"
-                                    name="date"
                                     value={form.data.date}
-                                    onChange={(e) =>
-                                        form.setData('date', e.target.value)
+                                    onChange={(value) =>
+                                        form.setData('date', value)
                                     }
-                                    required
                                 />
                                 <InputError message={form.errors.date} />
                             </div>
