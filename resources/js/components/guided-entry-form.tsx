@@ -4,7 +4,10 @@ import {
     SearchableCombobox,
 } from '@/components/searchable-combobox';
 import type { TransactionCreateKind } from '@/components/transaction-create-result-dialog';
-import { TransactionDateSelector } from '@/components/transaction-date-selector';
+import {
+    toLocalDateString,
+    TransactionDateSelector,
+} from '@/components/transaction-date-selector';
 import {
     type AccountOption,
     type AllocationOption,
