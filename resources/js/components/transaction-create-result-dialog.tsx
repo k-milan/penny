@@ -60,7 +60,7 @@ export function TransactionCreateResultDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="max-w-[min(calc(100vw-2rem),42rem)]">
                 <DialogHeader className="text-left">
                     <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                         <Icon className="size-5" aria-hidden />
@@ -76,18 +76,28 @@ export function TransactionCreateResultDialog({
                             : 'Review the details and try again.'}
                     </DialogDescription>
                 </DialogHeader>
-                <DialogFooter className="gap-2 sm:justify-start">
-                    <Button type="button" onClick={onCreateSame}>
+                <DialogFooter className="gap-2 sm:flex-row sm:flex-wrap sm:justify-start">
+                    <Button
+                        type="button"
+                        className="whitespace-normal"
+                        onClick={onCreateSame}
+                    >
                         {sameLabel}
                     </Button>
                     <Button
                         type="button"
                         variant="secondary"
+                        className="whitespace-normal"
                         onClick={onCreateTransaction}
                     >
                         Create another transaction
                     </Button>
-                    <Button type="button" variant="outline" onClick={onDone}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={onDone}
+                    >
                         Done
                     </Button>
                 </DialogFooter>

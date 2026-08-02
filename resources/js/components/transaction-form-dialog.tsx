@@ -675,6 +675,22 @@ export function TransactionFormDialog({
         accounts: [] as LineAccount[],
         allocations: [] as LineAllocation[],
     });
+    const [pendingFieldFocusId, setPendingFieldFocusId] = useState<
+        string | null
+    >(null);
+
+    useLayoutEffect(() => {
+        if (pendingFieldFocusId === null) {
+            return;
+        }
+
+        document.getElementById(pendingFieldFocusId)?.focus();
+        setPendingFieldFocusId(null);
+    }, [
+        pendingFieldFocusId,
+        form.data.accounts.length,
+        form.data.allocations.length,
+    ]);
 
     const unallocatedAllocationId =
         typeof unallocatedAllocationIdProp === 'number' &&
@@ -1307,7 +1323,7 @@ export function TransactionFormDialog({
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
                         <div className="rounded-lg border bg-muted/30 p-4">
                             <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="grid gap-2">
+                                <div className="grid gap-2 sm:col-span-2">
                                     <TransactionDateSelector
                                         id="tx-date"
                                         value={form.data.date}
@@ -1456,9 +1472,7 @@ export function TransactionFormDialog({
                                                                 className="flex items-start gap-2"
                                                             >
                                                                 <div className="min-w-0 flex-1">
-                                                                    <Label
-                                                                        className="sr-only"
-                                                                    >
+                                                                    <Label className="sr-only">
                                                                         Paid
                                                                         from
                                                                     </Label>
@@ -1692,9 +1706,7 @@ export function TransactionFormDialog({
                                                                 className="flex items-start gap-2"
                                                             >
                                                                 <div className="min-w-0 flex-1">
-                                                                    <Label
-                                                                        className="sr-only"
-                                                                    >
+                                                                    <Label className="sr-only">
                                                                         Allocation
                                                                     </Label>
                                                                     <SearchableCombobox
@@ -1890,9 +1902,7 @@ export function TransactionFormDialog({
                                                                 className="flex items-start gap-2"
                                                             >
                                                                 <div className="min-w-0 flex-1">
-                                                                    <Label
-                                                                        className="sr-only"
-                                                                    >
+                                                                    <Label className="sr-only">
                                                                         Person
                                                                     </Label>
                                                                     <SearchableCombobox
@@ -2570,6 +2580,9 @@ export function TransactionFormDialog({
                                                         amount: '',
                                                     },
                                                 ]);
+                                                setPendingFieldFocusId(
+                                                    `loan-acc-amt-${form.data.accounts.length}`,
+                                                );
                                             }}
                                         >
                                             <Plus className="size-4" />
@@ -2756,6 +2769,9 @@ export function TransactionFormDialog({
                                                         amount: '',
                                                     },
                                                 ]);
+                                                setPendingFieldFocusId(
+                                                    `loan-alloc-amt-${form.data.allocations.length}`,
+                                                );
                                             }}
                                         >
                                             <Plus className="size-4" />
@@ -3025,6 +3041,9 @@ export function TransactionFormDialog({
                                                         amount: '',
                                                     },
                                                 ]);
+                                                setPendingFieldFocusId(
+                                                    `acc-amt-${form.data.accounts.length}`,
+                                                );
                                             }}
                                         >
                                             <Plus className="size-4" />
@@ -3216,6 +3235,9 @@ export function TransactionFormDialog({
                                                         amount: '',
                                                     },
                                                 ]);
+                                                setPendingFieldFocusId(
+                                                    `alloc-amt-${form.data.allocations.length}`,
+                                                );
                                             }}
                                         >
                                             <Plus className="size-4" />

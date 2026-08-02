@@ -31,6 +31,7 @@ export function SearchableCombobox({
     placeholder = 'Select…',
     ariaLabel,
     disabled = false,
+    id,
     searchValue,
     onSearchValueChange,
 }: {
@@ -40,6 +41,7 @@ export function SearchableCombobox({
     placeholder?: string;
     ariaLabel: string;
     disabled?: boolean;
+    id?: string;
     searchValue?: string;
     onSearchValueChange?: (value: string) => void;
 }) {
@@ -74,6 +76,7 @@ export function SearchableCombobox({
             onInputValueChange={onSearchValueChange}
         >
             <ComboboxInput
+                id={id}
                 aria-label={ariaLabel}
                 placeholder={placeholder}
                 className="w-full"

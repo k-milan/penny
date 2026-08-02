@@ -27,6 +27,7 @@ function ComboboxTrigger({
   return (
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
+      tabIndex={-1}
       className={cn("[&_svg:not([class*='size-'])]:size-4", className)}
       {...props}
     >

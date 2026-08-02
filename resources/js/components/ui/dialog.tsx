@@ -48,6 +48,7 @@ function DialogContent({
   className,
   children,
   onInteractOutside,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
@@ -55,6 +56,24 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event)
+
+          if (event.defaultPrevented) {
+            return
+          }
+
+          const firstFocusable = (
+            event.currentTarget as HTMLElement
+          ).querySelector<HTMLElement>(
+            '[data-dialog-initial-focus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), [role="combobox"]:not([disabled]):not([tabindex="-1"]), button:not([disabled]):not([data-slot="dialog-close"]):not([tabindex="-1"]), [href]:not([tabindex="-1"])'
+          )
+
+          if (firstFocusable) {
+            event.preventDefault()
+            firstFocusable.focus()
+          }
+        }}
         onInteractOutside={(event) => {
           const target = event.detail.originalEvent.target
           if (

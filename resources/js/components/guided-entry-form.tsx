@@ -27,7 +27,7 @@ import { Label } from '@/components/ui/label';
 import { formatPhpMoney } from '@/lib/format';
 import { useForm } from '@inertiajs/react';
 import { Check, Plus, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type Assignee =
     | {
@@ -122,6 +122,9 @@ export function GuidedEntryForm({
     const [personSearch, setPersonSearch] = useState('');
     const [assignmentFocus, setAssignmentFocus] =
         useState<AssignmentFocus>(null);
+    const [pendingAllocationFocusId, setPendingAllocationFocusId] = useState<
+        string | null
+    >(null);
     const form = useForm({
         date: toLocalDateString(new Date()),
         description: '',
@@ -177,6 +180,15 @@ export function GuidedEntryForm({
     const setItems = (items: Item[]) => form.setData('items', items);
     const setPurchaseAllocations = (allocations: PurchaseAllocationLine[]) =>
         form.setData('allocations', allocations);
+
+    useEffect(() => {
+        if (pendingAllocationFocusId === null) {
+            return;
+        }
+
+        document.getElementById(pendingAllocationFocusId)?.focus();
+        setPendingAllocationFocusId(null);
+    }, [pendingAllocationFocusId, form.data.allocations.length]);
     const updateItem = (index: number, patch: Partial<Item>) =>
         setItems(
             form.data.items.map((item, i) =>
@@ -560,8 +572,23 @@ export function GuidedEntryForm({
                 <div>
                     <Label>Amount</Label>
                     <MoneyInput
+                        id="purchase-amount"
                         value={form.data.total}
                         onChange={(value) => form.setData('total', value)}
+                        onKeyDown={(event) => {
+                            if (event.key !== 'Tab' || event.shiftKey) {
+                                return;
+                            }
+
+                            const firstAllocation =
+                                document.getElementById(
+                                    'purchase-allocation-0',
+                                );
+                            if (firstAllocation) {
+                                event.preventDefault();
+                                firstAllocation.focus();
+                            }
+                        }}
                     />
                 </div>
             </div>
@@ -586,6 +613,9 @@ export function GuidedEntryForm({
                                     ...form.data.allocations,
                                     newPurchaseAllocationLine(next?.id ?? 0),
                                 ]);
+                                setPendingAllocationFocusId(
+                                    `purchase-allocation-${form.data.allocations.length}`,
+                                );
                             }}
                             disabled={
                                 !allocations.some(
@@ -635,6 +665,7 @@ export function GuidedEntryForm({
                                             Allocation
                                         </Label>
                                         <SearchableCombobox
+                                            id={`purchase-allocation-${index}`}
                                             ariaLabel="Purchase allocation"
                                             value={
                                                 line.allocation_id > 0
