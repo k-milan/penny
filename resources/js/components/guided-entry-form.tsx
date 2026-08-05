@@ -575,20 +575,6 @@ export function GuidedEntryForm({
                         id="purchase-amount"
                         value={form.data.total}
                         onChange={(value) => form.setData('total', value)}
-                        onKeyDown={(event) => {
-                            if (event.key !== 'Tab' || event.shiftKey) {
-                                return;
-                            }
-
-                            const firstAllocation =
-                                document.getElementById(
-                                    'purchase-allocation-0',
-                                );
-                            if (firstAllocation) {
-                                event.preventDefault();
-                                firstAllocation.focus();
-                            }
-                        }}
                     />
                 </div>
             </div>

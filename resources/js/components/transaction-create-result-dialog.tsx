@@ -53,14 +53,12 @@ export function TransactionCreateResultDialog({
 }) {
     const label = transactionKindLabels[kind];
     const sameLabel =
-        status === 'success'
-            ? `Create another ${label}`
-            : `Try ${label} again`;
+        status === 'success' ? `Create another ${label}` : `Try ${label} again`;
     const Icon = status === 'success' ? CheckCircle2 : AlertCircle;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[min(calc(100vw-2rem),42rem)]">
+            <DialogContent>
                 <DialogHeader className="text-left">
                     <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                         <Icon className="size-5" aria-hidden />
@@ -76,10 +74,10 @@ export function TransactionCreateResultDialog({
                             : 'Review the details and try again.'}
                     </DialogDescription>
                 </DialogHeader>
-                <DialogFooter className="gap-2 sm:flex-row sm:flex-wrap sm:justify-start">
+                <DialogFooter className="gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto]">
                     <Button
                         type="button"
-                        className="whitespace-normal"
+                        className="w-full min-w-0 whitespace-normal sm:col-span-2"
                         onClick={onCreateSame}
                     >
                         {sameLabel}
@@ -87,7 +85,7 @@ export function TransactionCreateResultDialog({
                     <Button
                         type="button"
                         variant="secondary"
-                        className="whitespace-normal"
+                        className="w-full min-w-0 whitespace-normal"
                         onClick={onCreateTransaction}
                     >
                         Create another transaction

@@ -63,11 +63,15 @@ function DialogContent({
             return
           }
 
-          const firstFocusable = (
-            event.currentTarget as HTMLElement
-          ).querySelector<HTMLElement>(
-            '[data-dialog-initial-focus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), [role="combobox"]:not([disabled]):not([tabindex="-1"]), button:not([disabled]):not([data-slot="dialog-close"]):not([tabindex="-1"]), [href]:not([tabindex="-1"])'
-          )
+          const focusableElements = Array.from(
+            (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(
+              'input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), [role="combobox"]:not([disabled]):not([tabindex="-1"]), button:not([disabled]):not([data-slot="dialog-close"]):not([tabindex="-1"]), [href]:not([tabindex="-1"])'
+            )
+          ).filter((element) => element.getClientRects().length > 0)
+          const firstFocusable =
+            focusableElements.find((element) =>
+              element.hasAttribute("data-dialog-initial-focus")
+            ) ?? focusableElements[0]
 
           if (firstFocusable) {
             event.preventDefault()

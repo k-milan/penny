@@ -55,6 +55,9 @@ export function TransactionDateSelector({
     const selectedRollingDate = dateChoices.some(
         (choice) => choice.value === value,
     );
+    const selectedChoiceIndex = dateChoices.findIndex(
+        (choice) => choice.value === value,
+    );
     const dateInputClassName =
         'border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm';
 
@@ -81,17 +84,55 @@ export function TransactionDateSelector({
                     Pick date
                 </Button>
             </div>
-            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+            <div
+                className="grid grid-cols-3 gap-1.5 sm:grid-cols-6"
+                role="radiogroup"
+                aria-label="Recent dates"
+            >
                 {dateChoices.map((choice) => (
                     <Button
                         key={choice.value}
+                        id={`${id}-choice-${choice.value}`}
                         type="button"
+                        role="radio"
+                        aria-checked={value === choice.value}
                         variant={value === choice.value ? 'default' : 'outline'}
                         size="sm"
                         className="min-w-0 px-2 text-xs tabular-nums"
+                        tabIndex={value === choice.value ? 0 : -1}
                         onClick={() => {
                             onChange(choice.value);
                             setShowCustomDateInput(false);
+                        }}
+                        onKeyDown={(event) => {
+                            const indexByKey: Record<string, number> = {
+                                ArrowLeft: Math.max(selectedChoiceIndex - 1, 0),
+                                ArrowUp: Math.max(selectedChoiceIndex - 1, 0),
+                                ArrowRight: Math.min(
+                                    selectedChoiceIndex + 1,
+                                    dateChoices.length - 1,
+                                ),
+                                ArrowDown: Math.min(
+                                    selectedChoiceIndex + 1,
+                                    dateChoices.length - 1,
+                                ),
+                                Home: 0,
+                                End: dateChoices.length - 1,
+                            };
+                            const nextIndex = indexByKey[event.key];
+
+                            if (nextIndex === undefined) {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            const nextChoice = dateChoices[nextIndex];
+                            onChange(nextChoice.value);
+                            document
+                                .getElementById(
+                                    `${id}-choice-${nextChoice.value}`,
+                                )
+                                ?.focus();
                         }}
                     >
                         {choice.label}
