@@ -34,6 +34,7 @@ type AccountShareProps = {
     account: {
         name: string;
         balance: string;
+        opening_balance_items: { description: string; amount: string }[];
     };
     owner_name: string;
     transactions: PaginatedTransactions;
@@ -95,6 +96,27 @@ export default function AccountShare() {
                             </p>
                         )}
                     </div>
+
+                    {account.opening_balance_items.length > 0 ? (
+                        <section className="mb-8">
+                            <h2 className="mb-3 text-base font-semibold">
+                                Opening balance breakdown
+                            </h2>
+                            <div className="divide-y rounded-xl border">
+                                {account.opening_balance_items.map((item, index) => (
+                                    <div
+                                        key={`${item.description}-${index}`}
+                                        className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                                    >
+                                        <span>{item.description}</span>
+                                        <span className="shrink-0 font-medium tabular-nums">
+                                            {formatPhpMoney(item.amount)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    ) : null}
 
                     <h2 className="mb-3 text-base font-semibold">
                         Transactions

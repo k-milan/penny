@@ -14,7 +14,7 @@ import {
 import { formatPhpMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Pin } from 'lucide-react';
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 
 export type ComboboxChoice = {
     id: number | string;
@@ -45,6 +45,7 @@ export function SearchableCombobox({
     searchValue?: string;
     onSearchValueChange?: (value: string) => void;
 }) {
+    const [open, setOpen] = useState(false);
     const selected = options.find((option) => option.id === value) ?? null;
     const sorted = useMemo(
         () =>
@@ -66,6 +67,8 @@ export function SearchableCombobox({
         <Combobox
             items={sorted}
             value={selected}
+            open={open}
+            onOpenChange={setOpen}
             onValueChange={(option) => onChange(option?.id ?? null)}
             itemToStringLabel={(option) => label(option)}
             itemToStringValue={(option) =>
@@ -80,6 +83,11 @@ export function SearchableCombobox({
                 aria-label={ariaLabel}
                 placeholder={placeholder}
                 className="w-full"
+                onKeyDown={(event) => {
+                    if (event.key === 'Tab') {
+                        setOpen(false);
+                    }
+                }}
             />
             <ComboboxContent>
                 <ComboboxEmpty>No matches</ComboboxEmpty>

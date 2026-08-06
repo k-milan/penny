@@ -259,6 +259,47 @@ it('allows a loan-style transaction with one person receivable, cash out, and al
     expect($env->fresh()->balance)->toBe('1200.00');
 });
 
+it('allows a loan-style transaction with funding greater than the person receivable', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $cash = app(CreateAccount::class)->handle($user, [
+        'name' => 'Cash',
+        'type' => AccountType::Cash,
+        'initial_balance' => '5000.00',
+    ]);
+    $person = app(CreateAccount::class)->handle($user, [
+        'name' => 'Alex',
+        'type' => AccountType::Person,
+        'initial_balance' => '0.00',
+    ]);
+    $env = app(CreateAllocation::class)->handle($user, [
+        'name' => 'Personal',
+        'type' => AllocationType::Normal,
+        'initial_balance' => '2000.00',
+    ]);
+
+    $response = $this->actingAs($user)->fromRoute('dashboard')->post(
+        route('transactions.store', absolute: false),
+        [
+            'date' => now()->toDateString(),
+            'description' => 'Loan with personal spending',
+            'note' => null,
+            'accounts' => [
+                ['account_id' => $person->id, 'amount' => '388.25'],
+                ['account_id' => $cash->id, 'amount' => '-1468.23'],
+            ],
+            'allocations' => [
+                ['allocation_id' => $env->id, 'amount' => '-1079.98'],
+            ],
+        ],
+    );
+
+    $response->assertRedirectToRoute('dashboard');
+    $response->assertSessionHasNoErrors();
+    expect($cash->fresh()->balance)->toBe('3531.77');
+    expect($person->fresh()->balance)->toBe('388.25');
+    expect($env->fresh()->balance)->toBe('920.02');
+});
+
 it('allows a transaction when account line totals and allocation line totals are equal', function (): void {
     $user = User::factory()->withoutTwoFactor()->create();
     $account = app(CreateAccount::class)->handle($user, [

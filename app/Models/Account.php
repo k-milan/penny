@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read CarbonInterface $updated_at
  * @property-read User $user
  * @property-read \Illuminate\Database\Eloquent\Collection<int, TransactionAccount> $transactionAccounts
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, AccountOpeningBalanceItem> $openingBalanceItems
  */
 final class Account extends Model
 {
@@ -60,5 +61,13 @@ final class Account extends Model
     public function transactionAccounts(): HasMany
     {
         return $this->hasMany(TransactionAccount::class);
+    }
+
+    /**
+     * @return HasMany<AccountOpeningBalanceItem, $this>
+     */
+    public function openingBalanceItems(): HasMany
+    {
+        return $this->hasMany(AccountOpeningBalanceItem::class);
     }
 }

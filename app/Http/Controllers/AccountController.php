@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Actions\CreateAccount;
 use App\Actions\DeleteAccount;
 use App\Actions\GenerateAccountShareTokenAction;
+use App\Actions\SyncAccountOpeningBalanceItems;
 use App\Actions\UpdateAccount;
 use App\Enums\AccountType;
 use App\Http\Requests\StoreAccountRequest;
@@ -137,20 +138,48 @@ final readonly class AccountController
 
     public function edit(Account $account): Response
     {
+        $transactionTotal = (string) $account->transactionAccounts()->sum('amount');
+
         return Inertia::render('accounts/edit', [
             'account' => [
                 'id' => $account->id,
                 'name' => $account->name,
                 'type' => $account->type->value,
                 'balance' => (string) $account->balance,
+                'opening_balance' => bcsub((string) $account->balance, $transactionTotal, 2),
+                'opening_balance_items' => $account->openingBalanceItems()
+                    ->orderBy('id')
+                    ->get(['description', 'amount'])
+                    ->map(static fn ($item): array => [
+                        'description' => $item->description,
+                        'amount' => (string) $item->amount,
+                    ])
+                    ->all(),
             ],
             'types' => self::accountTypeOptions(),
         ]);
     }
 
-    public function update(UpdateAccountRequest $request, Account $account, UpdateAccount $action): RedirectResponse
+    public function update(UpdateAccountRequest $request, Account $account, UpdateAccount $action, SyncAccountOpeningBalanceItems $syncOpeningBalanceItems): RedirectResponse
     {
-        $action->handle($account, $request->validated());
+        $attributes = $request->validated();
+        $openingBalanceItems = $attributes['opening_balance_items'] ?? null;
+        unset($attributes['opening_balance_items']);
+
+        $action->handle($account, $attributes);
+
+        if (is_array($openingBalanceItems)) {
+            $syncOpeningBalanceItems->handle(
+                $account,
+                array_map(
+                    static fn (array $item): array => [
+                        'description' => (string) $item['description'],
+                        'amount' => bcadd('0.00', (string) $item['amount'], 2),
+                    ],
+                    $openingBalanceItems,
+                ),
+            );
+        }
 
         return redirect()->route('accounts.index')
             ->with('success', 'Account updated.');

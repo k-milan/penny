@@ -523,8 +523,12 @@ function sumLoanFundingEffective(
 
 function sumLoanAllocEffective(
     rows: LineAllocation[],
-    direction: LoanPersonDirection,
+    accountTotal: number | null,
 ): number | null {
+    if (accountTotal === null) {
+        return null;
+    }
+
     let s = 0;
     for (const row of rows) {
         if (row.allocation_id <= 0) {
@@ -534,14 +538,15 @@ function sumLoanAllocEffective(
         if (m === null) {
             return null;
         }
-        s += isLoanPersonPositive(direction) ? m : -m;
+        s += accountTotal < 0 ? -m : m;
     }
     return s;
 }
 
 /**
  * One person + funding accounts + allocations. UI amounts are positive magnitudes;
- * funding sign opposes the person line; allocation sign matches the person line.
+ * funding sign opposes the person line; allocation sign matches the net account
+ * total so both ledger sides balance.
  */
 function buildLoanForSubmit(
     personId: number,
@@ -579,6 +584,12 @@ function buildLoanForSubmit(
             amount: signed.toFixed(2),
         });
     }
+    const allAccounts = [...personLines, ...funding];
+    let accountTotal = 0;
+    for (const account of allAccounts) {
+        accountTotal += Number.parseFloat(account.amount);
+    }
+
     const allocations: LineAllocation[] = [];
     for (const row of allocationRows) {
         if (row.allocation_id <= 0) {
@@ -588,25 +599,20 @@ function buildLoanForSubmit(
         if (m === null) {
             return null;
         }
-        const signed = isLoanPersonPositive(direction) ? m : -m;
+        const signed = accountTotal < 0 ? -m : m;
         allocations.push({
             allocation_id: row.allocation_id,
             amount: signed.toFixed(2),
         });
     }
-    const allAccounts = [...personLines, ...funding];
     if (funding.length === 0 && allocations.length === 0) {
         return null;
-    }
-    let aSum = 0;
-    for (const x of allAccounts) {
-        aSum += Number.parseFloat(x.amount);
     }
     let lSum = 0;
     for (const x of allocations) {
         lSum += Number.parseFloat(x.amount);
     }
-    if (Math.abs(aSum - lSum) > 0.015) {
+    if (Math.abs(accountTotal - lSum) > 0.015) {
         return null;
     }
     return { accounts: allAccounts, allocations };
@@ -1028,15 +1034,17 @@ export function TransactionFormDialog({
         () => sumLoanFundingEffective(form.data.accounts, loanDirection),
         [form.data.accounts, loanDirection],
     );
+    const loanAccountRunning =
+        loanPersonSignedTotal !== null && loanFundingRunning !== null
+            ? loanPersonSignedTotal + loanFundingRunning
+            : null;
     const loanAllocRunning = useMemo(
-        () => sumLoanAllocEffective(form.data.allocations, loanDirection),
-        [form.data.allocations, loanDirection],
+        () => sumLoanAllocEffective(form.data.allocations, loanAccountRunning),
+        [form.data.allocations, loanAccountRunning],
     );
     const loanBalanceGap =
-        loanPersonSignedTotal !== null &&
-        loanFundingRunning !== null &&
-        loanAllocRunning !== null
-            ? loanPersonSignedTotal + loanFundingRunning - loanAllocRunning
+        loanAccountRunning !== null && loanAllocRunning !== null
+            ? loanAccountRunning - loanAllocRunning
             : null;
 
     const loanBuild = useMemo(
@@ -2315,6 +2323,21 @@ export function TransactionFormDialog({
                                         name="transfer_amount"
                                         value={transferAmount}
                                         onChange={setTransferAmount}
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.key === 'Tab' &&
+                                                !event.shiftKey &&
+                                                transferKind === 'account' &&
+                                                canShowAccountTab
+                                            ) {
+                                                event.preventDefault();
+                                                document
+                                                    .getElementById(
+                                                        'tx-transfer-fee',
+                                                    )
+                                                    ?.focus();
+                                            }
+                                        }}
                                         aria-invalid={
                                             !!err('accounts.0.amount') ||
                                             !!err('accounts.1.amount') ||
@@ -2357,6 +2380,20 @@ export function TransactionFormDialog({
                                                     onChange={
                                                         setTransferFeeAmount
                                                     }
+                                                    onKeyDown={(event) => {
+                                                        if (
+                                                            event.key ===
+                                                                'Tab' &&
+                                                            event.shiftKey
+                                                        ) {
+                                                            event.preventDefault();
+                                                            document
+                                                                .getElementById(
+                                                                    'tx-transfer-amt',
+                                                                )
+                                                                ?.focus();
+                                                        }
+                                                    }}
                                                     aria-invalid={
                                                         transferFeeInputInvalid
                                                     }
@@ -2780,9 +2817,9 @@ export function TransactionFormDialog({
                                     </div>
                                     {form.data.allocations.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">
-                                            Optional: envelopes (positive
-                                            amounts; same sign family as the
-                                            person line).
+                                            Optional: envelopes. Enter positive
+                                            amounts; Penny assigns their sign to
+                                            match the net account total.
                                         </p>
                                     ) : null}
                                     <ul className="space-y-3">
@@ -2961,6 +2998,16 @@ export function TransactionFormDialog({
                                             </span>
                                         </li>
                                         <li className="flex flex-wrap justify-between gap-2">
+                                            <span>Account total (signed)</span>
+                                            <span className="font-medium text-foreground tabular-nums">
+                                                {loanAccountRunning === null
+                                                    ? '—'
+                                                    : formatPhpMoney(
+                                                          loanAccountRunning,
+                                                      )}
+                                            </span>
+                                        </li>
+                                        <li className="flex flex-wrap justify-between gap-2">
                                             <span>
                                                 Allocations total (signed)
                                             </span>
@@ -2994,12 +3041,11 @@ export function TransactionFormDialog({
                                         </li>
                                     </ul>
                                     <p className="mt-2 text-xs text-muted-foreground">
-                                        Sum check: person + funding must equal
-                                        allocations (Penny requires the same
-                                        total on both sides). Example (they owe
-                                        you): person 500, funding 300 → record
-                                        −300 from that account; allocations
-                                        should total 200.
+                                        Sum check: the net of person and funding
+                                        must equal allocations. Example (they
+                                        owe you): person 500, funding 300 →
+                                        record −300 from that account;
+                                        allocations should total 200.
                                     </p>
                                 </div>
                                 <InputError message={form.errors.accounts} />

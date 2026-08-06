@@ -112,6 +112,66 @@ it('renders the public share page for a valid token', function (): void {
         );
 });
 
+it('shows an itemized opening balance on a person account share page', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $account = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Charlie',
+        'type' => AccountType::Person,
+        'balance' => '5000.00',
+        'share_token' => 'openingbalancesharetoken1234567890',
+    ]);
+    $account->openingBalanceItems()->createMany([
+        ['description' => 'Utilities', 'amount' => '1000.00'],
+        ['description' => 'Groceries', 'amount' => '4000.00'],
+    ]);
+
+    $this->get(route('accounts.share', ['token' => $account->share_token], absolute: false))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('accounts/share')
+            ->has('account.opening_balance_items', 2)
+            ->where('account.opening_balance_items.0', [
+                'description' => 'Utilities',
+                'amount' => '1000.00',
+            ])
+            ->where('account.opening_balance_items.1', [
+                'description' => 'Groceries',
+                'amount' => '4000.00',
+            ])
+        );
+});
+
+it('saves a person account opening balance breakdown that matches its opening balance', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $account = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Charlie',
+        'type' => AccountType::Person,
+        'balance' => '5000.00',
+    ]);
+
+    $this->actingAs($user)
+        ->patch(route('accounts.update', $account, absolute: false), [
+            'name' => 'Charlie',
+            'type' => AccountType::Person->value,
+            'opening_balance_items' => [
+                ['description' => 'Utilities', 'amount' => '1000.00'],
+                ['description' => 'Groceries', 'amount' => '4000.00'],
+            ],
+        ])
+        ->assertRedirectToRoute('accounts.index')
+        ->assertSessionHasNoErrors();
+
+    expect($account->openingBalanceItems()->orderBy('id')->get()->map(fn ($item): array => [
+        'description' => $item->description,
+        'amount' => (string) $item->amount,
+    ])->all())->toBe([
+        ['description' => 'Utilities', 'amount' => '1000.00'],
+        ['description' => 'Groceries', 'amount' => '4000.00'],
+    ]);
+});
+
 it('returns 404 for an unknown share token', function (): void {
     $this->get(route('accounts.share', ['token' => 'nonexistent-token-xyz'], absolute: false))
         ->assertNotFound();

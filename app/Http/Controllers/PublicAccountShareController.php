@@ -18,13 +18,20 @@ final readonly class PublicAccountShareController
         $account = Account::query()
             ->where('share_token', $token)
             ->where('type', AccountType::Person)
-            ->with('user')
+            ->with(['user', 'openingBalanceItems'])
             ->firstOrFail();
 
         return Inertia::render('accounts/share', [
             'account' => [
                 'name' => $account->name,
                 'balance' => (string) $account->balance,
+                'opening_balance_items' => $account->openingBalanceItems
+                    ->map(static fn ($item): array => [
+                        'description' => $item->description,
+                        'amount' => (string) $item->amount,
+                    ])
+                    ->values()
+                    ->all(),
             ],
             'owner_name' => $account->user->name,
             'transactions' => Inertia::scroll(

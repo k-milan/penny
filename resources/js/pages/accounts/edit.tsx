@@ -1,5 +1,6 @@
 import AccountController from '@/actions/App/Http/Controllers/AccountController';
 import InputError from '@/components/input-error';
+import { MoneyInput } from '@/components/money-input';
 import { formatPhpMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,12 +15,15 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { Plus, Trash2 } from 'lucide-react';
 
 type AccountProps = {
     id: number;
     name: string;
     type: string;
     balance: string;
+    opening_balance: string;
+    opening_balance_items: { description: string; amount: string }[];
 };
 
 export default function AccountsEdit({
@@ -32,6 +36,7 @@ export default function AccountsEdit({
     const form = useForm({
         name: account.name,
         type: account.type,
+        opening_balance_items: account.opening_balance_items,
     });
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -105,6 +110,80 @@ export default function AccountsEdit({
                                 </select>
                                 <InputError message={form.errors.type} />
                             </div>
+                            {account.type === 'person' &&
+                            account.opening_balance !== '0.00' ? (
+                                <div className="space-y-3 border-t pt-6">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div>
+                                            <Label>Opening balance breakdown</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Itemize {formatPhpMoney(account.opening_balance)} for the shared balance page.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                form.setData('opening_balance_items', [
+                                                    ...form.data.opening_balance_items,
+                                                    { description: '', amount: '' },
+                                                ])
+                                            }
+                                        >
+                                            <Plus className="size-4" />
+                                            Add item
+                                        </Button>
+                                    </div>
+                                    {form.data.opening_balance_items.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            Add items that total the opening balance.
+                                        </p>
+                                    ) : null}
+                                    <div className="space-y-2">
+                                        {form.data.opening_balance_items.map((item, index) => (
+                                            <div key={index} className="flex items-start gap-2">
+                                                <Input
+                                                    aria-label={`Opening balance item ${index + 1}`}
+                                                    value={item.description}
+                                                    placeholder="What it was for"
+                                                    onChange={(event) => {
+                                                        const next = [...form.data.opening_balance_items];
+                                                        next[index] = { ...item, description: event.target.value };
+                                                        form.setData('opening_balance_items', next);
+                                                    }}
+                                                />
+                                                <MoneyInput
+                                                    aria-label={`Opening balance item ${index + 1} amount`}
+                                                    className="w-32 shrink-0"
+                                                    value={item.amount}
+                                                    onChange={(amount) => {
+                                                        const next = [...form.data.opening_balance_items];
+                                                        next[index] = { ...item, amount };
+                                                        form.setData('opening_balance_items', next);
+                                                    }}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="shrink-0"
+                                                    aria-label="Remove opening balance item"
+                                                    onClick={() =>
+                                                        form.setData(
+                                                            'opening_balance_items',
+                                                            form.data.opening_balance_items.filter((_, itemIndex) => itemIndex !== index),
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2 className="size-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <InputError message={form.errors.opening_balance_items} />
+                                </div>
+                            ) : null}
                             <div className="flex gap-2">
                                 <Button type="submit" disabled={form.processing}>
                                     Save
