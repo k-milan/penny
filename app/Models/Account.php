@@ -64,6 +64,14 @@ final class Account extends Model
     }
 
     /**
+     * @return HasMany<BillSplitParticipant, $this>
+     */
+    public function billSplitParticipants(): HasMany
+    {
+        return $this->hasMany(BillSplitParticipant::class);
+    }
+
+    /**
      * @return HasMany<AccountOpeningBalanceItem, $this>
      */
     public function openingBalanceItems(): HasMany

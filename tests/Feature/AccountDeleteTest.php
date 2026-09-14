@@ -105,3 +105,59 @@ it('prevents deleting an account with linked transaction lines', function (): vo
 
     expect(Account::query()->find($account->id))->not->toBeNull();
 });
+
+it('handles deleting a bill split person after their transaction line is replaced', function (bool $replacePerson): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $payment = app(App\Actions\CreateAccount::class)->handle($user, [
+        'name' => 'Checking',
+        'type' => AccountType::Bank,
+        'initial_balance' => '100.00',
+    ]);
+    $person = app(App\Actions\CreateAccount::class)->handle($user, [
+        'name' => 'Duplicate person',
+        'type' => AccountType::Person,
+        'initial_balance' => '0.00',
+    ]);
+    $replacement = app(App\Actions\CreateAccount::class)->handle($user, [
+        'name' => 'Correct person',
+        'type' => AccountType::Person,
+        'initial_balance' => '0.00',
+    ]);
+    $transaction = app(App\Actions\CreateBillSplit::class)->handle($user, [
+        'date' => now()->toDateString(),
+        'description' => 'Lunch',
+        'payment_account_id' => $payment->id,
+        'total' => '20.00',
+        'items' => [[
+            'description' => 'Meal',
+            'unit_price' => '20.00',
+            'quantity' => 1,
+            'assignees' => [['type' => 'account', 'id' => $person->id]],
+        ]],
+    ]);
+    $participant = $transaction->billSplit->participants->sole();
+
+    if ($replacePerson) {
+        app(App\Actions\UpdateTransaction::class)->handle($transaction, [
+            'date' => now()->toDateString(),
+            'description' => 'Lunch',
+            'accounts' => [
+                ['account_id' => $payment->id, 'amount' => '-20.00'],
+                ['account_id' => $replacement->id, 'amount' => '20.00'],
+            ],
+            'allocations' => [],
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->delete(route('accounts.destroy', $person, absolute: false))
+        ->assertRedirectToRoute('accounts.index')
+        ->assertSessionHas($replacePerson ? 'success' : 'error');
+
+    expect($person->fresh() === null)->toBe($replacePerson)
+        ->and($participant->fresh()->account_id)->toBe($replacePerson ? null : $person->id)
+        ->and($participant->fresh()->total)->toBe('20.00')
+        ->and((float) $participant->items()->sole()->pivot->amount)->toBe(20.0)
+        ->and($payment->fresh()->balance)->toBe('80.00')
+        ->and($replacement->fresh()->balance)->toBe($replacePerson ? '20.00' : '0.00');
+})->with([true, false]);

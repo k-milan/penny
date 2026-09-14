@@ -31,6 +31,8 @@ final readonly class DeleteAccount
                 $this->addToAllocationBalance->handle((int) $unallocated->id, bcsub('0.00', $balance, 2));
             }
 
+            $account->billSplitParticipants()->update(['account_id' => null]);
+
             $account->delete();
         });
     }

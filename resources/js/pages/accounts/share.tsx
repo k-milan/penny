@@ -1,6 +1,7 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { FlashToasts } from '@/components/flash-toasts';
 import { formatDateYmd, formatPhpMoney } from '@/lib/format';
+import { runningBalances } from '@/lib/running-balances';
 import { Head, InfiniteScroll, usePage } from '@inertiajs/react';
 import { ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
@@ -47,6 +48,10 @@ export default function AccountShare() {
     const balance = Number.parseFloat(account.balance);
     const isPositive = balance > 0;
     const isNegative = balance < 0;
+    const [hasLatestTransactions] = useState(
+        transactions.prev_page_url === null,
+    );
+    const balances = runningBalances(account.balance, transactions.data);
 
     return (
         <>
@@ -103,17 +108,19 @@ export default function AccountShare() {
                                 Opening balance breakdown
                             </h2>
                             <div className="divide-y rounded-xl border">
-                                {account.opening_balance_items.map((item, index) => (
-                                    <div
-                                        key={`${item.description}-${index}`}
-                                        className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
-                                    >
-                                        <span>{item.description}</span>
-                                        <span className="shrink-0 font-medium tabular-nums">
-                                            {formatPhpMoney(item.amount)}
-                                        </span>
-                                    </div>
-                                ))}
+                                {account.opening_balance_items.map(
+                                    (item, index) => (
+                                        <div
+                                            key={`${item.description}-${index}`}
+                                            className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                                        >
+                                            <span>{item.description}</span>
+                                            <span className="shrink-0 font-medium tabular-nums">
+                                                {formatPhpMoney(item.amount)}
+                                            </span>
+                                        </div>
+                                    ),
+                                )}
                             </div>
                         </section>
                     ) : null}
@@ -133,14 +140,19 @@ export default function AccountShare() {
                                 className="divide-y"
                                 data="transactions"
                                 onlyNext
+                                preserveUrl
                             >
                                 {({ loadingNext }) => (
                                     <>
-                                        {transactions.data.map((t) => (
+                                        {transactions.data.map((t, index) => (
                                             <TransactionShareRow
                                                 key={t.id}
                                                 transaction={t}
-                                                ownerName={owner_name}
+                                                balanceAfter={
+                                                    hasLatestTransactions
+                                                        ? balances[index]
+                                                        : null
+                                                }
                                             />
                                         ))}
                                         {loadingNext ? (
@@ -161,10 +173,10 @@ export default function AccountShare() {
 
 function TransactionShareRow({
     transaction: t,
-    ownerName,
+    balanceAfter,
 }: {
     transaction: ShareTransaction;
-    ownerName: string;
+    balanceAfter: number | null;
 }) {
     const [expanded, setExpanded] = useState(false);
     const amount = t.amount !== null ? Number.parseFloat(t.amount) : null;
@@ -204,22 +216,27 @@ function TransactionShareRow({
                                           : '',
                                 ].join(' ')}
                             >
+                                {isPositive ? '+' : isNegative ? '−' : ''}
                                 {formatPhpMoney(Math.abs(amount))}
                             </p>
-                            <p className="text-[11px] text-muted-foreground">
-                                {isPositive
-                                    ? `You owe ${ownerName}`
-                                    : isNegative
-                                      ? `${ownerName} owes you`
-                                      : 'All settled up'}
-                            </p>
+                            {balanceAfter !== null ? (
+                                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                                    Balance after: {balanceAfter > 0 ? '+' : ''}
+                                    {formatPhpMoney(balanceAfter)}
+                                </p>
+                            ) : null}
                         </div>
                     ) : null}
-                    {t.bill ? (
-                        <ChevronDown
-                            className={`size-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
-                        />
-                    ) : null}
+                    <span
+                        className="flex size-4 shrink-0 items-center justify-center"
+                        aria-hidden="true"
+                    >
+                        {t.bill ? (
+                            <ChevronDown
+                                className={`size-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
+                            />
+                        ) : null}
+                    </span>
                 </div>
             </button>
             {expanded && t.bill ? (
