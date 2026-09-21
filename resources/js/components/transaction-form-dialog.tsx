@@ -19,6 +19,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    handleAddableLineClick,
+    handleAddableLineKeyDown,
+} from '@/lib/addable-line-keyboard';
 import { formatPhpMoney } from '@/lib/format';
 import {
     renderGroupedAccountOptions,
@@ -1327,6 +1331,8 @@ export function TransactionFormDialog({
                 <form
                     className="flex min-h-0 flex-1 flex-col gap-0"
                     onSubmit={submit}
+                    onKeyDownCapture={handleAddableLineKeyDown}
+                    onClickCapture={handleAddableLineClick}
                 >
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
                         <div className="rounded-lg border bg-muted/30 p-4">
@@ -1459,7 +1465,10 @@ export function TransactionFormDialog({
                                                 <strong>negative</strong> (bank,
                                                 cash, or person).
                                             </p>
-                                            <ul className="space-y-1.5">
+                                            <ul
+                                                className="space-y-1.5"
+                                                data-addable-line-list="credit-payment-accounts"
+                                            >
                                                 {creditSplits.map(
                                                     (row, rowIndex) => {
                                                         const sourceChoices =
@@ -1600,6 +1609,7 @@ export function TransactionFormDialog({
                                             </ul>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Button
+                                                    data-addable-line-add="credit-payment-accounts"
                                                     type="button"
                                                     variant="outline"
                                                     size="sm"
@@ -1685,7 +1695,10 @@ export function TransactionFormDialog({
                                             <p className="text-sm font-medium">
                                                 Allocation split
                                             </p>
-                                            <ul className="space-y-1.5">
+                                            <ul
+                                                className="space-y-1.5"
+                                                data-addable-line-list="credit-purchase-allocations"
+                                            >
                                                 {purchaseAllocSplits.map(
                                                     (row, rowIndex) => {
                                                         const allocRowsForPicker: LineAllocation[] =
@@ -1833,6 +1846,7 @@ export function TransactionFormDialog({
                                             </ul>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Button
+                                                    data-addable-line-add="credit-purchase-allocations"
                                                     type="button"
                                                     variant="outline"
                                                     size="sm"
@@ -1889,7 +1903,10 @@ export function TransactionFormDialog({
                                                     purchase.
                                                 </p>
                                             )}
-                                            <ul className="space-y-1.5">
+                                            <ul
+                                                className="space-y-1.5"
+                                                data-addable-line-list="credit-purchase-people"
+                                            >
                                                 {purchasePersonSplits.map(
                                                     (row, rowIndex) => {
                                                         const sourceChoices =
@@ -2023,6 +2040,7 @@ export function TransactionFormDialog({
                                             </ul>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Button
+                                                    data-addable-line-add="credit-purchase-people"
                                                     type="button"
                                                     variant="outline"
                                                     size="sm"
@@ -2591,6 +2609,7 @@ export function TransactionFormDialog({
                                             Funding accounts
                                         </Label>
                                         <Button
+                                            data-addable-line-add="loan-funding-accounts"
                                             type="button"
                                             variant="outline"
                                             size="sm"
@@ -2637,7 +2656,10 @@ export function TransactionFormDialog({
                                             No funding lines.
                                         </p>
                                     ) : null}
-                                    <ul className="space-y-3">
+                                    <ul
+                                        className="space-y-3"
+                                        data-addable-line-list="loan-funding-accounts"
+                                    >
                                         {form.data.accounts.map((row, i) => {
                                             const accIdKey = `accounts.${i}.account_id`;
                                             const accAmtKey = `accounts.${i}.amount`;
@@ -2779,6 +2801,7 @@ export function TransactionFormDialog({
                                             Allocation lines
                                         </Label>
                                         <Button
+                                            data-addable-line-add="loan-allocations"
                                             type="button"
                                             variant="outline"
                                             size="sm"
@@ -2822,7 +2845,10 @@ export function TransactionFormDialog({
                                             match the net account total.
                                         </p>
                                     ) : null}
-                                    <ul className="space-y-3">
+                                    <ul
+                                        className="space-y-3"
+                                        data-addable-line-list="loan-allocations"
+                                    >
                                         {form.data.allocations.map((row, i) => {
                                             const allocIdKey = `allocations.${i}.allocation_id`;
                                             const allocAmtKey = `allocations.${i}.amount`;
@@ -3062,6 +3088,7 @@ export function TransactionFormDialog({
                                         </Label>
 
                                         <Button
+                                            data-addable-line-add="transaction-accounts"
                                             type="button"
                                             variant="outline"
                                             size="sm"
@@ -3101,7 +3128,10 @@ export function TransactionFormDialog({
                                             No account lines.
                                         </p>
                                     )}
-                                    <ul className="space-y-3">
+                                    <ul
+                                        className="space-y-3"
+                                        data-addable-line-list="transaction-accounts"
+                                    >
                                         {form.data.accounts.map((row, i) => {
                                             const accIdKey = `accounts.${i}.account_id`;
                                             const accAmtKey = `accounts.${i}.amount`;
@@ -3254,6 +3284,7 @@ export function TransactionFormDialog({
                                             Allocation lines
                                         </Label>
                                         <Button
+                                            data-addable-line-add="transaction-allocations"
                                             type="button"
                                             variant="outline"
                                             size="sm"
@@ -3295,7 +3326,10 @@ export function TransactionFormDialog({
                                             Optional allocation lines.
                                         </p>
                                     )}
-                                    <ul className="space-y-3">
+                                    <ul
+                                        className="space-y-3"
+                                        data-addable-line-list="transaction-allocations"
+                                    >
                                         {form.data.allocations.map((row, i) => {
                                             const allocIdKey = `allocations.${i}.allocation_id`;
                                             const allocAmtKey = `allocations.${i}.amount`;

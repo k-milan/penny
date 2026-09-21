@@ -10,6 +10,10 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+    handleAddableLineClick,
+    handleAddableLineKeyDown,
+} from '@/lib/addable-line-keyboard';
 import { formatPhpMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -316,6 +320,8 @@ export function IncomeTemplateFormFields({
                     <CardContent>
                         <form
                             className="space-y-5"
+                            onKeyDownCapture={handleAddableLineKeyDown}
+                            onClickCapture={handleAddableLineClick}
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 applyTransform();
@@ -483,7 +489,10 @@ export function IncomeTemplateFormFields({
                                         <span>Amount</span>
                                         <span className="sr-only">Remove</span>
                                     </div>
-                                    <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+                                    <ul
+                                        className="divide-y divide-border overflow-hidden rounded-md border border-border"
+                                        data-addable-line-list="income-template-accounts"
+                                    >
                                         {form.data.accounts.map((row, i) => (
                                             <li
                                                 key={row.key}
@@ -579,6 +588,7 @@ export function IncomeTemplateFormFields({
                                         ))}
                                     </ul>
                                     <Button
+                                        data-addable-line-add="income-template-accounts"
                                         type="button"
                                         variant="secondary"
                                         size="sm"
@@ -654,7 +664,10 @@ export function IncomeTemplateFormFields({
                                         <span>Amount</span>
                                         <span className="sr-only">Remove</span>
                                     </div>
-                                    <ul className="divide-y divide-border overflow-hidden rounded-md border border-border">
+                                    <ul
+                                        className="divide-y divide-border overflow-hidden rounded-md border border-border"
+                                        data-addable-line-list="income-template-allocations"
+                                    >
                                         {form.data.allocations.map((row, i) => (
                                             <li
                                                 key={row.key}
@@ -750,6 +763,7 @@ export function IncomeTemplateFormFields({
                                         ))}
                                     </ul>
                                     <Button
+                                        data-addable-line-add="income-template-allocations"
                                         type="button"
                                         variant="secondary"
                                         size="sm"

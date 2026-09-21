@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { handleAddableLineKeyDown } from '@/lib/addable-line-keyboard';
 import { formatPhpMoney } from '@/lib/format';
 import { useForm } from '@inertiajs/react';
 import { Check, Plus, Trash2, X } from 'lucide-react';
@@ -482,9 +483,8 @@ export function GuidedEntryForm({
               form.data.allocations.every(
                   (line) => line.allocation_id > 0 && amount(line.amount) > 0,
               ) &&
-              new Set(
-                  form.data.allocations.map((line) => line.allocation_id),
-              ).size === form.data.allocations.length
+              new Set(form.data.allocations.map((line) => line.allocation_id))
+                  .size === form.data.allocations.length
             : difference === 0 &&
               form.data.items.length > 0 &&
               form.data.items.every(
@@ -502,6 +502,7 @@ export function GuidedEntryForm({
     const formContent = (
         <form
             onSubmit={submit}
+            onKeyDownCapture={handleAddableLineKeyDown}
             className="space-y-5"
             onClickCapture={(event) => {
                 if (
@@ -575,6 +576,23 @@ export function GuidedEntryForm({
                         id="purchase-amount"
                         value={form.data.total}
                         onChange={(value) => form.setData('total', value)}
+                        onKeyDown={(event) => {
+                            if (event.key !== 'Tab' || event.shiftKey) {
+                                return;
+                            }
+
+                            const addButton = document.getElementById(
+                                'purchase-add-allocation',
+                            );
+
+                            if (
+                                addButton instanceof HTMLButtonElement &&
+                                !addButton.disabled
+                            ) {
+                                event.preventDefault();
+                                addButton.focus();
+                            }
+                        }}
                     />
                 </div>
             </div>
@@ -583,6 +601,8 @@ export function GuidedEntryForm({
                     <div className="flex items-center justify-between gap-3">
                         <Label>Allocation split</Label>
                         <Button
+                            id="purchase-add-allocation"
+                            data-addable-line-add="purchase-allocations"
                             type="button"
                             variant="outline"
                             size="sm"
@@ -615,10 +635,13 @@ export function GuidedEntryForm({
                             }
                         >
                             <Plus className="size-4" />
-                            Add
+                            Add allocation
                         </Button>
                     </div>
-                    <ul className="space-y-3">
+                    <ul
+                        className="space-y-3"
+                        data-addable-line-list="purchase-allocations"
+                    >
                         {form.data.allocations.map((line, index) => {
                             const otherIds = new Set(
                                 form.data.allocations

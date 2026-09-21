@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 
 export const toLocalDateString = (date: Date): string => {
@@ -11,21 +11,16 @@ export const toLocalDateString = (date: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
-const dateDaysAgo = (daysAgo: number): Date => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - daysAgo);
+const startOfWeek = (date: Date): Date => {
+    const sunday = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+    );
+    sunday.setDate(sunday.getDate() - sunday.getDay());
 
-    return date;
+    return sunday;
 };
-
-const formatDateChoice = (date: Date): string =>
-    date
-        .toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-        })
-        .toUpperCase();
 
 export function TransactionDateSelector({
     id,
@@ -40,19 +35,31 @@ export function TransactionDateSelector({
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [showCustomDateInput, setShowCustomDateInput] = useState(false);
+    const [visibleWeek, setVisibleWeek] = useState(() =>
+        startOfWeek(value ? new Date(`${value}T12:00:00`) : new Date()),
+    );
     const dateChoices = useMemo(
         () =>
-            [5, 4, 3, 2, 1, 0].map((daysAgo) => {
-                const date = dateDaysAgo(daysAgo);
+            Array.from({ length: 7 }, (_, dayIndex) => {
+                const date = new Date(visibleWeek);
+                date.setDate(date.getDate() + dayIndex);
 
                 return {
                     value: toLocalDateString(date),
-                    label: formatDateChoice(date),
+                    label: date
+                        .toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                        })
+                        .toUpperCase(),
+                    weekday: date.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                    }),
                 };
             }),
-        [],
+        [visibleWeek],
     );
-    const selectedRollingDate = dateChoices.some(
+    const selectedVisibleDate = dateChoices.some(
         (choice) => choice.value === value,
     );
     const selectedChoiceIndex = dateChoices.findIndex(
@@ -69,25 +76,53 @@ export function TransactionDateSelector({
         }, 0);
     };
 
+    const moveWeek = (weeks: number): void => {
+        setVisibleWeek((current) => {
+            const next = new Date(current);
+            next.setDate(next.getDate() + weeks * 7);
+
+            return next;
+        });
+    };
+
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
                 <Label htmlFor={id}>Date</Label>
-                <Button
-                    type="button"
-                    variant={selectedRollingDate ? 'outline' : 'secondary'}
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={openDateInput}
-                >
-                    <CalendarDays className="size-4" aria-hidden />
-                    Pick date
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Previous week"
+                        onClick={() => moveWeek(-1)}
+                    >
+                        <ChevronLeft className="size-4" aria-hidden />
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Next week"
+                        onClick={() => moveWeek(1)}
+                    >
+                        <ChevronRight className="size-4" aria-hidden />
+                    </Button>
+                    <Button
+                        type="button"
+                        variant={selectedVisibleDate ? 'ghost' : 'secondary'}
+                        size="icon"
+                        aria-label="Pick date"
+                        onClick={openDateInput}
+                    >
+                        <CalendarDays className="size-4" aria-hidden />
+                    </Button>
+                </div>
             </div>
             <div
-                className="grid grid-cols-3 gap-1.5 sm:grid-cols-6"
+                className="grid grid-cols-7 gap-1.5"
                 role="radiogroup"
-                aria-label="Recent dates"
+                aria-label="Dates in displayed week"
             >
                 {dateChoices.map((choice) => (
                     <Button
@@ -98,8 +133,14 @@ export function TransactionDateSelector({
                         aria-checked={value === choice.value}
                         variant={value === choice.value ? 'default' : 'outline'}
                         size="sm"
-                        className="min-w-0 px-2 text-xs tabular-nums"
-                        tabIndex={value === choice.value ? 0 : -1}
+                        className="h-auto min-w-0 flex-col gap-0 px-1 py-1 text-[10px] tabular-nums sm:text-xs"
+                        tabIndex={
+                            value === choice.value ||
+                            (!selectedVisibleDate &&
+                                choice.value === dateChoices[0].value)
+                                ? 0
+                                : -1
+                        }
                         onClick={() => {
                             onChange(choice.value);
                             setShowCustomDateInput(false);
@@ -135,18 +176,29 @@ export function TransactionDateSelector({
                                 ?.focus();
                         }}
                     >
-                        {choice.label}
+                        <span>{choice.weekday}</span>
+                        <span>{choice.label}</span>
                     </Button>
                 ))}
             </div>
-            {showCustomDateInput || !selectedRollingDate ? (
+            {showCustomDateInput ? (
                 <input
                     ref={inputRef}
                     id={id}
                     name="date"
                     type="date"
                     value={value}
-                    onChange={(event) => onChange(event.target.value)}
+                    onChange={(event) => {
+                        onChange(event.target.value);
+                        if (event.target.value) {
+                            setVisibleWeek(
+                                startOfWeek(
+                                    new Date(`${event.target.value}T12:00:00`),
+                                ),
+                            );
+                            setShowCustomDateInput(false);
+                        }
+                    }}
                     className={dateInputClassName}
                     required
                     aria-invalid={invalid}
