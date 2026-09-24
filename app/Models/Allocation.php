@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read CarbonInterface $updated_at
  * @property-read User $user
  * @property-read \Illuminate\Database\Eloquent\Collection<int, TransactionAllocation> $transactionAllocations
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, BillPeriod> $billPeriods
  */
 final class Allocation extends Model
 {
@@ -66,5 +67,13 @@ final class Allocation extends Model
     public function transactionAllocations(): HasMany
     {
         return $this->hasMany(TransactionAllocation::class);
+    }
+
+    /**
+     * @return HasMany<BillPeriod, $this>
+     */
+    public function billPeriods(): HasMany
+    {
+        return $this->hasMany(BillPeriod::class);
     }
 }

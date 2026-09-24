@@ -77,13 +77,14 @@ final readonly class TransactionController
         $user = $request->user();
         assert($user instanceof User);
 
-        /** @var array{date: string, description: string, note?: string|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
+        /** @var array{date: string, description: string, note?: string|null, bill_allocation_id?: int|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
         $v = $request->validated();
         $note = $v['note'] ?? null;
         $action->handle($user, [
             'date' => $v['date'],
             'description' => $v['description'],
             'note' => is_string($note) && $note !== '' ? $note : null,
+            'bill_allocation_id' => $v['bill_allocation_id'] ?? null,
             'accounts' => $v['accounts'],
             'allocations' => $v['allocations'],
         ]);
@@ -95,13 +96,14 @@ final readonly class TransactionController
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction, UpdateTransaction $action): RedirectResponse
     {
-        /** @var array{date: string, description: string, note?: string|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
+        /** @var array{date: string, description: string, note?: string|null, bill_allocation_id?: int|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
         $v = $request->validated();
         $note = $v['note'] ?? null;
         $action->handle($transaction, [
             'date' => $v['date'],
             'description' => $v['description'],
             'note' => is_string($note) && $note !== '' ? $note : null,
+            'bill_allocation_id' => $v['bill_allocation_id'] ?? null,
             'accounts' => $v['accounts'],
             'allocations' => $v['allocations'],
         ]);

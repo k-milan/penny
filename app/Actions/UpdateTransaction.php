@@ -23,6 +23,7 @@ final readonly class UpdateTransaction
      *     date: \Carbon\CarbonInterface|string,
      *     description: string,
      *     note: string|null,
+     *     bill_allocation_id?: int|null,
      *     accounts: array<int, array{account_id: int, amount: string|float|int}>,
      *     allocations: array<int, array{allocation_id: int, amount: string|float|int}>,
      * }  $data
@@ -74,6 +75,8 @@ final readonly class UpdateTransaction
                 'date' => $data['date'],
                 'description' => $data['description'],
                 'note' => $data['note'] ?? null,
+                'bill_allocation_id' => $data['bill_allocation_id'] ?? null,
+                'bill_payment_amount' => $this->billPaymentAmount($data),
             ]);
 
             foreach ($data['accounts'] as $row) {
@@ -104,5 +107,32 @@ final readonly class UpdateTransaction
 
             return $transaction->load(['transactionAccounts.account', 'transactionAllocations.allocation']);
         });
+    }
+
+    /**
+     * @param  array{bill_allocation_id?: int|null, accounts: array<int, array{amount: string|float|int}>, allocations: array<int, array{allocation_id: int, amount: string|float|int}>}  $data
+     */
+    private function billPaymentAmount(array $data): ?string
+    {
+        $billAllocationId = $data['bill_allocation_id'] ?? null;
+        if ($billAllocationId === null) {
+            return null;
+        }
+
+        foreach ($data['allocations'] as $row) {
+            if ($row['allocation_id'] === $billAllocationId && bccomp((string) $row['amount'], '0.00', 2) !== 0) {
+                return number_format(abs((float) $row['amount']), 2, '.', '');
+            }
+        }
+
+        $largest = '0.00';
+        foreach (array_merge($data['accounts'], $data['allocations']) as $row) {
+            $absolute = number_format(abs((float) $row['amount']), 2, '.', '');
+            if (bccomp($absolute, $largest, 2) > 0) {
+                $largest = $absolute;
+            }
+        }
+
+        return $largest;
     }
 }

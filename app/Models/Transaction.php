@@ -17,11 +17,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read CarbonInterface $date
  * @property-read string $description
  * @property-read string|null $note
+ * @property-read int|null $bill_allocation_id
+ * @property-read string|null $bill_payment_amount
  * @property-read CarbonInterface $created_at
  * @property-read CarbonInterface $updated_at
  * @property-read User $user
  * @property-read \Illuminate\Database\Eloquent\Collection<int, TransactionAccount> $transactionAccounts
  * @property-read \Illuminate\Database\Eloquent\Collection<int, TransactionAllocation> $transactionAllocations
+ * @property-read Allocation|null $billAllocation
  */
 final class Transaction extends Model
 {
@@ -38,6 +41,8 @@ final class Transaction extends Model
             'date' => 'date',
             'description' => 'string',
             'note' => 'string',
+            'bill_allocation_id' => 'integer',
+            'bill_payment_amount' => 'decimal:2',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -70,5 +75,13 @@ final class Transaction extends Model
     public function billSplit(): HasOne
     {
         return $this->hasOne(BillSplit::class);
+    }
+
+    /**
+     * @return BelongsTo<Allocation, $this>
+     */
+    public function billAllocation(): BelongsTo
+    {
+        return $this->belongsTo(Allocation::class, 'bill_allocation_id');
     }
 }

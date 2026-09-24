@@ -8,6 +8,7 @@ import {
 import type { TransactionCreateKind } from '@/components/transaction-create-result-dialog';
 import { TransactionDateSelector } from '@/components/transaction-date-selector';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -58,6 +59,7 @@ export type TransactionFormModel = {
     date: string;
     description: string;
     note: string | null;
+    bill_allocation_id: number | null;
     accounts: {
         account_id: number;
         amount: string;
@@ -137,6 +139,7 @@ function initialFormData(
     date: string;
     description: string;
     note: string;
+    bill_allocation_id: number | null;
     accounts: LineAccount[];
     allocations: LineAllocation[];
 } {
@@ -151,6 +154,7 @@ function initialFormData(
             date: transaction.date,
             description: transaction.description,
             note: transaction.note ?? '',
+            bill_allocation_id: transaction.bill_allocation_id ?? null,
             accounts: accountRows.map((a) => ({
                 account_id: a.account_id,
                 amount: a.amount,
@@ -168,6 +172,7 @@ function initialFormData(
             date: today,
             description: 'Transfer',
             note: '',
+            bill_allocation_id: null,
             accounts: [],
             allocations: [],
         };
@@ -177,6 +182,7 @@ function initialFormData(
             date: today,
             description: '',
             note: '',
+            bill_allocation_id: null,
             accounts: [],
             allocations: [],
         };
@@ -186,6 +192,7 @@ function initialFormData(
             date: today,
             description: 'Loan',
             note: '',
+            bill_allocation_id: null,
             accounts: [],
             allocations: [],
         };
@@ -195,6 +202,7 @@ function initialFormData(
         date: today,
         description: '',
         note: '',
+        bill_allocation_id: null,
         accounts:
             accounts.length > 0
                 ? [{ account_id: accounts[0].id, amount: '' }]
@@ -207,6 +215,7 @@ function normalizeForSubmit(data: {
     date: string;
     description: string;
     note: string;
+    bill_allocation_id: number | null;
     accounts: LineAccount[];
     allocations: LineAllocation[];
 }) {
@@ -214,6 +223,7 @@ function normalizeForSubmit(data: {
         date: data.date,
         description: data.description,
         note: data.note === '' ? null : data.note,
+        bill_allocation_id: data.bill_allocation_id,
         accounts: data.accounts.map((row) => ({
             account_id: row.account_id,
             amount: row.amount,
@@ -682,6 +692,7 @@ export function TransactionFormDialog({
         date: '',
         description: '',
         note: '',
+        bill_allocation_id: null as number | null,
         accounts: [] as LineAccount[],
         allocations: [] as LineAllocation[],
     });
@@ -710,6 +721,10 @@ export function TransactionFormDialog({
 
     const allocationLineOptions = allocationList.filter(
         (a) => !a.is_unallocated,
+    );
+    const billAllocations = useMemo(
+        () => allocationList.filter((allocation) => allocation.type === 'bill'),
+        [allocationList],
     );
     const transferAllocChoices = useMemo((): AllocationOption[] => {
         if (unallocatedAllocationId === null) {
@@ -1128,6 +1143,7 @@ export function TransactionFormDialog({
                     date: form.data.date,
                     description: form.data.description,
                     note: form.data.note,
+                    bill_allocation_id: form.data.bill_allocation_id,
                     accounts: built.accounts,
                     allocations: built.allocations,
                 }),
@@ -1152,6 +1168,7 @@ export function TransactionFormDialog({
                     date: form.data.date,
                     description: form.data.description,
                     note: form.data.note,
+                    bill_allocation_id: form.data.bill_allocation_id,
                     accounts: built.accounts,
                     allocations: built.allocations,
                 }),
@@ -1172,6 +1189,7 @@ export function TransactionFormDialog({
                     date: form.data.date,
                     description: form.data.description,
                     note: form.data.note,
+                    bill_allocation_id: form.data.bill_allocation_id,
                     accounts: built.accounts,
                     allocations: built.allocations,
                 }),
@@ -1183,6 +1201,7 @@ export function TransactionFormDialog({
                         date: string;
                         description: string;
                         note: string;
+                        bill_allocation_id: number | null;
                         accounts: LineAccount[];
                         allocations: LineAllocation[];
                     },
@@ -3483,6 +3502,66 @@ export function TransactionFormDialog({
                     </div>
 
                     <div className="mt-4 shrink-0 space-y-3 border-t border-border pt-4">
+                        {billAllocations.length > 0 &&
+                        !(isCreateCredit && creditCardTab === 'purchase') ? (
+                            <div className="rounded-md border bg-muted/30 p-3">
+                                <div className="flex items-start gap-2">
+                                    <Checkbox
+                                        id="is-bill-payment"
+                                        checked={
+                                            form.data.bill_allocation_id !==
+                                            null
+                                        }
+                                        onCheckedChange={(checked) =>
+                                            form.setData(
+                                                'bill_allocation_id',
+                                                checked
+                                                    ? (billAllocations[0]?.id ??
+                                                          null)
+                                                    : null,
+                                            )
+                                        }
+                                    />
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <Label htmlFor="is-bill-payment">
+                                            This transaction pays a bill
+                                        </Label>
+                                        {form.data.bill_allocation_id !==
+                                        null ? (
+                                            <select
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                value={
+                                                    form.data.bill_allocation_id
+                                                }
+                                                onChange={(event) =>
+                                                    form.setData(
+                                                        'bill_allocation_id',
+                                                        Number(
+                                                            event.target.value,
+                                                        ),
+                                                    )
+                                                }
+                                                aria-label="Bill being paid"
+                                            >
+                                                {billAllocations.map((bill) => (
+                                                    <option
+                                                        key={bill.id}
+                                                        value={bill.id}
+                                                    >
+                                                        {bill.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : null}
+                                        <InputError
+                                            message={
+                                                form.errors.bill_allocation_id
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
                         {!isCreateTransfer &&
                         !isCreateCredit &&
                         !isCreateLoan ? (

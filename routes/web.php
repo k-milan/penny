@@ -6,6 +6,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccountShareTokenController;
 use App\Http\Controllers\AllocationController;
 use App\Http\Controllers\BillSplitController;
+use App\Http\Controllers\BillTrackerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomeFromTemplateController;
 use App\Http\Controllers\IncomeTemplateController;
@@ -41,6 +42,8 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('transactions/income', [IncomeFromTemplateController::class, 'create'])->name('transactions.income');
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('bills', [BillTrackerController::class, 'index'])->name('bills.index');
+    Route::patch('bills/{billPeriod}', [BillTrackerController::class, 'update'])->name('bills.update');
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::post('purchases', [PurchaseController::class, 'store'])->name('purchases.store');
     Route::get('bill-splits/create', [BillSplitController::class, 'create'])->name('bill-splits.create');

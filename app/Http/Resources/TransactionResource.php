@@ -22,6 +22,8 @@ final class TransactionResource extends JsonResource
             'date' => $this->date->format('Y-m-d'),
             'description' => $this->description,
             'note' => $this->note,
+            'bill_allocation_id' => $this->bill_allocation_id,
+            'bill_payment_amount' => $this->bill_payment_amount,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'accounts' => TransactionAccountResource::collection(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Enums\AllocationType;
 use App\Support\TransactionLineAmounts;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -44,6 +45,13 @@ final class StoreTransactionRequest extends FormRequest
             'date' => ['required', 'date'],
             'description' => ['required', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
+            'bill_allocation_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('allocations', 'id')->where(static fn ($query) => $query
+                    ->where('user_id', auth()->id() ?? 0)
+                    ->where('type', AllocationType::Bill->value)),
+            ],
             'accounts' => ['array'],
             'accounts.*.account_id' => [
                 'required',

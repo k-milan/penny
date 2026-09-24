@@ -40,15 +40,14 @@ export type DashboardTransactionRow = TransactionFormModel & {
     created_at?: string;
 };
 
-export function ensureTransactionRow(
-    t: unknown,
-): DashboardTransactionRow {
+export function ensureTransactionRow(t: unknown): DashboardTransactionRow {
     if (!t || typeof t !== 'object') {
         return {
             id: 0,
             date: '',
             description: '—',
             note: null,
+            bill_allocation_id: null,
             accounts: [],
             allocations: [],
         };
@@ -60,6 +59,10 @@ export function ensureTransactionRow(
         date: String(o.date ?? ''),
         description: String(o.description ?? ''),
         note: o.note == null || o.note === '' ? null : String(o.note),
+        bill_allocation_id:
+            o.bill_allocation_id == null
+                ? null
+                : Number(o.bill_allocation_id) || null,
         accounts: toLineArray(o.accounts) as TransactionFormModel['accounts'],
         allocations: toAllocLineArray(
             o.allocations,
