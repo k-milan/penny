@@ -19,6 +19,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
+import {
+    handleAddableLineClick,
+    handleAddableLineKeyDown,
+} from '@/lib/addable-line-keyboard';
 import { formatPhpMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -376,7 +380,12 @@ export default function IncomeFromTemplatePage({
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form className="space-y-8" onSubmit={handleSubmit}>
+                        <form
+                            className="space-y-8"
+                            onSubmit={handleSubmit}
+                            onKeyDownCapture={handleAddableLineKeyDown}
+                            onClickCapture={handleAddableLineClick}
+                        >
                             <div className="grid gap-2">
                                 <Label htmlFor="template_id">Template</Label>
                                 <SearchableCombobox
@@ -550,7 +559,10 @@ export default function IncomeFromTemplatePage({
                                             </p>
                                         ) : null}
                                     </div>
-                                    <ul className="space-y-3">
+                                    <ul
+                                        className="space-y-3"
+                                        data-addable-line-list="income-transaction-accounts"
+                                    >
                                         {form.data.accounts.map((row, i) => (
                                             <li
                                                 key={row.key}
@@ -665,6 +677,7 @@ export default function IncomeFromTemplatePage({
                                         ))}
                                     </ul>
                                     <Button
+                                        data-addable-line-add="income-transaction-accounts"
                                         type="button"
                                         variant="secondary"
                                         size="sm"
@@ -715,7 +728,10 @@ export default function IncomeFromTemplatePage({
                                             </p>
                                         ) : null}
                                     </div>
-                                    <ul className="space-y-3">
+                                    <ul
+                                        className="space-y-3"
+                                        data-addable-line-list="income-transaction-allocations"
+                                    >
                                         {form.data.allocations.map((row, i) => (
                                             <li
                                                 key={row.key}
@@ -830,6 +846,7 @@ export default function IncomeFromTemplatePage({
                                         ))}
                                     </ul>
                                     <Button
+                                        data-addable-line-add="income-transaction-allocations"
                                         type="button"
                                         variant="secondary"
                                         size="sm"
