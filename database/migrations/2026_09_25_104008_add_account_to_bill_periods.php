@@ -15,8 +15,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('bill_periods', function (Blueprint $table) {
-            $table->dropUnique(['allocation_id', 'period']);
             $table->dropForeign(['allocation_id']);
+            $table->dropUnique(['allocation_id', 'period']);
         });
 
         Schema::table('bill_periods', function (Blueprint $table) {
@@ -36,10 +36,10 @@ return new class extends Migration
         DB::table('bill_periods')->whereNotNull('account_id')->delete();
 
         Schema::table('bill_periods', function (Blueprint $table) {
-            $table->dropUnique(['account_id', 'period']);
-            $table->dropUnique(['allocation_id', 'period']);
             $table->dropConstrainedForeignId('account_id');
             $table->dropForeign(['allocation_id']);
+            $table->dropUnique(['account_id', 'period']);
+            $table->dropUnique(['allocation_id', 'period']);
         });
 
         Schema::table('bill_periods', function (Blueprint $table) {

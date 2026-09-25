@@ -43,6 +43,7 @@ jobs:
       - name: Pull latest code on server
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -euo pipefail
             cd /var/www/penny
             git fetch origin production
             git reset --hard origin/production
@@ -56,6 +57,7 @@ jobs:
       - name: Finalize Laravel deployment
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -euo pipefail
             cd /var/www/penny
 
             php artisan migrate --force
