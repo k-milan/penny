@@ -12,6 +12,7 @@ use App\Models\BillPeriod;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 final readonly class EnsureBillPeriodsForUser
 {
@@ -43,6 +44,10 @@ final readonly class EnsureBillPeriodsForUser
                         );
                     }
                 });
+
+            if (! Schema::hasColumn('accounts', 'due_day') || ! Schema::hasColumn('bill_periods', 'account_id')) {
+                return;
+            }
 
             Account::query()
                 ->where('user_id', $user->id)

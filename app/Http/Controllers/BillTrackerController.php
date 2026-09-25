@@ -17,6 +17,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,11 +37,15 @@ final readonly class BillTrackerController
             ->whereNotNull('due_day')
             ->orderBy('name')
             ->get();
-        $creditCards = Account::query()
-            ->where('user_id', $user->id)
-            ->where('type', AccountType::CreditCard)
-            ->orderBy('name')
-            ->get();
+        $supportsCreditCardBills = Schema::hasColumn('accounts', 'due_day')
+            && Schema::hasColumn('bill_periods', 'account_id');
+        $creditCards = $supportsCreditCardBills
+            ? Account::query()
+                ->where('user_id', $user->id)
+                ->where('type', AccountType::CreditCard)
+                ->orderBy('name')
+                ->get()
+            : collect();
         $bills = $allocationBills
             ->map(static fn (Allocation $bill): array => [
                 'key' => 'allocation:'.$bill->id,
@@ -65,7 +70,7 @@ final readonly class BillTrackerController
             ->get()
             ->keyBy(static fn (BillPeriod $period): string => ($period->allocation_id !== null
                 ? 'allocation:'.$period->allocation_id
-                : 'account:'.$period->account_id).'|'.$period->period->format('Y-m'));
+                : 'account:'.$period->getAttribute('account_id')).'|'.$period->period->format('Y-m'));
 
         $allocationPayments = Transaction::query()
             ->where('user_id', $user->id)
@@ -146,10 +151,12 @@ final readonly class BillTrackerController
                 'due_date' => $billPeriod->due_date->toDateString(),
                 'due_day' => $billPeriod->due_date->day,
             ]);
-            $billPeriod->account?->update([
-                'due_date' => $billPeriod->due_date->toDateString(),
-                'due_day' => $billPeriod->due_date->day,
-            ]);
+            if (Schema::hasColumn('bill_periods', 'account_id')) {
+                $billPeriod->account?->update([
+                    'due_date' => $billPeriod->due_date->toDateString(),
+                    'due_day' => $billPeriod->due_date->day,
+                ]);
+            }
         }
 
         return back()->with('success', 'Bill details confirmed.');
