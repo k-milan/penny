@@ -3,6 +3,10 @@ import TransactionController from '@/actions/App/Http/Controllers/TransactionCon
 import { CreateActionDialog } from '@/components/create-action-dialog';
 import { GuidedEntryForm } from '@/components/guided-entry-form';
 import {
+    TransactionCreateResultDialog,
+    type TransactionCreateKind,
+} from '@/components/transaction-create-result-dialog';
+import {
     formatTransactionGroupDate,
     formatTransactionTime,
     TransactionBreakdown,
@@ -13,10 +17,6 @@ import {
     type AllocationOption,
     type CreateDialogPreset,
 } from '@/components/transaction-form-dialog';
-import {
-    TransactionCreateResultDialog,
-    type TransactionCreateKind,
-} from '@/components/transaction-create-result-dialog';
 import { TransactionScrollList } from '@/components/transaction-scroll-list';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
 import {
     ArrowLeftRight,
+    CalendarClock,
     CreditCard,
     Landmark,
     Plus,
@@ -107,6 +108,9 @@ export default function TransactionsIndex({
     const hasCreditCard = accounts.some((a) => a.type === 'credit_card');
     const hasCardPaymentSource = accounts.some((a) => a.type !== 'credit_card');
     const canCreatePayment = hasCreditCard && hasCardPaymentSource;
+    const canPayBill =
+        accounts.some((account) => account.type !== 'person') &&
+        allocations.some((allocation) => allocation.type === 'bill');
     const hasPersonAccount = accounts.some((a) => a.type === 'person');
     const hasLoanFundingOrAlloc =
         accounts.some((a) => a.type !== 'person') ||
@@ -126,10 +130,7 @@ export default function TransactionsIndex({
             setPurchaseOpen(true);
             return;
         }
-        if (
-            kind === 'credit_card_payment' ||
-            kind === 'credit_card_purchase'
-        ) {
+        if (kind === 'credit_card_payment' || kind === 'credit_card_purchase') {
             setInitialCreditCardTab(
                 kind === 'credit_card_payment' ? 'payment' : 'purchase',
             );
@@ -137,7 +138,7 @@ export default function TransactionsIndex({
             setCreateOpen(true);
             return;
         }
-        if (kind === 'transfer' || kind === 'loan') {
+        if (kind === 'transfer' || kind === 'loan' || kind === 'bill_payment') {
             setInitialCreditCardTab('purchase');
             setCreatePreset(kind);
             setCreateOpen(true);
@@ -206,6 +207,15 @@ export default function TransactionsIndex({
                             !accounts.some((a) => a.type !== 'person') ||
                             allocations.length === 0,
                         onSelect: () => setPurchaseOpen(true),
+                    },
+                    {
+                        id: 'bill-payment',
+                        title: 'Pay a bill',
+                        description:
+                            'Record a payment and link it to a tracked bill.',
+                        icon: CalendarClock,
+                        disabled: !canPayBill,
+                        onSelect: () => openCreatePreset('bill_payment'),
                     },
                     {
                         id: 'bill-split',

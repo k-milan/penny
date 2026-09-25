@@ -1,5 +1,5 @@
-import '../css/app.css';
 import 'sonner/dist/styles.css';
+import '../css/app.css';
 
 import { Toaster } from '@/components/ui/sonner';
 import { createInertiaApp, type ResolvedComponent } from '@inertiajs/react';

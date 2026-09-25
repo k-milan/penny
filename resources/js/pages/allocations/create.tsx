@@ -1,5 +1,6 @@
 import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
 import InputError from '@/components/input-error';
+import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -8,12 +9,11 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { MoneyInput } from '@/components/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
 import { formatPhpMoney } from '@/lib/format';
+import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 /** Matches `App\Enums\AllocationType` string values. */
@@ -49,13 +49,13 @@ export default function AllocationsCreate({
             <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4">
                 <div>
                     <h1 className="text-2xl font-semibold">New allocation</h1>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                         A bucket for bills, savings, or day-to-day spending.
                     </p>
                     {unallocatedIsNonZero && (
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Current default (Unallocated) balance:{' '}
-                            <span className="text-foreground font-medium tabular-nums">
+                            <span className="font-medium text-foreground tabular-nums">
                                 {formatPhpMoney(unallocated)}
                             </span>
                             . A starting balance cannot be greater than this
@@ -100,7 +100,7 @@ export default function AllocationsCreate({
                                 <select
                                     id="type"
                                     name="type"
-                                    className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                     value={form.data.type}
                                     onChange={(e) => {
                                         const t = e.target.value;
@@ -177,7 +177,10 @@ export default function AllocationsCreate({
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <Button type="submit" disabled={form.processing}>
+                                <Button
+                                    type="submit"
+                                    disabled={form.processing}
+                                >
                                     Create allocation
                                 </Button>
                                 <Button variant="secondary" asChild>

@@ -5,6 +5,10 @@ import TransactionController from '@/actions/App/Http/Controllers/TransactionCon
 import { CreateActionDialog } from '@/components/create-action-dialog';
 import { GuidedEntryForm } from '@/components/guided-entry-form';
 import {
+    TransactionCreateResultDialog,
+    type TransactionCreateKind,
+} from '@/components/transaction-create-result-dialog';
+import {
     formatTransactionGroupDate,
     formatTransactionTime,
     TransactionBreakdown,
@@ -15,10 +19,6 @@ import {
     type AllocationOption,
     type CreateDialogPreset,
 } from '@/components/transaction-form-dialog';
-import {
-    TransactionCreateResultDialog,
-    type TransactionCreateKind,
-} from '@/components/transaction-create-result-dialog';
 import { TransactionScrollList } from '@/components/transaction-scroll-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -705,6 +705,9 @@ export default function Dashboard() {
     const hasCreditCard = accounts.some((a) => a.type === 'credit_card');
     const hasCardPaymentSource = accounts.some((a) => a.type !== 'credit_card');
     const canCreateCreditCardTx = hasCreditCard && hasCardPaymentSource;
+    const canPayBill =
+        accounts.some((account) => account.type !== 'person') &&
+        allocations.some((allocation) => allocation.type === 'bill');
     const hasPersonAccount = accounts.some((a) => a.type === 'person');
     const hasLoanFundingOrAlloc =
         accounts.some((a) => a.type !== 'person') ||
@@ -731,7 +734,10 @@ export default function Dashboard() {
                     typeof allocation.due_date === 'string',
             )
             .map((allocation) => {
-                const daysUntil = daysUntilYmd(allocation.due_date ?? '', today);
+                const daysUntil = daysUntilYmd(
+                    allocation.due_date ?? '',
+                    today,
+                );
 
                 return daysUntil === null
                     ? null
@@ -767,10 +773,7 @@ export default function Dashboard() {
             setPurchaseOpen(true);
             return;
         }
-        if (
-            kind === 'credit_card_payment' ||
-            kind === 'credit_card_purchase'
-        ) {
+        if (kind === 'credit_card_payment' || kind === 'credit_card_purchase') {
             setInitialCreditCardTab(
                 kind === 'credit_card_payment' ? 'payment' : 'purchase',
             );
@@ -778,7 +781,7 @@ export default function Dashboard() {
             setCreateOpen(true);
             return;
         }
-        if (kind === 'transfer' || kind === 'loan') {
+        if (kind === 'transfer' || kind === 'loan' || kind === 'bill_payment') {
             setInitialCreditCardTab('purchase');
             setCreatePreset(kind);
             setCreateOpen(true);
@@ -1204,6 +1207,15 @@ export default function Dashboard() {
                             !accounts.some((a) => a.type !== 'person') ||
                             allocations.length === 0,
                         onSelect: () => setPurchaseOpen(true),
+                    },
+                    {
+                        id: 'bill-payment',
+                        title: 'Pay a bill',
+                        description:
+                            'Record a payment and link it to a tracked bill.',
+                        icon: CalendarClock,
+                        disabled: !canPayBill,
+                        onSelect: () => openCreatePreset('bill_payment'),
                     },
                     {
                         id: 'bill-split',

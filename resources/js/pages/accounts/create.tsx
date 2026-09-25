@@ -1,5 +1,6 @@
 import AccountController from '@/actions/App/Http/Controllers/AccountController';
 import InputError from '@/components/input-error';
+import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -8,7 +9,6 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { MoneyInput } from '@/components/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
@@ -37,7 +37,7 @@ export default function AccountsCreate({
             <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4">
                 <div>
                     <h1 className="text-2xl font-semibold">New account</h1>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                         Add a wallet, bank account, or person you track money
                         with.
                     </p>
@@ -78,7 +78,7 @@ export default function AccountsCreate({
                                 <select
                                     id="type"
                                     name="type"
-                                    className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                     value={form.data.type}
                                     onChange={(e) =>
                                         form.setData('type', e.target.value)
@@ -109,7 +109,10 @@ export default function AccountsCreate({
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <Button type="submit" disabled={form.processing}>
+                                <Button
+                                    type="submit"
+                                    disabled={form.processing}
+                                >
                                     Create account
                                 </Button>
                                 <Button variant="secondary" asChild>

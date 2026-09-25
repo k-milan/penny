@@ -50,6 +50,18 @@ export const handleAddableLineKeyDown = (
         line === list.lastElementChild &&
         target.matches('input[inputmode="decimal"]')
     ) {
+        const nextSelector = groupName(list, 'data-addable-line-next');
+        const nextElement = nextSelector
+            ? form.querySelector<HTMLElement>(nextSelector)
+            : null;
+
+        if (nextElement) {
+            event.preventDefault();
+            nextElement.focus();
+
+            return;
+        }
+
         const name = groupName(list, 'data-addable-line-list');
         const addButton = name ? addButtonFor(form, name) : null;
 

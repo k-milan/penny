@@ -58,7 +58,7 @@ export default function IncomesEdit({
                     <div className="min-w-0 space-y-1 sm:max-w-[280px]">
                         <label
                             htmlFor="income-template-version"
-                            className="text-muted-foreground block text-xs font-medium"
+                            className="block text-xs font-medium text-muted-foreground"
                         >
                             Version
                         </label>
@@ -83,10 +83,7 @@ export default function IncomesEdit({
                             </SelectTrigger>
                             <SelectContent>
                                 {seriesVersions.map((v) => (
-                                    <SelectItem
-                                        key={v.id}
-                                        value={String(v.id)}
-                                    >
+                                    <SelectItem key={v.id} value={String(v.id)}>
                                         v{v.version} — {v.name}
                                         {v.id === incomeTemplate.id
                                             ? ' (current)'
@@ -96,7 +93,12 @@ export default function IncomesEdit({
                             </SelectContent>
                         </Select>
                     </div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2" asChild>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1.5 px-2"
+                        asChild
+                    >
                         <Link href={createVersionHref}>
                             <CopyPlus className="size-3.5" />
                             New version

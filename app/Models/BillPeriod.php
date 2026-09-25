@@ -13,12 +13,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property-read int $id
  * @property-read int $user_id
- * @property-read int $allocation_id
+ * @property-read int|null $allocation_id
+ * @property-read int|null $account_id
  * @property-read CarbonInterface $period
  * @property-read CarbonInterface $due_date
  * @property-read string|null $due_amount
  * @property-read CarbonInterface|null $confirmed_at
- * @property-read Allocation $allocation
+ * @property-read Allocation|null $allocation
+ * @property-read Account|null $account
  */
 final class BillPeriod extends Model
 {
@@ -34,6 +36,7 @@ final class BillPeriod extends Model
             'id' => 'integer',
             'user_id' => 'integer',
             'allocation_id' => 'integer',
+            'account_id' => 'integer',
             'period' => 'date',
             'due_date' => 'date',
             'due_amount' => 'decimal:2',
@@ -47,5 +50,13 @@ final class BillPeriod extends Model
     public function allocation(): BelongsTo
     {
         return $this->belongsTo(Allocation::class);
+    }
+
+    /**
+     * @return BelongsTo<Account, $this>
+     */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
     }
 }

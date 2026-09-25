@@ -125,6 +125,7 @@ function allocationOptionsForRow(
 
 export type CreateDialogPreset =
     | 'default'
+    | 'bill_payment'
     | 'transfer'
     | 'credit_card'
     | 'loan';
@@ -195,6 +196,27 @@ function initialFormData(
             bill_allocation_id: null,
             accounts: [],
             allocations: [],
+        };
+    }
+    if (createPreset === 'bill_payment') {
+        const billAllocation = allocations.find(
+            (allocation) => allocation.type === 'bill',
+        );
+        const paymentAccount = accounts.find(
+            (account) => account.type !== 'person',
+        );
+
+        return {
+            date: today,
+            description: '',
+            note: '',
+            bill_allocation_id: billAllocation?.id ?? null,
+            accounts: paymentAccount
+                ? [{ account_id: paymentAccount.id, amount: '' }]
+                : [],
+            allocations: billAllocation
+                ? [{ allocation_id: billAllocation.id, amount: '' }]
+                : [],
         };
     }
 
@@ -752,6 +774,8 @@ export function TransactionFormDialog({
     const isCreateTransfer = mode === 'create' && createPreset === 'transfer';
     const isCreateCredit = mode === 'create' && createPreset === 'credit_card';
     const isCreateLoan = mode === 'create' && createPreset === 'loan';
+    const isCreateBillPayment =
+        mode === 'create' && createPreset === 'bill_payment';
 
     const creditCardAccounts = useMemo(
         () => accountList.filter((a) => a.type === 'credit_card'),
@@ -1102,7 +1126,9 @@ export function TransactionFormDialog({
                   : 'credit_card_purchase'
               : isCreateLoan
                 ? 'loan'
-                : 'transaction';
+                : isCreateBillPayment
+                  ? 'bill_payment'
+                  : 'transaction';
         if (isCreateCredit) {
             if (!canSubmitCredit) {
                 return;
@@ -1280,6 +1306,8 @@ export function TransactionFormDialog({
                                                   return 'New card transaction';
                                               case 'loan':
                                                   return 'New loan';
+                                              case 'bill_payment':
+                                                  return 'Pay a bill';
                                               default:
                                                   return 'New transaction';
                                           }

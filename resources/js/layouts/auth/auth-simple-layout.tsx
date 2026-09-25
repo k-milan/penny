@@ -1,5 +1,5 @@
-import { FlashToasts } from '@/components/flash-toasts';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { FlashToasts } from '@/components/flash-toasts';
 import { home } from '@/routes';
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';

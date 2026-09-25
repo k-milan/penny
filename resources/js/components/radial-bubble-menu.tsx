@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Link } from '@inertiajs/react';
-import { type LucideIcon, Plus, X } from 'lucide-react';
+import { Plus, X, type LucideIcon } from 'lucide-react';
 import {
     useCallback,
     useEffect,
@@ -199,7 +199,7 @@ export function RadialBubbleMenu({
                           return (
                               <div
                                   key={item.id}
-                                  className="pointer-events-none absolute left-1/2 top-1/2"
+                                  className="pointer-events-none absolute top-1/2 left-1/2"
                                   style={groupStyle}
                               >
                                   <div
@@ -252,10 +252,14 @@ export function RadialBubbleMenu({
                                                   }
                                               }}
                                           >
-                                              <span className={captionLeftClass}>
+                                              <span
+                                                  className={captionLeftClass}
+                                              >
                                                   {caption}
                                               </span>
-                                              <span className={bubbleCircleClass}>
+                                              <span
+                                                  className={bubbleCircleClass}
+                                              >
                                                   <Icon
                                                       className="size-4"
                                                       aria-hidden

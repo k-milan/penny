@@ -28,7 +28,7 @@ function trackerBill(User $user, string $name = 'Electricity'): Allocation
     ]);
 }
 
-it('shows bill allocations as monthly tracker columns and periods as rows', function (): void {
+it('provides bill allocations and monthly periods for the tracker matrix', function (): void {
     CarbonImmutable::setTestNow('2026-09-12');
     $user = User::factory()->withoutTwoFactor()->create();
     $bill = trackerBill($user);
@@ -39,10 +39,11 @@ it('shows bill allocations as monthly tracker columns and periods as rows', func
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('bills/index')
             ->where('bills.0.name', 'Electricity')
+            ->where('bills.0.key', 'allocation:'.$bill->id)
             ->has('months', 8)
             ->where('months.5.key', '2026-09')
-            ->where('months.5.bills.'.$bill->id.'.due_date', '2026-09-24')
-            ->where('months.5.bills.'.$bill->id.'.needs_confirmation', true));
+            ->where('months.5.bills.allocation:'.$bill->id.'.due_date', '2026-09-24')
+            ->where('months.5.bills.allocation:'.$bill->id.'.needs_confirmation', true));
 
     expect(BillPeriod::query()->where('user_id', $user->id)->count())->toBe(8);
 });
@@ -111,7 +112,59 @@ it('only counts transactions explicitly marked as bill payments', function (): v
     $this->actingAs($user)
         ->get(route('bills.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('months.5.bills.'.$bill->id.'.paid_amount', '125.00'));
+            ->where('months.5.bills.allocation:'.$bill->id.'.paid_amount', '125.00'));
+});
+
+it('tracks credit cards as monthly bills and counts card payments', function (): void {
+    CarbonImmutable::setTestNow('2026-09-12');
+    $user = User::factory()->withoutTwoFactor()->create();
+    $bank = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Checking',
+        'type' => AccountType::Bank,
+        'balance' => '500.00',
+    ]);
+    $card = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Visa',
+        'type' => AccountType::CreditCard,
+        'balance' => '-200.00',
+    ]);
+
+    $this->actingAs($user)->post(route('transactions.store'), [
+        'date' => '2026-09-15',
+        'description' => 'Visa payment',
+        'accounts' => [
+            ['account_id' => $bank->id, 'amount' => '-75.00'],
+            ['account_id' => $card->id, 'amount' => '75.00'],
+        ],
+        'allocations' => [],
+    ])->assertRedirect();
+
+    $this->actingAs($user)
+        ->get(route('bills.index'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('bills.0.key', 'account:'.$card->id)
+            ->where('bills.0.name', 'Visa')
+            ->where('months.5.bills.account:'.$card->id.'.due_date', '2026-09-30')
+            ->where('months.5.bills.account:'.$card->id.'.paid_amount', '75.00'));
+
+    $period = BillPeriod::query()
+        ->where('account_id', $card->id)
+        ->whereDate('period', '2026-09-01')
+        ->firstOrFail();
+
+    $this->actingAs($user)
+        ->patch(route('bills.update', $period), [
+            'due_date' => '2026-09-22',
+            'due_amount' => '180.00',
+        ])
+        ->assertRedirect();
+
+    expect($card->fresh())
+        ->due_day->toBe(22)
+        ->due_date->toDateString()->toBe('2026-09-22');
 });
 
 it('rejects a bill payment link to another users bill', function (): void {

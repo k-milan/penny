@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions;
 
+use App\Enums\AccountType;
 use App\Enums\AllocationType;
+use App\Models\Account;
 use App\Models\Allocation;
 use App\Models\BillPeriod;
 use App\Models\User;
@@ -36,6 +38,31 @@ final readonly class EnsureBillPeriodsForUser
                             ],
                             [
                                 'user_id' => $user->id,
+                                'due_date' => $period->day($dueDay)->toDateString(),
+                            ],
+                        );
+                    }
+                });
+
+            Account::query()
+                ->where('user_id', $user->id)
+                ->where('type', AccountType::CreditCard)
+                ->orderBy('id')
+                ->each(function (Account $account) use ($user, $firstPeriod): void {
+                    for ($offset = 0; $offset < 8; $offset++) {
+                        $period = $firstPeriod->addMonthsNoOverflow($offset)->startOfMonth();
+                        $dueDay = $account->due_day === null
+                            ? $period->daysInMonth
+                            : min((int) $account->due_day, $period->daysInMonth);
+
+                        BillPeriod::query()->firstOrCreate(
+                            [
+                                'account_id' => $account->id,
+                                'period' => $period->toDateString(),
+                            ],
+                            [
+                                'user_id' => $user->id,
+                                'allocation_id' => null,
                                 'due_date' => $period->day($dueDay)->toDateString(),
                             ],
                         );

@@ -8,7 +8,43 @@ use App\Models\Account;
 use App\Models\Allocation;
 use App\Models\User;
 
-it('tabs from purchase amount to add allocation and then to the split', function (): void {
+it('opens bill payment transactions with the tracked bill selected', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+
+    Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Checking',
+        'type' => AccountType::Bank,
+        'balance' => '500.00',
+    ]);
+
+    $bill = Allocation::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Electricity',
+        'type' => AllocationType::Bill,
+        'due_date' => now()->addWeek()->toDateString(),
+        'due_day' => now()->addWeek()->day,
+        'balance' => '100.00',
+        'is_unallocated' => false,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('transactions.index'));
+    $page->press('New transaction')->press('Pay a bill');
+
+    expect($page->script('document.querySelector("#is-bill-payment")?.getAttribute("data-state")'))->toBe('checked')
+        ->and($page->value('[aria-label="Bill being paid"]'))->toBe((string) $bill->id)
+        ->and($page->script('document.querySelector("[role=dialog][data-state=open] h2")?.textContent?.trim()'))->toBe('Pay a bill');
+
+    $page = visit(route('dashboard'));
+    $page->click('[aria-label="Add"]')->press('Pay a bill');
+
+    expect($page->script('document.querySelector("#is-bill-payment")?.getAttribute("data-state")'))->toBe('checked')
+        ->and($page->value('[aria-label="Bill being paid"]'))->toBe((string) $bill->id);
+});
+
+it('tabs through a purchase without looping back to add allocation', function (): void {
     $user = User::factory()->create();
 
     Account::query()->create([
@@ -36,7 +72,11 @@ it('tabs from purchase amount to add allocation and then to the split', function
 
     $page = visit(route('transactions.index'));
     $page->press('New transaction')->press('Purchase');
+    $page->fill('#purchase-description', 'Eggs');
     $page->click('[aria-label="Payment account"]')->click('[role="option"]');
+    $page->click('[aria-label="Purchase allocation"]')->click('[role="option"]:has-text("Groceries")');
+    $page->fill('#purchase-amount', '10');
+    $page->fill('[aria-label="Allocation amount"]', '10');
     $page->keys('[aria-label="Payment account"]', 'Tab');
 
     expect($page->script('document.activeElement?.id'))->toBe('purchase-amount');
@@ -48,6 +88,14 @@ it('tabs from purchase amount to add allocation and then to the split', function
     $page->keys('#purchase-add-allocation', 'Tab');
 
     expect($page->script('document.activeElement?.id'))->toBe('purchase-allocation-0');
+
+    $page->keys('[aria-label="Allocation amount"]', 'Tab');
+
+    expect($page->script('document.activeElement?.id'))->toBe('purchase-note');
+
+    $page->keys('#purchase-note', 'Tab');
+
+    expect($page->script('document.activeElement?.id'))->toBe('purchase-submit');
 });
 
 it('keeps each credit-card purchase split paired with its own add button', function (): void {

@@ -10,7 +10,12 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { CheckCircle2, Clock3 } from 'lucide-react';
 
-type Bill = { id: number; name: string };
+type Bill = {
+    key: string;
+    source_type: 'allocation' | 'account';
+    source_id: number;
+    name: string;
+};
 type BillCell = {
     id: number;
     due_date: string;
@@ -31,7 +36,15 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Bill tracker', href: BillTrackerController.index().url },
 ];
 
-function BillPeriodCell({ cell }: { cell: BillCell }) {
+function BillMonthCells({
+    bill,
+    month,
+    cell,
+}: {
+    bill: Bill;
+    month: Month;
+    cell: BillCell;
+}) {
     const form = useForm({
         due_date: cell.due_date,
         due_amount: cell.due_amount ?? '',
@@ -39,73 +52,97 @@ function BillPeriodCell({ cell }: { cell: BillCell }) {
     const due = Number.parseFloat(cell.due_amount ?? '');
     const paid = Number.parseFloat(cell.paid_amount);
     const isPaid = Number.isFinite(due) && paid >= due;
+    const formId = `bill-period-${cell.id}`;
+    const cellClassName = month.is_current
+        ? 'border-l bg-primary/5 px-3 py-3 align-top'
+        : 'border-l px-3 py-3 align-top';
 
     if (!cell.confirmed || cell.needs_confirmation) {
         return (
-            <form
-                className="min-w-48 space-y-2"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    form.patch(
-                        BillTrackerController.update.url({
-                            billPeriod: cell.id,
-                        }),
-                        { preserveScroll: true },
-                    );
-                }}
-            >
-                {cell.needs_confirmation ? (
-                    <div className="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                        <Clock3 className="size-3.5" /> Confirm upcoming bill
+            <>
+                <td className={`${cellClassName} min-w-40`}>
+                    <form
+                        id={formId}
+                        className="space-y-2"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            form.patch(
+                                BillTrackerController.update.url({
+                                    billPeriod: cell.id,
+                                }),
+                                { preserveScroll: true },
+                            );
+                        }}
+                    >
+                        <Input
+                            type="date"
+                            value={form.data.due_date}
+                            onChange={(event) =>
+                                form.setData('due_date', event.target.value)
+                            }
+                            aria-label={`${bill.name} ${month.label} due date`}
+                        />
+                        <InputError message={form.errors.due_date} />
+                    </form>
+                </td>
+                <td className={`${cellClassName} min-w-40`}>
+                    <MoneyInput
+                        form={formId}
+                        value={form.data.due_amount}
+                        onChange={(value) => form.setData('due_amount', value)}
+                        aria-label={`${bill.name} ${month.label} due amount`}
+                        placeholder="Amount due"
+                    />
+                    <InputError message={form.errors.due_amount} />
+                </td>
+                <td className={`${cellClassName} min-w-36`}>
+                    <div className="space-y-2">
+                        {cell.needs_confirmation ? (
+                            <div className="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                <Clock3 className="size-3.5" /> Confirm upcoming
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Not confirmed
+                            </p>
+                        )}
+                        <div className="text-sm text-muted-foreground">
+                            {formatPhpMoney(paid)}
+                        </div>
+                        <Button
+                            form={formId}
+                            size="sm"
+                            disabled={form.processing}
+                        >
+                            Confirm
+                        </Button>
                     </div>
-                ) : (
-                    <p className="text-xs text-muted-foreground">
-                        Add this month&apos;s bill
-                    </p>
-                )}
-                <Input
-                    type="date"
-                    value={form.data.due_date}
-                    onChange={(event) =>
-                        form.setData('due_date', event.target.value)
-                    }
-                    aria-label="Due date"
-                />
-                <MoneyInput
-                    value={form.data.due_amount}
-                    onChange={(value) => form.setData('due_amount', value)}
-                    aria-label="Amount due"
-                    placeholder="Amount due"
-                />
-                <InputError
-                    message={form.errors.due_date ?? form.errors.due_amount}
-                />
-                <Button size="sm" disabled={form.processing}>
-                    Confirm
-                </Button>
-            </form>
+                </td>
+            </>
         );
     }
 
     return (
-        <div className="min-w-40 space-y-1.5 text-sm">
-            <div className="font-medium">
-                Due {new Date(`${cell.due_date}T00:00:00`).toLocaleDateString()}
-            </div>
-            <div className="text-muted-foreground">
-                {formatPhpMoney(due)} due
-            </div>
-            <div
-                className={
-                    isPaid
-                        ? 'flex items-center gap-1 font-medium text-emerald-600'
-                        : 'text-muted-foreground'
-                }
-            >
-                {isPaid ? <CheckCircle2 className="size-4" /> : null}
-                {formatPhpMoney(paid)} paid
-            </div>
-        </div>
+        <>
+            <td className={`${cellClassName} min-w-40 text-sm`}>
+                {new Date(`${cell.due_date}T00:00:00`).toLocaleDateString()}
+            </td>
+            <td className={`${cellClassName} min-w-40 text-sm`}>
+                {formatPhpMoney(due)}
+            </td>
+            <td className={`${cellClassName} min-w-36 text-sm`}>
+                <div
+                    className={
+                        isPaid
+                            ? 'flex items-center gap-1 font-medium text-emerald-600'
+                            : 'text-muted-foreground'
+                    }
+                >
+                    {isPaid ? <CheckCircle2 className="size-4" /> : null}
+                    {formatPhpMoney(paid)}
+                </div>
+            </td>
+        </>
     );
 }
 
@@ -137,50 +174,58 @@ export default function BillsIndex({
                         <table className="w-full border-collapse text-left">
                             <thead className="bg-muted/50">
                                 <tr>
-                                    <th className="sticky left-0 z-10 min-w-36 border-b bg-muted px-4 py-3 text-sm font-medium">
-                                        Month
+                                    <th
+                                        rowSpan={2}
+                                        className="sticky left-0 z-20 min-w-44 border-b bg-muted px-4 py-3 text-sm font-medium"
+                                    >
+                                        Bill
                                     </th>
-                                    {bills.map((bill) => (
+                                    {months.map((month) => (
                                         <th
-                                            key={bill.id}
-                                            className="min-w-52 border-b px-4 py-3 text-sm font-medium"
+                                            key={month.key}
+                                            colSpan={3}
+                                            className={
+                                                month.is_current
+                                                    ? 'border-b border-l bg-primary/10 px-3 py-2 text-center text-sm font-semibold text-primary'
+                                                    : 'border-b border-l px-3 py-2 text-center text-sm font-semibold'
+                                            }
                                         >
-                                            {bill.name}
+                                            {month.label}
                                         </th>
                                     ))}
                                 </tr>
+                                <tr>
+                                    {months.flatMap((month) =>
+                                        ['Due date', 'Due amount', 'Paid'].map(
+                                            (label) => (
+                                                <th
+                                                    key={`${month.key}-${label}`}
+                                                    className={
+                                                        month.is_current
+                                                            ? 'min-w-36 border-b border-l bg-primary/5 px-3 py-2 text-xs font-medium'
+                                                            : 'min-w-36 border-b border-l px-3 py-2 text-xs font-medium'
+                                                    }
+                                                >
+                                                    {label}
+                                                </th>
+                                            ),
+                                        ),
+                                    )}
+                                </tr>
                             </thead>
                             <tbody>
-                                {months.map((month) => (
-                                    <tr
-                                        key={month.key}
-                                        className={
-                                            month.is_current
-                                                ? 'bg-primary/5'
-                                                : 'border-t'
-                                        }
-                                    >
-                                        <th className="sticky left-0 z-10 bg-background px-4 py-4 align-top text-sm font-medium">
-                                            {month.label}
-                                            {month.is_current ? (
-                                                <span className="mt-1 block text-xs font-normal text-primary">
-                                                    Current month
-                                                </span>
-                                            ) : null}
+                                {bills.map((bill) => (
+                                    <tr key={bill.key} className="border-t">
+                                        <th className="sticky left-0 z-10 bg-background px-4 py-3 align-top text-sm font-medium">
+                                            {bill.name}
                                         </th>
-                                        {bills.map((bill) => (
-                                            <td
-                                                key={bill.id}
-                                                className="px-4 py-4 align-top"
-                                            >
-                                                <BillPeriodCell
-                                                    cell={
-                                                        month.bills[
-                                                            String(bill.id)
-                                                        ]
-                                                    }
-                                                />
-                                            </td>
+                                        {months.map((month) => (
+                                            <BillMonthCells
+                                                key={month.key}
+                                                bill={bill}
+                                                month={month}
+                                                cell={month.bills[bill.key]}
+                                            />
                                         ))}
                                     </tr>
                                 ))}

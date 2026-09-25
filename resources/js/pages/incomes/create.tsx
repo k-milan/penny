@@ -31,8 +31,7 @@ export default function IncomesCreate({
     seriesIdForNewVersion: number | null;
     unallocated_allocation_id: number | null;
 }) {
-    const isNewVersion =
-        prefill != null && seriesIdForNewVersion != null;
+    const isNewVersion = prefill != null && seriesIdForNewVersion != null;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

@@ -9,7 +9,7 @@ export default function Landing() {
         <>
             <FlashToasts />
             <Head title="Home" />
-            <div className="bg-background text-foreground flex min-h-screen flex-col">
+            <div className="flex min-h-screen flex-col bg-background text-foreground">
                 <header className="border-b">
                     <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-4">
                         <span className="text-lg font-semibold tracking-tight">
@@ -29,7 +29,7 @@ export default function Landing() {
                     <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
                         Your money, organized.
                     </h1>
-                    <p className="text-muted-foreground mt-4 text-lg">
+                    <p className="mt-4 text-lg text-muted-foreground">
                         Log in to manage accounts and allocations, or create an
                         account to get started.
                     </p>

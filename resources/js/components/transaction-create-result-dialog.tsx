@@ -11,6 +11,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export type TransactionCreateKind =
     | 'transaction'
+    | 'bill_payment'
     | 'purchase'
     | 'bill_split'
     | 'transfer'
@@ -22,6 +23,7 @@ type TransactionCreateResultStatus = 'success' | 'failure';
 
 const transactionKindLabels: Record<TransactionCreateKind, string> = {
     transaction: 'transaction',
+    bill_payment: 'bill payment',
     purchase: 'purchase',
     bill_split: 'bill split',
     transfer: 'transfer',

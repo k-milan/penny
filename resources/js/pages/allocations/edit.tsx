@@ -1,6 +1,7 @@
 import AllocationController from '@/actions/App/Http/Controllers/AllocationController';
 import RecalculateUnallocatedController from '@/actions/App/Http/Controllers/RecalculateUnallocatedController';
 import InputError from '@/components/input-error';
+import { MoneyInput } from '@/components/money-input';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -9,12 +10,11 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { MoneyInput } from '@/components/money-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
 import { formatPhpMoney } from '@/lib/format';
+import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 /** Matches `App\Enums\AllocationType` string values. */
@@ -43,8 +43,7 @@ export default function AllocationsEdit({
     const form = useForm({
         name: allocation.name,
         type: allocation.type,
-        due_date:
-            allocation.type === TYPE_BILL ? allocation.due_date : '',
+        due_date: allocation.type === TYPE_BILL ? allocation.due_date : '',
         goal_amount:
             allocation.type === TYPE_SAVINGS ? allocation.goal_amount : '',
     });
@@ -65,17 +64,17 @@ export default function AllocationsEdit({
                 <Head title={allocation.name} />
                 <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4">
                     <div>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             Balance: {formatPhpMoney(allocation.balance)}
                         </p>
                         <h1 className="text-2xl font-semibold">
                             {allocation.name}
                         </h1>
-                        <p className="text-muted-foreground mt-2 text-sm">
+                        <p className="mt-2 text-sm text-muted-foreground">
                             This is your default allocation. It holds money that
-                            is not assigned to other allocations, and it
-                            updates when you add transactions. Name and type
-                            cannot be changed, and it cannot be deleted.
+                            is not assigned to other allocations, and it updates
+                            when you add transactions. Name and type cannot be
+                            changed, and it cannot be deleted.
                         </p>
                     </div>
                     <Card>
@@ -119,7 +118,7 @@ export default function AllocationsEdit({
             <Head title={`Edit ${allocation.name}`} />
             <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4">
                 <div>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                         Balance: {formatPhpMoney(allocation.balance)}
                     </p>
                     <h1 className="text-2xl font-semibold">Edit allocation</h1>
@@ -163,7 +162,7 @@ export default function AllocationsEdit({
                                 <select
                                     id="type"
                                     name="type"
-                                    className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                     value={form.data.type}
                                     onChange={(e) => {
                                         const t = e.target.value;
@@ -224,7 +223,10 @@ export default function AllocationsEdit({
                                 </div>
                             )}
                             <div className="flex gap-2">
-                                <Button type="submit" disabled={form.processing}>
+                                <Button
+                                    type="submit"
+                                    disabled={form.processing}
+                                >
                                     Save
                                 </Button>
                                 <Button variant="secondary" asChild>

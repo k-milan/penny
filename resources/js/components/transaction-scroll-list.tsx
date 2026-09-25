@@ -18,12 +18,9 @@ import {
     ensureTransactionRow,
     type DashboardTransactionRow,
 } from '@/lib/transaction-row';
-import {
-    InfiniteScroll,
-    usePage,
-} from '@inertiajs/react';
+import { InfiniteScroll, usePage } from '@inertiajs/react';
 import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
-import { type ComponentRef, useMemo, useRef } from 'react';
+import { useMemo, useRef, type ComponentRef } from 'react';
 
 type TransactionRow = DashboardTransactionRow;
 

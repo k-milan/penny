@@ -641,6 +641,7 @@ export function GuidedEntryForm({
                     <ul
                         className="space-y-3"
                         data-addable-line-list="purchase-allocations"
+                        data-addable-line-next="#purchase-note"
                     >
                         {form.data.allocations.map((line, index) => {
                             const otherIds = new Set(
@@ -1337,6 +1338,22 @@ export function GuidedEntryForm({
                     id="purchase-note"
                     value={form.data.note}
                     onChange={(e) => form.setData('note', e.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key !== 'Tab' || event.shiftKey) {
+                            return;
+                        }
+
+                        const submitButton =
+                            document.getElementById('purchase-submit');
+
+                        if (
+                            submitButton instanceof HTMLButtonElement &&
+                            !submitButton.disabled
+                        ) {
+                            event.preventDefault();
+                            submitButton.focus();
+                        }
+                    }}
                 />
             </div>
             {Object.keys(form.errors).length > 0 ? (
@@ -1345,7 +1362,11 @@ export function GuidedEntryForm({
                 </p>
             ) : null}
             <DialogFooter>
-                <Button type="submit" disabled={!valid || form.processing}>
+                <Button
+                    id="purchase-submit"
+                    type="submit"
+                    disabled={!valid || form.processing}
+                >
                     {splitBill ? 'Save bill split' : 'Record purchase'}
                 </Button>
             </DialogFooter>
