@@ -77,7 +77,13 @@ final readonly class BillTrackerController
             ->whereNotNull('bill_allocation_id')
             ->whereBetween('date', [$firstPeriod->toDateString(), $lastPeriod->endOfMonth()->toDateString()])
             ->get()
-            ->groupBy(static fn (Transaction $transaction): string => 'allocation:'.$transaction->bill_allocation_id.'|'.$transaction->date->format('Y-m'))
+            ->groupBy(static function (Transaction $transaction): string {
+                if ($transaction->bill_period_id !== null) {
+                    return 'period:'.$transaction->bill_period_id;
+                }
+
+                return 'allocation:'.$transaction->bill_allocation_id.'|'.$transaction->date->format('Y-m');
+            })
             ->map(static fn ($transactions): string => $transactions->reduce(
                 static fn (string $sum, Transaction $transaction): string => bcadd($sum, (string) $transaction->bill_payment_amount, 2),
                 '0.00',
@@ -95,7 +101,18 @@ final readonly class BillTrackerController
                 static fn (string $sum, TransactionAccount $line): string => bcadd($sum, (string) $line->amount, 2),
                 '0.00',
             ));
-        $payments = collect($allocationPayments->all())->merge($creditCardPayments);
+        $linkedPeriodPayments = Transaction::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('bill_period_id')
+            ->get()
+            ->groupBy(static fn (Transaction $transaction): string => 'period:'.$transaction->bill_period_id)
+            ->map(static fn ($transactions): string => $transactions->reduce(
+                static fn (string $sum, Transaction $transaction): string => bcadd($sum, (string) $transaction->bill_payment_amount, 2),
+                '0.00',
+            ));
+        $payments = collect($allocationPayments->all())
+            ->merge($creditCardPayments)
+            ->merge($linkedPeriodPayments);
 
         $months = [];
         for ($offset = 0; $offset < 8; $offset++) {
@@ -115,7 +132,7 @@ final readonly class BillTrackerController
                     'id' => $period->id,
                     'due_date' => $period->due_date->format('Y-m-d'),
                     'due_amount' => $period->due_amount,
-                    'paid_amount' => $payments->get($key, '0.00'),
+                    'paid_amount' => $payments->get('period:'.$period->id, $payments->get($key, '0.00')),
                     'confirmed' => $period->confirmed_at !== null,
                     'needs_confirmation' => $period->confirmed_at === null
                         && $today->betweenIncluded($period->due_date->copy()->subDays(14), $period->due_date),
@@ -129,6 +146,15 @@ final readonly class BillTrackerController
                 'bills' => $cells,
             ];
         }
+
+        $months = array_values(array_filter(
+            $months,
+            static fn (array $month): bool => $month['is_current']
+                || $month['key'] > $today->format('Y-m')
+                || collect($month['bills'])->contains(
+                    static fn (array $cell): bool => bccomp($cell['paid_amount'], '0.00', 2) > 0,
+                ),
+        ));
 
         return Inertia::render('bills/index', [
             'bills' => $bills,

@@ -32,16 +32,19 @@ final readonly class EnsureBillPeriodsForUser
                         $period = $firstPeriod->addMonthsNoOverflow($offset)->startOfMonth();
                         $dueDay = min((int) $allocation->due_day, $period->daysInMonth);
 
-                        BillPeriod::query()->firstOrCreate(
-                            [
-                                'allocation_id' => $allocation->id,
-                                'period' => $period->toDateString(),
-                            ],
-                            [
-                                'user_id' => $user->id,
-                                'due_date' => $period->day($dueDay)->toDateString(),
-                            ],
-                        );
+                        if (BillPeriod::query()
+                            ->where('allocation_id', $allocation->id)
+                            ->whereDate('period', $period->toDateString())
+                            ->exists()) {
+                            continue;
+                        }
+
+                        BillPeriod::query()->create([
+                            'allocation_id' => $allocation->id,
+                            'period' => $period->toDateString(),
+                            'user_id' => $user->id,
+                            'due_date' => $period->day($dueDay)->toDateString(),
+                        ]);
                     }
                 });
 
@@ -60,17 +63,20 @@ final readonly class EnsureBillPeriodsForUser
                             ? $period->daysInMonth
                             : min((int) $account->due_day, $period->daysInMonth);
 
-                        BillPeriod::query()->firstOrCreate(
-                            [
-                                'account_id' => $account->id,
-                                'period' => $period->toDateString(),
-                            ],
-                            [
-                                'user_id' => $user->id,
-                                'allocation_id' => null,
-                                'due_date' => $period->day($dueDay)->toDateString(),
-                            ],
-                        );
+                        if (BillPeriod::query()
+                            ->where('account_id', $account->id)
+                            ->whereDate('period', $period->toDateString())
+                            ->exists()) {
+                            continue;
+                        }
+
+                        BillPeriod::query()->create([
+                            'account_id' => $account->id,
+                            'period' => $period->toDateString(),
+                            'user_id' => $user->id,
+                            'allocation_id' => null,
+                            'due_date' => $period->day($dueDay)->toDateString(),
+                        ]);
                     }
                 });
         });

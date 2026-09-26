@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read string $description
  * @property-read string|null $note
  * @property-read int|null $bill_allocation_id
+ * @property-read int|null $bill_period_id
  * @property-read string|null $bill_payment_amount
  * @property-read CarbonInterface $created_at
  * @property-read CarbonInterface $updated_at
@@ -42,6 +43,7 @@ final class Transaction extends Model
             'description' => 'string',
             'note' => 'string',
             'bill_allocation_id' => 'integer',
+            'bill_period_id' => 'integer',
             'bill_payment_amount' => 'decimal:2',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
@@ -83,5 +85,13 @@ final class Transaction extends Model
     public function billAllocation(): BelongsTo
     {
         return $this->belongsTo(Allocation::class, 'bill_allocation_id');
+    }
+
+    /**
+     * @return BelongsTo<BillPeriod, $this>
+     */
+    public function billPeriod(): BelongsTo
+    {
+        return $this->belongsTo(BillPeriod::class);
     }
 }

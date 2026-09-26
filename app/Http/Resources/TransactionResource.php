@@ -23,6 +23,7 @@ final class TransactionResource extends JsonResource
             'description' => $this->description,
             'note' => $this->note,
             'bill_allocation_id' => $this->bill_allocation_id,
+            'bill_period_id' => $this->bill_period_id,
             'bill_payment_amount' => $this->bill_payment_amount,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Enums\AllocationType;
+use App\Models\BillPeriod;
 use App\Support\TransactionLineAmounts;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -51,6 +52,11 @@ final class StoreTransactionRequest extends FormRequest
                 Rule::exists('allocations', 'id')->where(static fn ($query) => $query
                     ->where('user_id', auth()->id() ?? 0)
                     ->where('type', AllocationType::Bill->value)),
+            ],
+            'bill_period_id' => [
+                'nullable',
+                'integer',
+                Rule::exists(BillPeriod::class, 'id')->where('user_id', auth()->id() ?? 0),
             ],
             'accounts' => ['array'],
             'accounts.*.account_id' => [

@@ -1,14 +1,14 @@
 import BillTrackerController from '@/actions/App/Http/Controllers/BillTrackerController';
 import InputError from '@/components/input-error';
 import { MoneyInput } from '@/components/money-input';
-import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import { formatPhpMoney } from '@/lib/format';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { CheckCircle2, Clock3 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 type Bill = {
     key: string;
@@ -96,26 +96,27 @@ function BillMonthCells({
                     <InputError message={form.errors.due_amount} />
                 </td>
                 <td className={`${cellClassName} min-w-36`}>
-                    <div className="space-y-2">
-                        {cell.needs_confirmation ? (
-                            <div className="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                                <Clock3 className="size-3.5" /> Confirm upcoming
-                            </div>
-                        ) : (
-                            <p className="text-xs text-muted-foreground">
-                                Not confirmed
-                            </p>
-                        )}
-                        <div className="text-sm text-muted-foreground">
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-muted-foreground">
                             {formatPhpMoney(paid)}
-                        </div>
-                        <Button
-                            form={formId}
-                            size="sm"
+                        </span>
+                        <Checkbox
+                            aria-label={`Confirm ${bill.name} for ${month.label}`}
+                            checked={false}
                             disabled={form.processing}
-                        >
-                            Confirm
-                        </Button>
+                            onCheckedChange={(checked) => {
+                                if (checked !== true) {
+                                    return;
+                                }
+
+                                form.patch(
+                                    BillTrackerController.update.url({
+                                        billPeriod: cell.id,
+                                    }),
+                                    { preserveScroll: true },
+                                );
+                            }}
+                        />
                     </div>
                 </td>
             </>

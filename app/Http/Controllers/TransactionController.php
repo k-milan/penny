@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Actions\CreateTransaction;
 use App\Actions\DeleteTransaction;
+use App\Actions\EnsureBillPeriodsForUser;
+use App\Actions\GetPayableBillPeriods;
 use App\Actions\UpdateTransaction;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
@@ -23,10 +25,15 @@ use Inertia\Response;
 
 final readonly class TransactionController
 {
-    public function index(Request $request): Response
-    {
+    public function index(
+        Request $request,
+        EnsureBillPeriodsForUser $ensureBillPeriods,
+        GetPayableBillPeriods $getPayableBillPeriods,
+    ): Response {
         $user = $request->user();
         assert($user instanceof User);
+
+        $ensureBillPeriods->handle($user, now()->toImmutable());
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
@@ -48,6 +55,7 @@ final readonly class TransactionController
         return Inertia::render('transactions/index', [
             'accounts' => AccountResource::collection($accounts)->resolve(),
             'allocations' => AllocationResource::collection($allocations)->resolve(),
+            'bill_periods' => $getPayableBillPeriods->handle($user),
             'unallocated_allocation_id' => $unallocatedAllocationId !== null
                 ? (int) $unallocatedAllocationId
                 : null,
@@ -77,7 +85,7 @@ final readonly class TransactionController
         $user = $request->user();
         assert($user instanceof User);
 
-        /** @var array{date: string, description: string, note?: string|null, bill_allocation_id?: int|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
+        /** @var array{date: string, description: string, note?: string|null, bill_allocation_id?: int|null, bill_period_id?: int|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
         $v = $request->validated();
         $note = $v['note'] ?? null;
         $action->handle($user, [
@@ -85,6 +93,7 @@ final readonly class TransactionController
             'description' => $v['description'],
             'note' => is_string($note) && $note !== '' ? $note : null,
             'bill_allocation_id' => $v['bill_allocation_id'] ?? null,
+            'bill_period_id' => $v['bill_period_id'] ?? null,
             'accounts' => $v['accounts'],
             'allocations' => $v['allocations'],
         ]);
@@ -96,7 +105,7 @@ final readonly class TransactionController
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction, UpdateTransaction $action): RedirectResponse
     {
-        /** @var array{date: string, description: string, note?: string|null, bill_allocation_id?: int|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
+        /** @var array{date: string, description: string, note?: string|null, bill_allocation_id?: int|null, bill_period_id?: int|null, accounts: array<int, array{account_id: int, amount: int|float|string}>, allocations: array<int, array{allocation_id: int, amount: int|float|string}>} $v */
         $v = $request->validated();
         $note = $v['note'] ?? null;
         $action->handle($transaction, [
@@ -104,6 +113,7 @@ final readonly class TransactionController
             'description' => $v['description'],
             'note' => is_string($note) && $note !== '' ? $note : null,
             'bill_allocation_id' => $v['bill_allocation_id'] ?? null,
+            'bill_period_id' => $v['bill_period_id'] ?? null,
             'accounts' => $v['accounts'],
             'allocations' => $v['allocations'],
         ]);

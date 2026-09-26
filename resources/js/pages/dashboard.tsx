@@ -17,6 +17,7 @@ import {
     TransactionFormDialog,
     type AccountOption,
     type AllocationOption,
+    type BillPeriodOption,
     type CreateDialogPreset,
 } from '@/components/transaction-form-dialog';
 import { TransactionScrollList } from '@/components/transaction-scroll-list';
@@ -110,6 +111,7 @@ type DashboardStats = {
 type DashboardProps = {
     accounts: AccountOption[];
     allocations: AllocationOption[];
+    bill_periods: BillPeriodOption[];
     unallocated: string;
     unallocated_allocation_id: number | null;
     recentTransactions?: PaginatedTransactions;
@@ -643,6 +645,7 @@ export default function Dashboard() {
     const {
         accounts: accountsProp,
         allocations: allocationsProp,
+        bill_periods: billPeriods,
         unallocated,
         unallocated_allocation_id: unallocatedAllocationIdProp,
     } = usePage<DashboardProps>().props;
@@ -707,7 +710,7 @@ export default function Dashboard() {
     const canCreateCreditCardTx = hasCreditCard && hasCardPaymentSource;
     const canPayBill =
         accounts.some((account) => account.type !== 'person') &&
-        allocations.some((allocation) => allocation.type === 'bill');
+        billPeriods.length > 0;
     const hasPersonAccount = accounts.some((a) => a.type === 'person');
     const hasLoanFundingOrAlloc =
         accounts.some((a) => a.type !== 'person') ||
@@ -1340,6 +1343,7 @@ export default function Dashboard() {
                 transaction={null}
                 accounts={accounts}
                 allocations={allocations}
+                billPeriods={billPeriods}
                 unallocatedAllocationId={unallocatedAllocationIdProp}
                 onCreateSuccess={(kind) => showCreateResult('success', kind)}
                 onCreateFailure={(kind) => showCreateResult('failure', kind)}

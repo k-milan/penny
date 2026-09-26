@@ -54,12 +54,25 @@ export type AllocationOption = {
     goal_amount?: string | null;
 };
 
+export type BillPeriodOption = {
+    id: number;
+    bill_key: string;
+    bill_name: string;
+    source_type: 'allocation' | 'account';
+    source_id: number;
+    period: string;
+    due_date: string;
+    due_amount: string | null;
+    paid_amount: string;
+};
+
 export type TransactionFormModel = {
     id: number;
     date: string;
     description: string;
     note: string | null;
     bill_allocation_id: number | null;
+    bill_period_id?: number | null;
     accounts: {
         account_id: number;
         amount: string;
@@ -141,6 +154,7 @@ function initialFormData(
     description: string;
     note: string;
     bill_allocation_id: number | null;
+    bill_period_id: number | null;
     accounts: LineAccount[];
     allocations: LineAllocation[];
 } {
@@ -156,6 +170,7 @@ function initialFormData(
             description: transaction.description,
             note: transaction.note ?? '',
             bill_allocation_id: transaction.bill_allocation_id ?? null,
+            bill_period_id: transaction.bill_period_id ?? null,
             accounts: accountRows.map((a) => ({
                 account_id: a.account_id,
                 amount: a.amount,
@@ -174,6 +189,7 @@ function initialFormData(
             description: 'Transfer',
             note: '',
             bill_allocation_id: null,
+            bill_period_id: null,
             accounts: [],
             allocations: [],
         };
@@ -184,6 +200,7 @@ function initialFormData(
             description: '',
             note: '',
             bill_allocation_id: null,
+            bill_period_id: null,
             accounts: [],
             allocations: [],
         };
@@ -194,6 +211,7 @@ function initialFormData(
             description: 'Loan',
             note: '',
             bill_allocation_id: null,
+            bill_period_id: null,
             accounts: [],
             allocations: [],
         };
@@ -211,6 +229,7 @@ function initialFormData(
             description: '',
             note: '',
             bill_allocation_id: billAllocation?.id ?? null,
+            bill_period_id: null,
             accounts: paymentAccount
                 ? [{ account_id: paymentAccount.id, amount: '' }]
                 : [],
@@ -225,6 +244,7 @@ function initialFormData(
         description: '',
         note: '',
         bill_allocation_id: null,
+        bill_period_id: null,
         accounts:
             accounts.length > 0
                 ? [{ account_id: accounts[0].id, amount: '' }]
@@ -238,6 +258,7 @@ function normalizeForSubmit(data: {
     description: string;
     note: string;
     bill_allocation_id: number | null;
+    bill_period_id: number | null;
     accounts: LineAccount[];
     allocations: LineAllocation[];
 }) {
@@ -246,6 +267,7 @@ function normalizeForSubmit(data: {
         description: data.description,
         note: data.note === '' ? null : data.note,
         bill_allocation_id: data.bill_allocation_id,
+        bill_period_id: data.bill_period_id,
         accounts: data.accounts.map((row) => ({
             account_id: row.account_id,
             amount: row.amount,
@@ -680,6 +702,7 @@ export function TransactionFormDialog({
     transaction,
     accounts: accountsProp,
     allocations: allocationsProp,
+    billPeriods: billPeriodsProp = [],
     createPreset = 'default',
     unallocatedAllocationId: unallocatedAllocationIdProp = null,
     onBackToCreateChoice,
@@ -693,6 +716,7 @@ export function TransactionFormDialog({
     transaction: TransactionFormModel | null;
     accounts: AccountOption[];
     allocations: AllocationOption[];
+    billPeriods?: BillPeriodOption[];
     createPreset?: CreateDialogPreset;
     /** System “Unallocated” allocation id (for transfer fees when none chosen). */
     unallocatedAllocationId?: number | null;
@@ -715,6 +739,7 @@ export function TransactionFormDialog({
         description: '',
         note: '',
         bill_allocation_id: null as number | null,
+        bill_period_id: null as number | null,
         accounts: [] as LineAccount[],
         allocations: [] as LineAllocation[],
     });
@@ -799,6 +824,10 @@ export function TransactionFormDialog({
         () => accountList.filter((a) => a.type !== 'person'),
         [accountList],
     );
+    const billPeriods = useMemo(
+        () => (Array.isArray(billPeriodsProp) ? billPeriodsProp : []),
+        [billPeriodsProp],
+    );
 
     const [transferKind, setTransferKind] = useState<TransferKind>(() =>
         accountList.length >= 2 ? 'account' : 'allocation',
@@ -826,6 +855,11 @@ export function TransactionFormDialog({
     const [loanDirection, setLoanDirection] =
         useState<LoanPersonDirection>('i_paid_them');
     const [loanPersonAmount, setLoanPersonAmount] = useState('');
+    const [billPaymentBillKey, setBillPaymentBillKey] = useState('');
+    const [billPaymentPeriodId, setBillPaymentPeriodId] = useState(0);
+    const [billPaymentFundingAccountId, setBillPaymentFundingAccountId] =
+        useState(0);
+    const [billPaymentAmount, setBillPaymentAmount] = useState('');
 
     /** Only seed from/to when the dialog opens — not on every parent re-render (new array refs would reset the allocation tab). */
     const transferDialogWasOpenRef = useRef(false);
@@ -956,6 +990,105 @@ export function TransactionFormDialog({
             setLoanPersonAmount('');
         }
     }, [open, isCreateLoan, personAccounts]);
+
+    const selectedBillPeriod = useMemo(
+        () => billPeriods.find((period) => period.id === billPaymentPeriodId),
+        [billPeriods, billPaymentPeriodId],
+    );
+    const selectedBillPeriods = useMemo(
+        () =>
+            billPeriods.filter(
+                (period) => period.bill_key === billPaymentBillKey,
+            ),
+        [billPeriods, billPaymentBillKey],
+    );
+    const payableBills = Array.from(
+        new Map(
+            billPeriods.map((period) => [period.bill_key, period]),
+        ).values(),
+    );
+    const billFundingAccounts = accountList.filter(
+        (account) =>
+            account.type !== 'person' &&
+            !(
+                selectedBillPeriod?.source_type === 'account' &&
+                selectedBillPeriod.source_id === account.id
+            ),
+    );
+
+    useLayoutEffect(() => {
+        if (!open || !isCreateBillPayment) {
+            return;
+        }
+
+        const firstPeriod = billPeriods[0];
+        const firstFundingAccount = accountList.find(
+            (account) =>
+                account.type !== 'person' &&
+                !(
+                    firstPeriod?.source_type === 'account' &&
+                    firstPeriod.source_id === account.id
+                ),
+        );
+        setBillPaymentBillKey(firstPeriod?.bill_key ?? '');
+        setBillPaymentPeriodId(firstPeriod?.id ?? 0);
+        setBillPaymentFundingAccountId(firstFundingAccount?.id ?? 0);
+        setBillPaymentAmount('');
+    }, [open, isCreateBillPayment, billPeriods, accountList]);
+
+    useEffect(() => {
+        if (!isCreateBillPayment || !selectedBillPeriod) {
+            return;
+        }
+
+        const amount = positiveMagnitudeOrZero(billPaymentAmount);
+        const amountString = amount > 0 ? amount.toFixed(2) : '';
+        form.setData({
+            ...form.data,
+            description: `Pay ${selectedBillPeriod.bill_name}`,
+            bill_allocation_id:
+                selectedBillPeriod.source_type === 'allocation'
+                    ? selectedBillPeriod.source_id
+                    : null,
+            bill_period_id: selectedBillPeriod.id,
+            accounts:
+                selectedBillPeriod.source_type === 'account'
+                    ? [
+                          {
+                              account_id: billPaymentFundingAccountId,
+                              amount:
+                                  amountString === '' ? '' : `-${amountString}`,
+                          },
+                          {
+                              account_id: selectedBillPeriod.source_id,
+                              amount: amountString,
+                          },
+                      ]
+                    : [
+                          {
+                              account_id: billPaymentFundingAccountId,
+                              amount:
+                                  amountString === '' ? '' : `-${amountString}`,
+                          },
+                      ],
+            allocations:
+                selectedBillPeriod.source_type === 'allocation'
+                    ? [
+                          {
+                              allocation_id: selectedBillPeriod.source_id,
+                              amount:
+                                  amountString === '' ? '' : `-${amountString}`,
+                          },
+                      ]
+                    : [],
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- synchronize the dedicated bill-payment controls into transaction lines
+    }, [
+        isCreateBillPayment,
+        selectedBillPeriod,
+        billPaymentFundingAccountId,
+        billPaymentAmount,
+    ]);
 
     const usedAccountIds = new Set(
         form.data.accounts.map((r) => r.account_id).filter((id) => id > 0),
@@ -1115,6 +1248,11 @@ export function TransactionFormDialog({
         personAccounts.length > 0 &&
         loanBuild !== null &&
         (form.data.description?.trim() ?? '') !== '';
+    const canSubmitBillPayment =
+        isCreateBillPayment &&
+        selectedBillPeriod !== undefined &&
+        billPaymentFundingAccountId > 0 &&
+        positiveMagnitudeOrZero(billPaymentAmount) > 0;
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -1144,6 +1282,10 @@ export function TransactionFormDialog({
             if (!canSubmitLoan) {
                 return;
             }
+        } else if (isCreateBillPayment) {
+            if (!canSubmitBillPayment) {
+                return;
+            }
         } else if (!canSubmit) {
             return;
         }
@@ -1170,6 +1312,7 @@ export function TransactionFormDialog({
                     description: form.data.description,
                     note: form.data.note,
                     bill_allocation_id: form.data.bill_allocation_id,
+                    bill_period_id: form.data.bill_period_id,
                     accounts: built.accounts,
                     allocations: built.allocations,
                 }),
@@ -1195,6 +1338,7 @@ export function TransactionFormDialog({
                     description: form.data.description,
                     note: form.data.note,
                     bill_allocation_id: form.data.bill_allocation_id,
+                    bill_period_id: form.data.bill_period_id,
                     accounts: built.accounts,
                     allocations: built.allocations,
                 }),
@@ -1216,6 +1360,7 @@ export function TransactionFormDialog({
                     description: form.data.description,
                     note: form.data.note,
                     bill_allocation_id: form.data.bill_allocation_id,
+                    bill_period_id: form.data.bill_period_id,
                     accounts: built.accounts,
                     allocations: built.allocations,
                 }),
@@ -1228,6 +1373,7 @@ export function TransactionFormDialog({
                         description: string;
                         note: string;
                         bill_allocation_id: number | null;
+                        bill_period_id: number | null;
                         accounts: LineAccount[];
                         allocations: LineAllocation[];
                     },
@@ -1382,61 +1528,72 @@ export function TransactionFormDialog({
                     onClickCapture={handleAddableLineClick}
                 >
                     <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-                        <div className="rounded-lg border bg-muted/30 p-4">
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="grid gap-2 sm:col-span-2">
-                                    <TransactionDateSelector
-                                        id="tx-date"
-                                        value={form.data.date}
-                                        onChange={(value) =>
-                                            form.setData('date', value)
-                                        }
-                                        invalid={!!err('date')}
-                                    />
-                                    <InputError message={form.errors.date} />
-                                </div>
-                                <div className="grid gap-2 sm:col-span-2">
-                                    <Label htmlFor="tx-desc">Description</Label>
-                                    <Input
-                                        id="tx-desc"
-                                        name="description"
-                                        value={form.data.description}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                'description',
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                        aria-invalid={!!err('description')}
-                                    />
-                                    <InputError
-                                        message={form.errors.description}
-                                    />
-                                </div>
-                                <div className="grid gap-2 sm:col-span-2">
-                                    <Label htmlFor="tx-note">
-                                        Note (optional)
-                                    </Label>
-                                    <textarea
-                                        id="tx-note"
-                                        name="note"
-                                        rows={2}
-                                        className={cn(
-                                            selectClass,
-                                            invalidClass,
-                                            'min-h-[4rem] py-2',
-                                        )}
-                                        value={form.data.note}
-                                        onChange={(e) =>
-                                            form.setData('note', e.target.value)
-                                        }
-                                        aria-invalid={!!err('note')}
-                                    />
-                                    <InputError message={form.errors.note} />
+                        {!isCreateBillPayment ? (
+                            <div className="rounded-lg border bg-muted/30 p-4">
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="grid gap-2 sm:col-span-2">
+                                        <TransactionDateSelector
+                                            id="tx-date"
+                                            value={form.data.date}
+                                            onChange={(value) =>
+                                                form.setData('date', value)
+                                            }
+                                            invalid={!!err('date')}
+                                        />
+                                        <InputError
+                                            message={form.errors.date}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2 sm:col-span-2">
+                                        <Label htmlFor="tx-desc">
+                                            Description
+                                        </Label>
+                                        <Input
+                                            id="tx-desc"
+                                            name="description"
+                                            value={form.data.description}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'description',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            required
+                                            aria-invalid={!!err('description')}
+                                        />
+                                        <InputError
+                                            message={form.errors.description}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2 sm:col-span-2">
+                                        <Label htmlFor="tx-note">
+                                            Note (optional)
+                                        </Label>
+                                        <textarea
+                                            id="tx-note"
+                                            name="note"
+                                            rows={2}
+                                            className={cn(
+                                                selectClass,
+                                                invalidClass,
+                                                'min-h-[4rem] py-2',
+                                            )}
+                                            value={form.data.note}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'note',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            aria-invalid={!!err('note')}
+                                        />
+                                        <InputError
+                                            message={form.errors.note}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        ) : null}
                         {/* end details card */}
 
                         {isCreateCredit ? (
@@ -2543,6 +2700,128 @@ export function TransactionFormDialog({
                                     <InputError message={err('allocations')} />
                                 </div>
                             </div>
+                        ) : isCreateBillPayment ? (
+                            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                                {payableBills.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        There are no unpaid bill months to pay.
+                                    </p>
+                                ) : (
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <div className="grid gap-2 sm:col-span-2">
+                                            <Label htmlFor="bill-payment-bill">
+                                                Bill
+                                            </Label>
+                                            <select
+                                                id="bill-payment-bill"
+                                                className={selectClass}
+                                                value={billPaymentBillKey}
+                                                onChange={(event) => {
+                                                    const billKey =
+                                                        event.target.value;
+                                                    const firstPeriod =
+                                                        billPeriods.find(
+                                                            (period) =>
+                                                                period.bill_key ===
+                                                                billKey,
+                                                        );
+                                                    setBillPaymentBillKey(
+                                                        billKey,
+                                                    );
+                                                    setBillPaymentPeriodId(
+                                                        firstPeriod?.id ?? 0,
+                                                    );
+                                                }}
+                                            >
+                                                {payableBills.map((period) => (
+                                                    <option
+                                                        key={period.bill_key}
+                                                        value={period.bill_key}
+                                                    >
+                                                        {period.bill_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="grid gap-2 sm:col-span-2">
+                                            <Label htmlFor="bill-payment-period">
+                                                Bill month
+                                            </Label>
+                                            <select
+                                                id="bill-payment-period"
+                                                className={selectClass}
+                                                value={billPaymentPeriodId}
+                                                onChange={(event) =>
+                                                    setBillPaymentPeriodId(
+                                                        Number(
+                                                            event.target.value,
+                                                        ),
+                                                    )
+                                                }
+                                            >
+                                                {selectedBillPeriods.map(
+                                                    (period) => (
+                                                        <option
+                                                            key={period.id}
+                                                            value={period.id}
+                                                        >
+                                                            {new Date(
+                                                                `${period.period}-01T00:00:00`,
+                                                            ).toLocaleDateString(
+                                                                undefined,
+                                                                {
+                                                                    month: 'long',
+                                                                    year: 'numeric',
+                                                                },
+                                                            )}{' '}
+                                                            · due{' '}
+                                                            {new Date(
+                                                                `${period.due_date}T00:00:00`,
+                                                            ).toLocaleDateString()}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="bill-payment-funding-account">
+                                                Paid from
+                                            </Label>
+                                            <select
+                                                id="bill-payment-funding-account"
+                                                className={selectClass}
+                                                value={
+                                                    billPaymentFundingAccountId
+                                                }
+                                                onChange={(event) =>
+                                                    setBillPaymentFundingAccountId(
+                                                        Number(
+                                                            event.target.value,
+                                                        ),
+                                                    )
+                                                }
+                                            >
+                                                {renderGroupedAccountOptions(
+                                                    billFundingAccounts,
+                                                )}
+                                            </select>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="bill-payment-amount">
+                                                Amount
+                                            </Label>
+                                            <MoneyInput
+                                                id="bill-payment-amount"
+                                                value={billPaymentAmount}
+                                                onChange={setBillPaymentAmount}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                <InputError
+                                    message={form.errors.bill_period_id}
+                                />
+                            </div>
                         ) : isCreateLoan ? (
                             <div className="space-y-3">
                                 <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
@@ -2644,6 +2923,25 @@ export function TransactionFormDialog({
                                                     onChange={
                                                         setLoanPersonAmount
                                                     }
+                                                    onKeyDown={(event) => {
+                                                        if (
+                                                            event.key !==
+                                                                'Tab' ||
+                                                            event.shiftKey
+                                                        ) {
+                                                            return;
+                                                        }
+
+                                                        const nextControl =
+                                                            document.querySelector<HTMLButtonElement>(
+                                                                '[data-addable-line-add="loan-funding-accounts"]:not(:disabled), [data-addable-line-add="loan-allocations"]:not(:disabled)',
+                                                            );
+
+                                                        if (nextControl) {
+                                                            event.preventDefault();
+                                                            nextControl.focus();
+                                                        }
+                                                    }}
                                                 />
                                             </div>
                                         </div>
@@ -3531,6 +3829,7 @@ export function TransactionFormDialog({
 
                     <div className="mt-4 shrink-0 space-y-3 border-t border-border pt-4">
                         {billAllocations.length > 0 &&
+                        !isCreateBillPayment &&
                         !(isCreateCredit && creditCardTab === 'purchase') ? (
                             <div className="rounded-md border bg-muted/30 p-3">
                                 <div className="flex items-start gap-2">
@@ -3592,7 +3891,8 @@ export function TransactionFormDialog({
                         ) : null}
                         {!isCreateTransfer &&
                         !isCreateCredit &&
-                        !isCreateLoan ? (
+                        !isCreateLoan &&
+                        !isCreateBillPayment ? (
                             <div className="grid gap-x-6 gap-y-1 text-sm lg:grid-cols-2">
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="text-muted-foreground">
@@ -3630,7 +3930,9 @@ export function TransactionFormDialog({
                                           ? !canSubmitCredit
                                           : isCreateLoan
                                             ? !canSubmitLoan
-                                            : !canSubmit)
+                                            : isCreateBillPayment
+                                              ? !canSubmitBillPayment
+                                              : !canSubmit)
                                 }
                             >
                                 {mode === 'create' ? 'Save' : 'Update'}

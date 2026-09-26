@@ -24,6 +24,7 @@ final readonly class UpdateTransaction
      *     description: string,
      *     note: string|null,
      *     bill_allocation_id?: int|null,
+     *     bill_period_id?: int|null,
      *     accounts: array<int, array{account_id: int, amount: string|float|int}>,
      *     allocations: array<int, array{allocation_id: int, amount: string|float|int}>,
      * }  $data
@@ -76,6 +77,7 @@ final readonly class UpdateTransaction
                 'description' => $data['description'],
                 'note' => $data['note'] ?? null,
                 'bill_allocation_id' => $data['bill_allocation_id'] ?? null,
+                'bill_period_id' => $data['bill_period_id'] ?? null,
                 'bill_payment_amount' => $this->billPaymentAmount($data),
             ]);
 
@@ -110,18 +112,20 @@ final readonly class UpdateTransaction
     }
 
     /**
-     * @param  array{bill_allocation_id?: int|null, accounts: array<int, array{amount: string|float|int}>, allocations: array<int, array{allocation_id: int, amount: string|float|int}>}  $data
+     * @param  array{bill_allocation_id?: int|null, bill_period_id?: int|null, accounts: array<int, array{amount: string|float|int}>, allocations: array<int, array{allocation_id: int, amount: string|float|int}>}  $data
      */
     private function billPaymentAmount(array $data): ?string
     {
         $billAllocationId = $data['bill_allocation_id'] ?? null;
-        if ($billAllocationId === null) {
+        if ($billAllocationId === null && ($data['bill_period_id'] ?? null) === null) {
             return null;
         }
 
-        foreach ($data['allocations'] as $row) {
-            if ($row['allocation_id'] === $billAllocationId && bccomp((string) $row['amount'], '0.00', 2) !== 0) {
-                return number_format(abs((float) $row['amount']), 2, '.', '');
+        if ($billAllocationId !== null) {
+            foreach ($data['allocations'] as $row) {
+                if ($row['allocation_id'] === $billAllocationId && bccomp((string) $row['amount'], '0.00', 2) !== 0) {
+                    return number_format(abs((float) $row['amount']), 2, '.', '');
+                }
             }
         }
 

@@ -8,7 +8,7 @@ use App\Models\Account;
 use App\Models\Allocation;
 use App\Models\User;
 
-it('opens bill payment transactions with the tracked bill selected', function (): void {
+it('opens bill payments with bill and unpaid month selected', function (): void {
     $user = User::factory()->withoutTwoFactor()->create();
 
     Account::query()->create([
@@ -33,15 +33,17 @@ it('opens bill payment transactions with the tracked bill selected', function ()
     $page = visit(route('transactions.index'));
     $page->press('New transaction')->press('Pay a bill');
 
-    expect($page->script('document.querySelector("#is-bill-payment")?.getAttribute("data-state")'))->toBe('checked')
-        ->and($page->value('[aria-label="Bill being paid"]'))->toBe((string) $bill->id)
+    expect($page->script('document.querySelector("#is-bill-payment")'))->toBeNull()
+        ->and($page->value('#bill-payment-bill'))->toBe('allocation:'.$bill->id)
+        ->and($page->value('#bill-payment-period'))->not->toBe('')
         ->and($page->script('document.querySelector("[role=dialog][data-state=open] h2")?.textContent?.trim()'))->toBe('Pay a bill');
 
     $page = visit(route('dashboard'));
     $page->click('[aria-label="Add"]')->press('Pay a bill');
 
-    expect($page->script('document.querySelector("#is-bill-payment")?.getAttribute("data-state")'))->toBe('checked')
-        ->and($page->value('[aria-label="Bill being paid"]'))->toBe((string) $bill->id);
+    expect($page->script('document.querySelector("#is-bill-payment")'))->toBeNull()
+        ->and($page->value('#bill-payment-bill'))->toBe('allocation:'.$bill->id)
+        ->and($page->value('#bill-payment-period'))->not->toBe('');
 });
 
 it('tabs through a purchase without looping back to add allocation', function (): void {
@@ -96,6 +98,38 @@ it('tabs through a purchase without looping back to add allocation', function ()
     $page->keys('#purchase-note', 'Tab');
 
     expect($page->script('document.activeElement?.id'))->toBe('purchase-submit');
+});
+
+it('tabs from the loan amount into the funding accounts section', function (): void {
+    $user = User::factory()->create();
+
+    foreach ([
+        ['Checking', AccountType::Bank],
+        ['Alex', AccountType::Person],
+    ] as [$name, $type]) {
+        Account::query()->create([
+            'user_id' => $user->id,
+            'name' => $name,
+            'type' => $type,
+            'balance' => '100.00',
+        ]);
+    }
+
+    Allocation::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Emergency fund',
+        'type' => AllocationType::Normal,
+        'balance' => '100.00',
+        'is_unallocated' => false,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('transactions.index'));
+    $page->press('New transaction')->press('Loan');
+    $page->keys('#loan-person-amt', 'Tab');
+
+    expect($page->script('document.activeElement?.dataset?.addableLineAdd'))->toBe('loan-funding-accounts');
 });
 
 it('keeps each credit-card purchase split paired with its own add button', function (): void {

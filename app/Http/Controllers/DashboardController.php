@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\AdvanceBillDueDatesForUser;
+use App\Actions\EnsureBillPeriodsForUser;
+use App\Actions\GetPayableBillPeriods;
 use App\Http\Resources\AccountResource;
 use App\Http\Resources\AllocationResource;
 use App\Http\Resources\TransactionResource;
@@ -22,12 +24,17 @@ use Inertia\Response;
 
 final readonly class DashboardController
 {
-    public function __invoke(Request $request, AdvanceBillDueDatesForUser $advanceBillDueDates): Response
-    {
+    public function __invoke(
+        Request $request,
+        AdvanceBillDueDatesForUser $advanceBillDueDates,
+        EnsureBillPeriodsForUser $ensureBillPeriods,
+        GetPayableBillPeriods $getPayableBillPeriods,
+    ): Response {
         $user = $request->user();
         assert($user instanceof User);
 
         $advanceBillDueDates->handle($user);
+        $ensureBillPeriods->handle($user, now()->toImmutable());
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
@@ -49,6 +56,7 @@ final readonly class DashboardController
         return Inertia::render('dashboard', [
             'accounts' => AccountResource::collection($accounts)->resolve(),
             'allocations' => AllocationResource::collection($allocations)->resolve(),
+            'bill_periods' => $getPayableBillPeriods->handle($user),
             'unallocated' => UnallocatedAmount::forUserId($user->id),
             'unallocated_allocation_id' => $unallocatedAllocationId !== null
                 ? (int) $unallocatedAllocationId

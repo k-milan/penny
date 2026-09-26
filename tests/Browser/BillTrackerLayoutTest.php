@@ -42,6 +42,8 @@ it('shows bills as rows beneath grouped month columns', function (): void {
             const subheaders = Array.from(headerRows[1]?.querySelectorAll('th') ?? []).map((header) => header.textContent?.trim());
             const billNames = Array.from(table?.querySelectorAll('tbody tr > th:first-child') ?? []).map((header) => header.textContent?.trim());
             const columnCount = table?.querySelector('tbody tr')?.children.length ?? 0;
+            const confirmCheckboxCount = table?.querySelectorAll('[role="checkbox"][aria-label^="Confirm "]').length ?? 0;
+            const confirmButtonCount = Array.from(table?.querySelectorAll('button') ?? []).filter((button) => button.textContent?.trim() === 'Confirm').length;
 
             return {
                 corner: headerRows[0]?.querySelector('th[rowspan="2"]')?.textContent?.trim(),
@@ -50,14 +52,18 @@ it('shows bills as rows beneath grouped month columns', function (): void {
                 firstSubheaders: subheaders.slice(0, 3),
                 billNames,
                 columnCount,
+                confirmCheckboxCount,
+                confirmButtonCount,
             };
         })()
         JS))->toBe([
         'corner' => 'Bill',
-        'monthCount' => 8,
-        'monthColspans' => array_fill(0, 8, '3'),
+        'monthCount' => 3,
+        'monthColspans' => array_fill(0, 3, '3'),
         'firstSubheaders' => ['Due date', 'Due amount', 'Paid'],
         'billNames' => ['Car', 'Electricity', 'Visa', 'Water'],
-        'columnCount' => 25,
+        'columnCount' => 10,
+        'confirmCheckboxCount' => 12,
+        'confirmButtonCount' => 0,
     ]);
 });

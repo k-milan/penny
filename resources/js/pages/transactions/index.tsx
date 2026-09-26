@@ -15,6 +15,7 @@ import {
     TransactionFormDialog,
     type AccountOption,
     type AllocationOption,
+    type BillPeriodOption,
     type CreateDialogPreset,
 } from '@/components/transaction-form-dialog';
 import { TransactionScrollList } from '@/components/transaction-scroll-list';
@@ -49,6 +50,7 @@ type TransactionRow = DashboardTransactionRow;
 type TransactionsPageProps = {
     accounts: AccountOption[];
     allocations: AllocationOption[];
+    bill_periods: BillPeriodOption[];
     unallocated_allocation_id: number | null;
 };
 
@@ -60,6 +62,7 @@ const transactionsBreadcrumbs: BreadcrumbItem[] = [
 export default function TransactionsIndex({
     accounts: accountsProp,
     allocations: allocationsProp,
+    bill_periods,
     unallocated_allocation_id,
 }: TransactionsPageProps) {
     const accounts = useMemo(
@@ -110,7 +113,7 @@ export default function TransactionsIndex({
     const canCreatePayment = hasCreditCard && hasCardPaymentSource;
     const canPayBill =
         accounts.some((account) => account.type !== 'person') &&
-        allocations.some((allocation) => allocation.type === 'bill');
+        bill_periods.length > 0;
     const hasPersonAccount = accounts.some((a) => a.type === 'person');
     const hasLoanFundingOrAlloc =
         accounts.some((a) => a.type !== 'person') ||
@@ -326,6 +329,7 @@ export default function TransactionsIndex({
                 transaction={null}
                 accounts={accounts}
                 allocations={allocations}
+                billPeriods={bill_periods}
                 unallocatedAllocationId={unallocated_allocation_id}
                 onCreateSuccess={(kind) => showCreateResult('success', kind)}
                 onCreateFailure={(kind) => showCreateResult('failure', kind)}
