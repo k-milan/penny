@@ -47,6 +47,42 @@ function lineAmountDisplay(amountStr: string | undefined): string {
     return Number.isFinite(n) ? formatPhpMoney(n) : '—';
 }
 
+export function TransactionContextAmount({
+    t,
+    context,
+}: {
+    t: DashboardTransactionRow;
+    context:
+        | { type: 'account'; id: number }
+        | { type: 'allocation'; id: number };
+}) {
+    const line =
+        context.type === 'account'
+            ? t.accounts.find((account) => account.account_id === context.id)
+            : t.allocations.find(
+                  (allocation) => allocation.allocation_id === context.id,
+              );
+    const amount = Number.parseFloat(line?.amount ?? '');
+
+    if (!Number.isFinite(amount)) {
+        return <p className="text-xs text-muted-foreground">—</p>;
+    }
+
+    return (
+        <p
+            className={cn(
+                'text-xs font-medium tabular-nums',
+                amount > 0 && 'text-emerald-600 dark:text-emerald-400',
+                amount < 0 && 'text-red-600 dark:text-red-400',
+                amount === 0 && 'text-muted-foreground',
+            )}
+        >
+            {amount > 0 ? '+' : ''}
+            {formatPhpMoney(amount)}
+        </p>
+    );
+}
+
 /** List preview: first account and first allocation (if any), one line; … if more lines exist. */
 export function TransactionListInlineSummary({
     t,

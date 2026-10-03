@@ -112,6 +112,7 @@ export default function AllocationShow({
                         dataKey="transactions"
                         accounts={accounts}
                         allocations={allocations}
+                        context={{ type: 'allocation', id: allocation.id }}
                         emptyMessage="No transactions for this allocation yet."
                         scrollClassName="h-[min(65vh,calc(100dvh-13rem))] min-h-[18rem] overflow-y-auto rounded-md border"
                         onSelectDetail={setDetailTransaction}

@@ -151,6 +151,7 @@ export default function AccountShow({
                         dataKey="transactions"
                         accounts={accounts}
                         allocations={allocations}
+                        context={{ type: 'account', id: account.id }}
                         emptyMessage="No transactions for this account yet."
                         scrollClassName="h-[min(65vh,calc(100dvh-13rem))] min-h-[18rem] overflow-y-auto rounded-md border"
                         onSelectDetail={setDetailTransaction}

@@ -1,6 +1,7 @@
 import {
     formatTransactionGroupDate,
     formatTransactionTime,
+    TransactionContextAmount,
     TransactionListInlineSummary,
 } from '@/components/transaction-display';
 import {
@@ -45,6 +46,7 @@ export function TransactionScrollList({
     dataKey,
     accounts,
     allocations,
+    context,
     emptyMessage,
     scrollClassName,
     onSelectDetail,
@@ -56,6 +58,9 @@ export function TransactionScrollList({
     dataKey: TransactionScrollDataKey;
     accounts: AccountOption[];
     allocations: AllocationOption[];
+    context?:
+        | { type: 'account'; id: number }
+        | { type: 'allocation'; id: number };
     emptyMessage: string;
     /** Outer scroll container; default matches dashboard recent list */
     scrollClassName?: string;
@@ -175,16 +180,25 @@ export function TransactionScrollList({
                                                                     </span>
                                                                 ) : null}
                                                             </div>
-                                                            <TransactionListInlineSummary
-                                                                compact
-                                                                t={t}
-                                                                accountOptions={
-                                                                    accounts
-                                                                }
-                                                                allocationOptions={
-                                                                    allocations
-                                                                }
-                                                            />
+                                                            {context ? (
+                                                                <TransactionContextAmount
+                                                                    t={t}
+                                                                    context={
+                                                                        context
+                                                                    }
+                                                                />
+                                                            ) : (
+                                                                <TransactionListInlineSummary
+                                                                    compact
+                                                                    t={t}
+                                                                    accountOptions={
+                                                                        accounts
+                                                                    }
+                                                                    allocationOptions={
+                                                                        allocations
+                                                                    }
+                                                                />
+                                                            )}
                                                         </div>
                                                     </button>
                                                     <DropdownMenu>

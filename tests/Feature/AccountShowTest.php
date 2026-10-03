@@ -111,7 +111,12 @@ it('only shows transactions for the current account on the show page', function 
 
     $this->actingAs($user)
         ->get(route('accounts.show', $account, absolute: false))
-        ->assertOk();
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions.data', 1)
+            ->where('transactions.data.0.id', $linkedTransaction->id)
+            ->where('transactions.data.0.accounts.data.0.account_id', $account->id)
+            ->where('transactions.data.0.accounts.data.0.amount', '100.00'));
 });
 
 it('paginates account transactions for infinite scrolling', function (): void {

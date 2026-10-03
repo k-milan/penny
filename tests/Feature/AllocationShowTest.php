@@ -139,7 +139,12 @@ it('only shows transactions for the current allocation on the show page', functi
 
     $this->actingAs($user)
         ->get(route('allocations.show', $allocation, absolute: false))
-        ->assertOk();
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions.data', 1)
+            ->where('transactions.data.0.id', $linkedTransaction->id)
+            ->where('transactions.data.0.allocations.data.0.allocation_id', $allocation->id)
+            ->where('transactions.data.0.allocations.data.0.amount', '100.00'));
 });
 
 it('paginates allocation transactions for infinite scrolling', function (): void {
