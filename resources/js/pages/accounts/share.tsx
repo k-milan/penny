@@ -2,7 +2,7 @@ import AppLogoIcon from '@/components/app-logo-icon';
 import { FlashToasts } from '@/components/flash-toasts';
 import { formatDateYmd, formatPhpMoney } from '@/lib/format';
 import { runningBalances } from '@/lib/running-balances';
-import { Head, InfiniteScroll, usePage } from '@inertiajs/react';
+import { Head, InfiniteScroll, Link, usePage } from '@inertiajs/react';
 import { ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
@@ -38,12 +38,19 @@ type AccountShareProps = {
         opening_balance_items: { description: string; amount: string }[];
     };
     owner_name: string;
+    has_older_transactions: boolean;
+    showing_all_transactions: boolean;
     transactions: PaginatedTransactions;
 };
 
 export default function AccountShare() {
-    const { account, owner_name, transactions } =
-        usePage<AccountShareProps>().props;
+    const {
+        account,
+        owner_name,
+        has_older_transactions,
+        showing_all_transactions,
+        transactions,
+    } = usePage<AccountShareProps>().props;
 
     const balance = Number.parseFloat(account.balance);
     const isPositive = balance > 0;
@@ -165,6 +172,18 @@ export default function AccountShare() {
                             </InfiniteScroll>
                         </div>
                     )}
+
+                    {has_older_transactions && !showing_all_transactions ? (
+                        <div className="mt-4 text-center">
+                            <Link
+                                href="?history=all"
+                                preserveScroll
+                                className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            >
+                                Show more
+                            </Link>
+                        </div>
+                    ) : null}
                 </main>
             </div>
         </>

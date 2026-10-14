@@ -21,6 +21,44 @@ final readonly class PublicAccountShareController
             ->with(['user', 'openingBalanceItems'])
             ->firstOrFail();
 
+        $showAllTransactions = $request->query('history') === 'all';
+        $recentTransactionIds = null;
+        $hasOlderTransactions = false;
+
+        if (! $showAllTransactions) {
+            $balanceAfter = (string) $account->balance;
+            $recentTransactionIds = [];
+            $transactions = Transaction::query()
+                ->whereHas(
+                    'transactionAccounts',
+                    static fn ($query) => $query->where('account_id', $account->id)
+                )
+                ->with([
+                    'transactionAccounts' => static fn ($query) => $query->where('account_id', $account->id),
+                ])
+                ->orderByDesc('date')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get();
+
+            foreach ($transactions as $transaction) {
+                if (bccomp($balanceAfter, '0.00', 2) === 0) {
+                    $hasOlderTransactions = true;
+
+                    break;
+                }
+
+                $recentTransactionIds[] = $transaction->id;
+                $line = $transaction->transactionAccounts->first();
+                $balanceAfter = bcsub($balanceAfter, (string) ($line?->amount ?? '0.00'), 2);
+            }
+
+            if (! $hasOlderTransactions) {
+                $recentTransactionIds = null;
+            }
+        }
+
         return Inertia::render('accounts/share', [
             'account' => [
                 'name' => $account->name,
@@ -34,9 +72,11 @@ final readonly class PublicAccountShareController
                     ->all(),
             ],
             'owner_name' => $account->user->name,
+            'has_older_transactions' => $hasOlderTransactions,
+            'showing_all_transactions' => $showAllTransactions,
             'transactions' => Inertia::scroll(
-                static function () use ($account): mixed {
-                    $paginator = Transaction::query()
+                static function () use ($account, $recentTransactionIds, $showAllTransactions): mixed {
+                    $query = Transaction::query()
                         ->whereHas(
                             'transactionAccounts',
                             static fn ($q) => $q->where('account_id', $account->id)
@@ -48,8 +88,17 @@ final readonly class PublicAccountShareController
                         ])
                         ->orderByDesc('date')
                         ->orderByDesc('created_at')
-                        ->orderByDesc('id')
-                        ->paginate(30, ['*'], 'transactions');
+                        ->orderByDesc('id');
+
+                    if ($recentTransactionIds !== null) {
+                        $query->whereIn('transactions.id', $recentTransactionIds);
+                    }
+
+                    $paginator = $query->paginate(
+                        $showAllTransactions ? 30 : 100,
+                        ['*'],
+                        'transactions'
+                    );
 
                     return $paginator->through(static function (Transaction $t) use ($account): array {
                         /** @var \App\Models\TransactionAccount|null $line */

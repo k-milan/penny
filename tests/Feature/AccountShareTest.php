@@ -242,3 +242,91 @@ it('shows only transactions for that account on the public share page', function
     $this->get(route('accounts.share', ['token' => $person->share_token], absolute: false))
         ->assertOk();
 });
+
+it('hides settled public share history until show more is requested', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $person = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'CJ',
+        'type' => AccountType::Person,
+        'balance' => '59.00',
+        'share_token' => 'settledhistorysharetoken123456789',
+    ]);
+
+    $older = Transaction::query()->create([
+        'user_id' => $user->id,
+        'date' => '2026-07-24',
+        'description' => 'CJ Payment',
+        'note' => null,
+    ]);
+    TransactionAccount::query()->create([
+        'transaction_id' => $older->id,
+        'account_id' => $person->id,
+        'amount' => '-312.33',
+    ]);
+
+    $recent = Transaction::query()->create([
+        'user_id' => $user->id,
+        'date' => '2026-09-13',
+        'description' => 'Mcdo',
+        'note' => null,
+    ]);
+    TransactionAccount::query()->create([
+        'transaction_id' => $recent->id,
+        'account_id' => $person->id,
+        'amount' => '59.00',
+    ]);
+
+    $shareRoute = route('accounts.share', ['token' => $person->share_token], absolute: false);
+
+    $this->get($shareRoute)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('has_older_transactions', true)
+            ->where('showing_all_transactions', false)
+            ->has('transactions.data', 1)
+            ->where('transactions.data.0.id', $recent->id));
+
+    $this->get($shareRoute.'?history=all')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('has_older_transactions', false)
+            ->where('showing_all_transactions', true)
+            ->has('transactions.data', 2)
+            ->where('transactions.per_page', 30));
+});
+
+it('paginates recent public share history after the settlement scan limit', function (): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $person = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'CJ',
+        'type' => AccountType::Person,
+        'balance' => '100.00',
+        'share_token' => 'longhistorysharetoken123456789012',
+    ]);
+
+    foreach (range(1, 101) as $number) {
+        $transaction = Transaction::query()->create([
+            'user_id' => $user->id,
+            'date' => '2026-09-13',
+            'description' => "Transaction {$number}",
+            'note' => null,
+        ]);
+        TransactionAccount::query()->create([
+            'transaction_id' => $transaction->id,
+            'account_id' => $person->id,
+            'amount' => '1.00',
+        ]);
+    }
+
+    $this->get(route('accounts.share', ['token' => $person->share_token], absolute: false))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('has_older_transactions', false)
+            ->where('showing_all_transactions', false)
+            ->has('transactions.data', 100)
+            ->where('transactions.current_page', 1)
+            ->where('transactions.last_page', 2)
+            ->where('transactions.per_page', 100));
+});
