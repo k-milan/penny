@@ -38,6 +38,10 @@ return [
     */
 
     'guards' => [
+        'mcp' => [
+            'driver' => 'penny-mcp',
+            'provider' => 'users',
+        ],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',

@@ -44,6 +44,8 @@ final class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'mcp_token_hash',
+        'mcp_token_expires_at',
         'remember_token',
         'two_factor_secret',
         'two_factor_recovery_codes',
@@ -55,6 +57,7 @@ final class User extends Authenticatable
     public function casts(): array
     {
         return [
+            'mcp_token_expires_at' => 'datetime',
             'id' => 'integer',
             'name' => 'string',
             'email' => 'string',
