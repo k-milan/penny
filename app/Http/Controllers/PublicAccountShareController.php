@@ -72,6 +72,7 @@ final readonly class PublicAccountShareController
                     ->all(),
             ],
             'owner_name' => $account->user->name,
+            'payment_qr_codes' => PaymentQrCodeController::forUser($account->user),
             'has_older_transactions' => $hasOlderTransactions,
             'showing_all_transactions' => $showAllTransactions,
             'transactions' => Inertia::scroll(

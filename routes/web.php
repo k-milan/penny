@@ -10,6 +10,7 @@ use App\Http\Controllers\BillTrackerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncomeFromTemplateController;
 use App\Http\Controllers\IncomeTemplateController;
+use App\Http\Controllers\PaymentQrCodeController;
 use App\Http\Controllers\PreviewController;
 use App\Http\Controllers\PublicAccountShareController;
 use App\Http\Controllers\PurchaseController;
@@ -37,6 +38,7 @@ Route::get('/', function () {
 
 Route::get('preview', PreviewController::class)->name('preview');
 Route::get('share/account/{token}', PublicAccountShareController::class)->name('accounts.share');
+Route::get('payment-qr-codes/{publicId}/image', [PaymentQrCodeController::class, 'image'])->name('payment-qr-codes.image');
 
 Route::middleware(['auth'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -55,6 +57,7 @@ Route::middleware(['auth'])->group(function (): void {
         'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
     ]);
     Route::post('accounts/{account}/share-token', AccountShareTokenController::class)->name('accounts.share-token');
+    Route::resource('payment-qr-codes', PaymentQrCodeController::class)->only(['index', 'store', 'destroy']);
     Route::resource('allocations', AllocationController::class)->only([
         'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
     ]);

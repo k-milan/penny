@@ -1,3 +1,4 @@
+import PaymentQrCodeController from '@/actions/App/Http/Controllers/PaymentQrCodeController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -29,6 +30,11 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Appearance',
         href: editAppearance(),
+        icon: null,
+    },
+    {
+        title: 'Payment QR codes',
+        href: PaymentQrCodeController.index(),
         icon: null,
     },
 ];

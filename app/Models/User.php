@@ -31,6 +31,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Transaction> $transactions
  * @property-read \Illuminate\Database\Eloquent\Collection<int, IncomeTemplate> $incomeTemplates
  * @property-read \Illuminate\Database\Eloquent\Collection<int, IncomeTemplateSeries> $incomeTemplateSeries
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PaymentQrCode> $paymentQrCodes
  */
 final class User extends Authenticatable
 {
@@ -111,6 +112,12 @@ final class User extends Authenticatable
     public function incomeTemplateSeries(): HasMany
     {
         return $this->hasMany(IncomeTemplateSeries::class);
+    }
+
+    /** @return HasMany<PaymentQrCode, $this> */
+    public function paymentQrCodes(): HasMany
+    {
+        return $this->hasMany(PaymentQrCode::class);
     }
 
     protected static function booted(): void

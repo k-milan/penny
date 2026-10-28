@@ -1,9 +1,17 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { FlashToasts } from '@/components/flash-toasts';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { formatDateYmd, formatPhpMoney } from '@/lib/format';
 import { runningBalances } from '@/lib/running-balances';
 import { Head, InfiniteScroll, Link, usePage } from '@inertiajs/react';
-import { ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
+import { ChevronDown, QrCode, TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
 type ShareTransaction = {
@@ -38,6 +46,7 @@ type AccountShareProps = {
         opening_balance_items: { description: string; amount: string }[];
     };
     owner_name: string;
+    payment_qr_codes: { id: number; name: string; image_url: string }[];
     has_older_transactions: boolean;
     showing_all_transactions: boolean;
     transactions: PaginatedTransactions;
@@ -47,6 +56,7 @@ export default function AccountShare() {
     const {
         account,
         owner_name,
+        payment_qr_codes: paymentQrCodes,
         has_older_transactions,
         showing_all_transactions,
         transactions,
@@ -58,6 +68,13 @@ export default function AccountShare() {
     const [hasLatestTransactions] = useState(
         transactions.prev_page_url === null,
     );
+    const [payOpen, setPayOpen] = useState(false);
+    const [selectedQrCodeId, setSelectedQrCodeId] = useState<number | null>(
+        paymentQrCodes[0]?.id ?? null,
+    );
+    const selectedQrCode =
+        paymentQrCodes.find((qrCode) => qrCode.id === selectedQrCodeId) ??
+        paymentQrCodes[0];
     const balances = runningBalances(account.balance, transactions.data);
 
     return (
@@ -107,6 +124,16 @@ export default function AccountShare() {
                                 All settled up
                             </p>
                         )}
+                        {paymentQrCodes.length > 0 ? (
+                            <Button
+                                type="button"
+                                className="mt-5 w-full"
+                                onClick={() => setPayOpen(true)}
+                            >
+                                <QrCode className="size-4" />
+                                Pay {owner_name}
+                            </Button>
+                        ) : null}
                     </div>
 
                     {account.opening_balance_items.length > 0 ? (
@@ -185,6 +212,54 @@ export default function AccountShare() {
                         </div>
                     ) : null}
                 </main>
+                <Dialog open={payOpen} onOpenChange={setPayOpen}>
+                    <DialogContent className="max-w-[min(calc(100vw-2rem),28rem)]">
+                        <DialogHeader>
+                            <DialogTitle>Pay {owner_name}</DialogTitle>
+                            <DialogDescription>
+                                Choose a bank or wallet, then scan its QR code
+                                in your payment app.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div
+                            className="flex flex-wrap gap-2"
+                            role="list"
+                            aria-label="Payment methods"
+                        >
+                            {paymentQrCodes.map((qrCode) => (
+                                <Button
+                                    key={qrCode.id}
+                                    type="button"
+                                    variant={
+                                        selectedQrCode?.id === qrCode.id
+                                            ? 'default'
+                                            : 'outline'
+                                    }
+                                    size="sm"
+                                    onClick={() =>
+                                        setSelectedQrCodeId(qrCode.id)
+                                    }
+                                >
+                                    {qrCode.name}
+                                </Button>
+                            ))}
+                        </div>
+                        {selectedQrCode ? (
+                            <div className="space-y-3 text-center">
+                                <div className="mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border bg-white p-2">
+                                    <img
+                                        src={selectedQrCode.image_url}
+                                        alt={`${selectedQrCode.name} payment QR code`}
+                                        className="size-full object-contain"
+                                    />
+                                </div>
+                                <p className="font-medium">
+                                    {selectedQrCode.name}
+                                </p>
+                            </div>
+                        ) : null}
+                    </DialogContent>
+                </Dialog>
             </div>
         </>
     );
