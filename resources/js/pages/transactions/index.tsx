@@ -2,6 +2,7 @@ import IncomeFromTemplateController from '@/actions/App/Http/Controllers/IncomeF
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
 import { CreateActionDialog } from '@/components/create-action-dialog';
 import { GuidedEntryForm } from '@/components/guided-entry-form';
+import { TransactionComposerDialog } from '@/components/transaction-composer-dialog';
 import {
     TransactionCreateResultDialog,
     type TransactionCreateKind,
@@ -76,6 +77,7 @@ export default function TransactionsIndex({
 
     const [createOpen, setCreateOpen] = useState(false);
     const [purchaseOpen, setPurchaseOpen] = useState(false);
+    const [composerOpen, setComposerOpen] = useState(false);
     const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
     const [createPreset, setCreatePreset] =
         useState<CreateDialogPreset>('default');
@@ -201,6 +203,15 @@ export default function TransactionsIndex({
                 title="What kind of transaction?"
                 description="Choose how you want to record this activity."
                 items={[
+                    {
+                        id: 'composer',
+                        title: 'Composer (experimental)',
+                        description:
+                            'Start anywhere and explain the other side.',
+                        icon: ArrowLeftRight,
+                        disabled: accounts.length + allocations.length < 2,
+                        onSelect: () => setComposerOpen(true),
+                    },
                     {
                         id: 'purchase',
                         title: 'Purchase',
@@ -337,6 +348,13 @@ export default function TransactionsIndex({
                     setCreateOpen(false);
                     setCreateChoiceOpen(true);
                 }}
+            />
+
+            <TransactionComposerDialog
+                open={composerOpen}
+                onOpenChange={setComposerOpen}
+                accounts={accounts}
+                allocations={allocations}
             />
 
             <GuidedEntryForm

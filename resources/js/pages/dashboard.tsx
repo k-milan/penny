@@ -4,6 +4,7 @@ import IncomeFromTemplateController from '@/actions/App/Http/Controllers/IncomeF
 import TransactionController from '@/actions/App/Http/Controllers/TransactionController';
 import { CreateActionDialog } from '@/components/create-action-dialog';
 import { GuidedEntryForm } from '@/components/guided-entry-form';
+import { TransactionComposerDialog } from '@/components/transaction-composer-dialog';
 import {
     TransactionCreateResultDialog,
     type TransactionCreateKind,
@@ -681,6 +682,7 @@ export default function Dashboard() {
 
     const [createOpen, setCreateOpen] = useState(false);
     const [purchaseOpen, setPurchaseOpen] = useState(false);
+    const [composerOpen, setComposerOpen] = useState(false);
     const [createPreset, setCreatePreset] =
         useState<CreateDialogPreset>('default');
     const [initialCreditCardTab, setInitialCreditCardTab] = useState<
@@ -1202,6 +1204,15 @@ export default function Dashboard() {
                 description="Choose the workflow that matches what you want to add."
                 items={[
                     {
+                        id: 'composer',
+                        title: 'Composer (experimental)',
+                        description:
+                            'Start anywhere and explain the other side.',
+                        icon: ArrowLeftRight,
+                        disabled: accounts.length + allocations.length < 2,
+                        onSelect: () => setComposerOpen(true),
+                    },
+                    {
                         id: 'purchase',
                         title: 'Purchase',
                         description: 'Record spending.',
@@ -1351,6 +1362,13 @@ export default function Dashboard() {
                     setCreateOpen(false);
                     setCreateChoiceOpen(true);
                 }}
+            />
+
+            <TransactionComposerDialog
+                open={composerOpen}
+                onOpenChange={setComposerOpen}
+                accounts={accounts}
+                allocations={allocations}
             />
 
             <GuidedEntryForm
