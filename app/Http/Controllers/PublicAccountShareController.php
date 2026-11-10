@@ -21,6 +21,9 @@ final readonly class PublicAccountShareController
             ->with(['user', 'openingBalanceItems'])
             ->firstOrFail();
 
+        $transactionTotal = (string) $account->transactionAccounts()->sum('amount');
+        $openingBalance = bcsub((string) $account->balance, $transactionTotal, 2);
+
         $showAllTransactions = $request->query('history') === 'all';
         $recentTransactionIds = null;
         $hasOlderTransactions = false;
@@ -54,6 +57,15 @@ final readonly class PublicAccountShareController
                 $balanceAfter = bcsub($balanceAfter, (string) ($line?->amount ?? '0.00'), 2);
             }
 
+            if (bccomp($balanceAfter, '0.00', 2) === 0
+                && bccomp($openingBalance, '0.00', 2) !== 0
+                && ! Transaction::query()
+                    ->whereHas('transactionAccounts', static fn ($query) => $query->where('account_id', $account->id))
+                    ->whereNotIn('id', $recentTransactionIds)
+                    ->exists()) {
+                $hasOlderTransactions = true;
+            }
+
             if (! $hasOlderTransactions) {
                 $recentTransactionIds = null;
             }
@@ -71,6 +83,9 @@ final readonly class PublicAccountShareController
                     ->values()
                     ->all(),
             ],
+            'opening_balance' => bccomp($openingBalance, '0.00', 2) !== 0 && ! $hasOlderTransactions
+                ? $openingBalance
+                : null,
             'owner_name' => $account->user->name,
             'payment_qr_codes' => PaymentQrCodeController::forUser($account->user),
             'has_older_transactions' => $hasOlderTransactions,

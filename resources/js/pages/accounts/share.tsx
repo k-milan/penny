@@ -16,10 +16,11 @@ import { useState } from 'react';
 
 type ShareTransaction = {
     id: number;
-    date: string;
+    date: string | null;
     description: string;
     note: string | null;
     amount: string | null;
+    opening_balance_items?: { description: string; amount: string }[];
     bill: {
         items: { description: string; shares: number; amount: string }[];
         item_subtotal: string;
@@ -45,6 +46,7 @@ type AccountShareProps = {
         balance: string;
         opening_balance_items: { description: string; amount: string }[];
     };
+    opening_balance: string | null;
     owner_name: string;
     payment_qr_codes: { id: number; name: string; image_url: string }[];
     has_older_transactions: boolean;
@@ -55,6 +57,7 @@ type AccountShareProps = {
 export default function AccountShare() {
     const {
         account,
+        opening_balance,
         owner_name,
         payment_qr_codes: paymentQrCodes,
         has_older_transactions,
@@ -136,34 +139,12 @@ export default function AccountShare() {
                         ) : null}
                     </div>
 
-                    {account.opening_balance_items.length > 0 ? (
-                        <section className="mb-8">
-                            <h2 className="mb-3 text-base font-semibold">
-                                Opening balance breakdown
-                            </h2>
-                            <div className="divide-y rounded-xl border">
-                                {account.opening_balance_items.map(
-                                    (item, index) => (
-                                        <div
-                                            key={`${item.description}-${index}`}
-                                            className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
-                                        >
-                                            <span>{item.description}</span>
-                                            <span className="shrink-0 font-medium tabular-nums">
-                                                {formatPhpMoney(item.amount)}
-                                            </span>
-                                        </div>
-                                    ),
-                                )}
-                            </div>
-                        </section>
-                    ) : null}
-
                     <h2 className="mb-3 text-base font-semibold">
                         Transactions
                     </h2>
 
-                    {transactions.data.length === 0 ? (
+                    {transactions.data.length === 0 &&
+                    opening_balance === null ? (
                         <p className="py-8 text-center text-sm text-muted-foreground">
                             No transactions yet.
                         </p>
@@ -189,6 +170,29 @@ export default function AccountShare() {
                                                 }
                                             />
                                         ))}
+                                        {opening_balance !== null &&
+                                        transactions.next_page_url === null ? (
+                                            <TransactionShareRow
+                                                transaction={{
+                                                    id: 0,
+                                                    date: null,
+                                                    description:
+                                                        'Opening balance',
+                                                    note: null,
+                                                    amount: opening_balance,
+                                                    bill: null,
+                                                    opening_balance_items:
+                                                        account.opening_balance_items,
+                                                }}
+                                                balanceAfter={
+                                                    hasLatestTransactions
+                                                        ? Number(
+                                                              opening_balance,
+                                                          )
+                                                        : null
+                                                }
+                                            />
+                                        ) : null}
                                         {loadingNext ? (
                                             <div className="py-4 text-center text-sm text-muted-foreground">
                                                 Loading more…
@@ -277,14 +281,16 @@ function TransactionShareRow({
     const isPositive = amount !== null && amount > 0;
     const isNegative = amount !== null && amount < 0;
 
+    const canExpand = Boolean(t.bill || t.opening_balance_items?.length);
+
     return (
         <div className="px-4 py-3">
             <button
                 type="button"
-                disabled={!t.bill}
+                disabled={!canExpand}
                 className="flex w-full items-start justify-between gap-4 text-left disabled:cursor-default"
-                aria-expanded={t.bill ? expanded : undefined}
-                onClick={() => t.bill && setExpanded((value) => !value)}
+                aria-expanded={canExpand ? expanded : undefined}
+                onClick={() => canExpand && setExpanded((value) => !value)}
             >
                 <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{t.description}</p>
@@ -293,9 +299,11 @@ function TransactionShareRow({
                             {t.note}
                         </p>
                     ) : null}
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                        {formatDateYmd(t.date)}
-                    </p>
+                    {t.date ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                            {formatDateYmd(t.date)}
+                        </p>
+                    ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                     {amount !== null ? (
@@ -325,7 +333,7 @@ function TransactionShareRow({
                         className="flex size-4 shrink-0 items-center justify-center"
                         aria-hidden="true"
                     >
-                        {t.bill ? (
+                        {canExpand ? (
                             <ChevronDown
                                 className={`size-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
                             />
@@ -333,6 +341,21 @@ function TransactionShareRow({
                     </span>
                 </div>
             </button>
+            {expanded && t.opening_balance_items?.length ? (
+                <div className="mt-3 space-y-2 border-t pt-3 text-sm">
+                    {t.opening_balance_items.map((item, index) => (
+                        <div
+                            key={`${item.description}-${index}`}
+                            className="flex justify-between gap-3"
+                        >
+                            <span>{item.description}</span>
+                            <span className="tabular-nums">
+                                {formatPhpMoney(item.amount)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            ) : null}
             {expanded && t.bill ? (
                 <div className="mt-3 space-y-2 border-t pt-3 text-sm">
                     {t.bill.items.map((item, index) => (

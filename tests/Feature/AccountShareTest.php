@@ -330,3 +330,38 @@ it('paginates recent public share history after the settlement scan limit', func
             ->where('transactions.last_page', 2)
             ->where('transactions.per_page', 100));
 });
+
+it('applies the shared history rules to opening balances', function (string $opening, string $amount, bool $showAll, ?string $visibleOpening, bool $hasOlder): void {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $account = Account::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Tita',
+        'type' => AccountType::Person,
+        'balance' => bcadd($opening, $amount, 2),
+        'share_token' => 'opening-history-rules',
+    ]);
+    $transaction = Transaction::query()->create([
+        'user_id' => $user->id,
+        'date' => '2025-03-01',
+        'description' => 'Payment or expense',
+    ]);
+    $transaction->transactionAccounts()->create([
+        'account_id' => $account->id,
+        'amount' => $amount,
+    ]);
+
+    $url = route('accounts.share', ['token' => $account->share_token], absolute: false);
+
+    $this->get($url.($showAll ? '?history=all' : ''))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('opening_balance', $visibleOpening)
+            ->where('has_older_transactions', $hasOlder));
+})->with([
+    'outstanding opening balance' => ['100.00', '25.00', false, '100.00', false],
+    'negative opening balance' => ['-100.00', '-25.00', false, '-100.00', false],
+    'zero opening balance' => ['0.00', '25.00', false, null, false],
+    'settled opening balance' => ['100.00', '-100.00', false, null, true],
+    'full settled history' => ['100.00', '-100.00', true, '100.00', false],
+    'zero opening in full history' => ['0.00', '25.00', true, null, false],
+]);
